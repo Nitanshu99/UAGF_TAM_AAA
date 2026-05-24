@@ -1,5 +1,5 @@
 """
-src.app.streamlit_app — Streamlit demo UI for the AAA pipeline (§10, §11).
+aaa.ui.app — Streamlit demo UI for the AAA pipeline (§10, §11).
 
 Wizard flow:
 
@@ -16,7 +16,7 @@ Run::
     pip install streamlit
     AAA_OFFLINE_MODE=true \
     CGSA_FIXTURE_DIR=scripts/fixtures/cgsa \
-    streamlit run src/app/streamlit_app.py
+    streamlit run aaa/ui/app.py
 """
 from __future__ import annotations
 
@@ -26,22 +26,22 @@ import pathlib
 import sys
 from typing import Any
 
-# Repo root on path so ``src.*`` imports work when launched via streamlit run.
+# Repo root on path so ``aaa.*`` imports work when launched via streamlit run.
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import streamlit as st  # noqa: E402
 
-from src.agents.base import IntakeDispatch  # noqa: E402
-from src.agents.intake_validator import IntakeValidator, IntakeValidatorError  # noqa: E402
-from src.agents.tier1.orchestrator import Orchestrator  # noqa: E402
-from src.platform.evidence import EvidenceStore  # noqa: E402
-from src.tools.intake_completeness_calculator import (  # noqa: E402
+from aaa.agents.base import IntakeDispatch  # noqa: E402
+from aaa.agents.intake_validator import IntakeValidator, IntakeValidatorError  # noqa: E402
+from aaa.agents.tier1.orchestrator import Orchestrator  # noqa: E402
+from aaa.platform.evidence import EvidenceStore  # noqa: E402
+from aaa.tools.intake_completeness_calculator import (  # noqa: E402
     intake_completeness_calculator,
 )
 
-_TEMPLATES_DIR = REPO_ROOT / "src" / "templates"
+_TEMPLATES_DIR = REPO_ROOT / "templates"
 _FIXTURE_DIR = REPO_ROOT / "scripts" / "fixtures" / "uci_german_credit"
 
 

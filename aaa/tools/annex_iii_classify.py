@@ -26,7 +26,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable
 
-from src.platform.state import AnnexIIIEntry
+from aaa.platform.state import AnnexIIIEntry
 
 logger = logging.getLogger(__name__)
 

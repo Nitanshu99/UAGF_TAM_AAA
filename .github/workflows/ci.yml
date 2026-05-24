@@ -1,0 +1,78 @@
+# AAA — Continuous Integration (§14.6)
+# ruff + mypy + pytest with coverage ≥ 80 %, plus an offline smoke run.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: aaa
+          POSTGRES_PASSWORD: aaa
+          POSTGRES_DB: aaa
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      qdrant:
+        image: qdrant/qdrant:v1.9.4
+        ports: ["6333:6333"]
+      minio:
+        image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+        env:
+          MINIO_ROOT_USER: aaa
+          MINIO_ROOT_PASSWORD: aaa-secret
+        ports: ["9000:9000"]
+        options: >-
+          --health-cmd "curl -sf http://localhost:9000/minio/health/live || exit 1"
+          --health-interval 10s
+    env:
+      AAA_OFFLINE_MODE: "true"
+      CGSA_FIXTURE_DIR: scripts/fixtures/cgsa
+      DATABASE_URL: postgresql://aaa:aaa@localhost:5432/aaa
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install -e .
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Type-check (mypy)
+        run: mypy aaa/
+        continue-on-error: true   # tighten once mypy baseline is green
+
+      - name: Tests + coverage
+        run: |
+          pytest \
+            --cov=aaa \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=80 \
+            -m "not e2e"
+
+      - name: Golden smoke (offline)
+        run: |
+          python -m aaa.cli run \
+            --engagement-id ci-smoke-001 \
+            --intake-dir scripts/fixtures/uci_german_credit \
+            --cgsa-fixture-dir scripts/fixtures/cgsa \
+            --offline

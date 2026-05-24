@@ -26,7 +26,7 @@ import logging
 import os
 from typing import Any, Literal
 
-from src.agents.base import BaseAgent
+from aaa.agents.base import BaseAgent
 
 logger = logging.getLogger(__name__)
 

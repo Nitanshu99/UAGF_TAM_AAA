@@ -1,0 +1,105 @@
+# AAA — Production overlay for docker-compose.yml (§14.4)
+#
+# Usage (apply on top of base compose):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# This overlay hardens the base services for production:
+#   - Removes exposed ports (services communicate over Docker network only)
+#   - Enables TLS where applicable
+#   - Sets resource limits
+#   - Forces restart=always
+
+version: "3.9"
+
+services:
+
+  postgres:
+    restart: always
+    ports: []          # not exposed externally in production
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+
+  qdrant:
+    restart: always
+    ports: []
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  minio:
+    restart: always
+    ports: []
+    environment:
+      MINIO_BROWSER: "off"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  valkey:
+    restart: always
+    ports: []
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  langfuse:
+    restart: always
+    ports: []
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+  openbao:
+    restart: always
+    ports: []
+    # In production use OpenBao HA mode with TLS — replace dev command:
+    command: server
+    environment:
+      BAO_DEV_ROOT_TOKEN_ID: ""   # disable dev mode token in production
+    volumes:
+      - openbao_config:/openbao/config
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  # --------------------------------------------------------------------------
+  # AAA FastAPI service (added in production only)
+  # --------------------------------------------------------------------------
+  aaa_api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      MINIO_ENDPOINT: minio:9000
+      REDIS_URL: redis://:${VALKEY_PASSWORD}@valkey:6379/0
+      BAO_ADDR: http://openbao:8200
+      LANGFUSE_HOST: http://langfuse:3000
+      AAA_OFFLINE_MODE: "false"
+    ports:
+      - "8000:8000"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+
+volumes:
+  openbao_config:

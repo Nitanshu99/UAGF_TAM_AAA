@@ -21,11 +21,11 @@ import os
 import uuid
 from typing import Any
 
-from src.agents.base import BaseAgent, Dispatch
-from src.agents.tier1.verifier import Verifier
-from src.tools.csp_solver import solve_phase_plan
-from src.tools.completeness_score import compute_completeness_score
-from src.tools.regulatory_coverage import compute_regulatory_coverage_pct
+from aaa.agents.base import BaseAgent, Dispatch
+from aaa.agents.tier1.verifier import Verifier
+from aaa.tools.csp_solver import solve_phase_plan
+from aaa.tools.completeness_score import compute_completeness_score
+from aaa.tools.regulatory_coverage import compute_regulatory_coverage_pct
 
 logger = logging.getLogger(__name__)
 
@@ -295,7 +295,7 @@ def _node_compliance_matrix(state: dict) -> dict:
     - Computes KPI 1 (completeness_score) and KPI 2 (regulatory_coverage_pct).
     - Determines final_verdict.
     """
-    from src.tools.art43_select import art43_select_from_state  # type: ignore
+    from aaa.tools.art43_select import art43_select_from_state  # type: ignore
 
     # Art. 43 final decision
     try:
@@ -449,7 +449,7 @@ class Orchestrator(BaseAgent):
         self._privacy_agent: Any = None
         if evidence_store is not None:
             try:
-                from src.agents.tier2.scope_agent import ScopeAgent  # type: ignore
+                from aaa.agents.tier2.scope_agent import ScopeAgent  # type: ignore
                 self._scope_agent = ScopeAgent(
                     evidence_store=evidence_store,
                     regulatory_rag=regulatory_rag,
@@ -457,42 +457,42 @@ class Orchestrator(BaseAgent):
             except Exception as exc:  # pragma: no cover
                 logger.warning("Could not instantiate ScopeAgent: %s; stub will be used.", exc)
             try:
-                from src.agents.tier2.data_auditor import DataAuditor  # type: ignore
+                from aaa.agents.tier2.data_auditor import DataAuditor  # type: ignore
                 self._data_auditor = DataAuditor(evidence_store=evidence_store)
             except Exception as exc:  # pragma: no cover
                 logger.warning("Could not instantiate DataAuditor: %s; stub will be used.", exc)
             try:
-                from src.agents.tier2.model_validator import ModelValidator  # type: ignore
+                from aaa.agents.tier2.model_validator import ModelValidator  # type: ignore
                 self._model_validator = ModelValidator(evidence_store=evidence_store)
             except Exception as exc:  # pragma: no cover
                 logger.warning("Could not instantiate ModelValidator: %s; stub will be used.", exc)
             try:
-                from src.agents.tier2.output_fairness import OutputFairnessTester  # type: ignore
+                from aaa.agents.tier2.output_fairness import OutputFairnessTester  # type: ignore
                 self._output_fairness = OutputFairnessTester(evidence_store=evidence_store)
             except Exception as exc:  # pragma: no cover
                 logger.warning("Could not instantiate OutputFairnessTester: %s; stub will be used.", exc)
             try:
-                from src.agents.tier2.governance_agent import GovernanceAgent  # type: ignore
+                from aaa.agents.tier2.governance_agent import GovernanceAgent  # type: ignore
                 self._governance_agent = GovernanceAgent(evidence_store=evidence_store)
             except Exception as exc:  # pragma: no cover
                 logger.warning("Could not instantiate GovernanceAgent: %s; stub will be used.", exc)
             try:
-                from src.agents.tier2.report_architect import ReportArchitect  # type: ignore
+                from aaa.agents.tier2.report_architect import ReportArchitect  # type: ignore
                 self._report_architect = ReportArchitect(evidence_store=evidence_store)
             except Exception as exc:  # pragma: no cover
                 logger.warning("Could not instantiate ReportArchitect: %s; stub will be used.", exc)
             try:
-                from src.agents.tier3.uagf_tam_l import UagfTamLBranch  # type: ignore
+                from aaa.agents.tier3.uagf_tam_l import UagfTamLBranch  # type: ignore
                 self._uagf_tam_l = UagfTamLBranch(evidence_store=evidence_store)
             except Exception as exc:  # pragma: no cover
                 logger.warning("Could not instantiate UagfTamLBranch: %s; stub will be used.", exc)
             try:
-                from src.agents.tier3.cyber_agent import CyberSecurityAgent  # type: ignore
+                from aaa.agents.tier3.cyber_agent import CyberSecurityAgent  # type: ignore
                 self._cyber_agent = CyberSecurityAgent(evidence_store=evidence_store)
             except Exception as exc:  # pragma: no cover
                 logger.warning("Could not instantiate CyberSecurityAgent: %s; stub will be used.", exc)
             try:
-                from src.agents.tier3.privacy_agent import PrivacyDPOAgent  # type: ignore
+                from aaa.agents.tier3.privacy_agent import PrivacyDPOAgent  # type: ignore
                 self._privacy_agent = PrivacyDPOAgent(evidence_store=evidence_store)
             except Exception as exc:  # pragma: no cover
                 logger.warning("Could not instantiate PrivacyDPOAgent: %s; stub will be used.", exc)

@@ -6,3 +6,11 @@ build-backend = "hatchling.build"
 name = "aaa"
 version = "0.1.0"
 dependencies = [] # managed via requirements.txt
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "e2e: end-to-end tests requiring a running Docker Compose stack",
+    "contract: contract tests against live or fixture S4 payloads",
+    "golden: golden-output regression tests against out/ reference files",
+]

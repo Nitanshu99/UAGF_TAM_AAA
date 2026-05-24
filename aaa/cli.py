@@ -1,9 +1,9 @@
 """
-src.cli — Command-line entry point for the AAA pipeline (§11).
+aaa.cli — Command-line entry point for the AAA pipeline (§11).
 
 Usage::
 
-    python -m src.cli run \
+    python -m aaa.cli run \
         --engagement-id eng-uci-german-credit-001 \
         --intake-dir scripts/fixtures/uci_german_credit \
         [--cgsa-fixture-dir scripts/fixtures/cgsa] \
@@ -70,13 +70,13 @@ def _summarise(final: dict) -> dict:
 
 async def _cmd_run(args: argparse.Namespace) -> int:
     # Late imports so ``--help`` works even if optional deps are missing.
-    from src.agents.base import IntakeDispatch
-    from src.agents.intake_validator import (
+    from aaa.agents.base import IntakeDispatch
+    from aaa.agents.intake_validator import (
         IntakeValidator,
         IntakeValidatorError,
     )
-    from src.agents.tier1.orchestrator import Orchestrator
-    from src.platform.evidence import EvidenceStore
+    from aaa.agents.tier1.orchestrator import Orchestrator
+    from aaa.platform.evidence import EvidenceStore
 
     intake_dir = pathlib.Path(args.intake_dir).resolve()
     if not intake_dir.is_dir():
@@ -144,7 +144,7 @@ async def _cmd_run(args: argparse.Namespace) -> int:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="python -m src.cli",
+        prog="python -m aaa.cli",
         description="AAA — Autonomous AI Auditor CLI (§11).",
     )
     sub = parser.add_subparsers(dest="command", required=True)

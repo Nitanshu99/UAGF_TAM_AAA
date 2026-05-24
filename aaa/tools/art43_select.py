@@ -19,7 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from src.platform.state import Art43Decision, AnnexIIIEntry
+from aaa.platform.state import Art43Decision, AnnexIIIEntry
 
 
 @dataclass

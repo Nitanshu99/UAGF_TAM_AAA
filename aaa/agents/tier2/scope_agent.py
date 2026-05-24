@@ -33,12 +33,12 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
-from src.agents.base import BaseAgent, Dispatch, Report
-from src.platform.evidence import EvidenceStore
-from src.platform.state import AnnexIIIEntry, AuditState
-from src.tools.annex_iii_classify import annex_iii_classify
-from src.tools.art43_select import art43_select_from_state
-from src.tools.declaration_diff import declaration_diff, diff_annex_iii_sections
+from aaa.agents.base import BaseAgent, Dispatch, Report
+from aaa.platform.evidence import EvidenceStore
+from aaa.platform.state import AnnexIIIEntry, AuditState
+from aaa.tools.annex_iii_classify import annex_iii_classify
+from aaa.tools.art43_select import art43_select_from_state
+from aaa.tools.declaration_diff import declaration_diff, diff_annex_iii_sections
 
 logger = logging.getLogger(__name__)
 

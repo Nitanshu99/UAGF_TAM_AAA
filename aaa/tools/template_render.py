@@ -25,13 +25,13 @@ import logging
 import pathlib
 from typing import Any, Optional
 
-from src.platform.evidence import EvidenceStore
-from src.platform.state import ArtefactRef
+from aaa.platform.evidence import EvidenceStore
+from aaa.platform.state import ArtefactRef
 
 logger = logging.getLogger(__name__)
 
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
-_TEMPLATES_DIR = _REPO_ROOT / "src" / "templates"
+_TEMPLATES_DIR = _REPO_ROOT / "templates"
 
 
 class TemplateRenderError(Exception):

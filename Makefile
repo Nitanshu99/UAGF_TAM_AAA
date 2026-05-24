@@ -25,8 +25,10 @@ test:     ; $(PYTHON) -m pytest -q
 coverage: ; $(PYTHON) -m pytest --cov=aaa --cov-report=term-missing --cov-fail-under=80
 
 # --- intake targets ---
-intake-validate:; $(PYTHON) -m aaa.cli intake validate --fixture aaa/intake/fixtures/german_credit_stage_b.json
-intake-demo:    ; AAA_OFFLINE_MODE=true $(PYTHON) -m aaa.cli intake demo --case german_credit
+intake-validate:; $(PYTHON) -m aaa.cli run --engagement-id eng-validate-001 --intake-dir scripts/fixtures/uci_german_credit --offline
+                # Runs IntakeValidator (Stage 0 A/B/C) on the UCI German Credit fixture; prints JSON summary
+intake-demo:    ; AAA_OFFLINE_MODE=true CGSA_FIXTURE_DIR=scripts/fixtures/cgsa $(PYTHON) -m aaa.cli run --engagement-id eng-demo-001 --intake-dir scripts/fixtures/uci_german_credit --cgsa-fixture-dir scripts/fixtures/cgsa --offline
+                # Full offline demo: IntakeValidator → Orchestrator → final verdict (no LLM calls)
 
 # --- exposé milestones ---
 m3-linear:    ; $(PYTHON) -m aaa.cli run --case german_credit --pipeline linear

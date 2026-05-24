@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.platform.state import AnnexIVDossier, ClientSubmission
+from aaa.platform.state import AnnexIVDossier, ClientSubmission
 
 # ── Section weights (§9.1) ────────────────────────────────────────────────────
 SECTION_WEIGHTS: dict[int, float] = {

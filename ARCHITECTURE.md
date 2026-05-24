@@ -959,7 +959,7 @@ A `PASS` final verdict requires all three KPIs in their PASS or PASS_WITH_OBSERV
 
 **Intake-level guardrails** (before any LLM receives client data):
 - **Schema validation first**: `annex_iv_validator` runs JSON-Schema validation against the Annex IV §1–§9 bundle *before* any field is passed to an LLM context. Invalid payloads are rejected at the API layer with a field-level error list; they never enter the agent graph.
-- **Intake completeness gate**: `intake_completeness_calculator` must return `intake_completeness_score ≥ 0.80` before the Orchestrator instantiates any phase agent. This is enforced as a precondition in `aaa/graph.py`; it is not a soft warning.
+- **Intake completeness gate**: `intake_completeness_calculator` must return `intake_completeness_score ≥ 0.80` before the Orchestrator instantiates any phase agent. This is enforced as a precondition in `aaa/agents/tier1/orchestrator.py` (`_node_stage_0`); it is not a soft warning.
 - **Credential isolation**: Stage C scoped credentials are stored as OpenBao secrets; only the secret path is written to `AuditState`. The actual token is fetched in-process by the Phase 1 agent at runtime and is never logged or serialised.
 
 **Phase-level input guardrails**:
@@ -1089,70 +1089,98 @@ This section is the operational counterpart to §1–§13: every component decla
 ### 14.1 Repository Layout
 
 ```
-UAGF_TAM/
+UAGF_TAM_AAA/
 ├── ARCHITECTURE.md                      # this document
-├── pyproject.toml                       # package metadata (build backend only; deps in requirements files)
+├── pyproject.toml                       # package metadata (hatchling; deps in requirements files)
 ├── requirements.txt                     # runtime dependencies (pip-managed)
 ├── requirements-dev.txt                 # dev/test dependencies (-r requirements.txt + lint/test tools)
 ├── Makefile                             # one-line targets per milestone
-├── docker-compose.yml                   # local dev: Postgres, Qdrant, MinIO, Valkey, Langfuse, OpenBao
-├── docker-compose.prod.yml              # production overlay
+├── docker-compose.yml                   # local dev: Postgres, Qdrant, MinIO, Valkey, Langfuse, OpenBao  [planned]
+├── docker-compose.prod.yml              # production overlay  [planned]
+├── .env.example                         # 12-factor env template  [planned]
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                       # lint + pytest + coverage gate
-│       ├── s4_contract.yml              # nightly schema-drift check (§10.2)
-│       ├── templates_release.yml        # publishes uagf-tam-templates to PyPI
-│       └── streamlit_deploy.yml         # demo deployment to Streamlit Cloud
+│       ├── ci.yml                       # lint + pytest + coverage gate  [planned]
+│       ├── s4_contract.yml              # nightly schema-drift check (§10.2)  [planned]
+│       ├── templates_release.yml        # publishes uagf-tam-templates to PyPI  [planned]
+│       └── streamlit_deploy.yml         # demo deployment to Streamlit Cloud  [planned]
 ├── aaa/
 │   ├── __init__.py
-│   ├── settings.py                      # pydantic-settings; reads env vars
+│   ├── cli.py                           # CLI entry point: python -m aaa.cli run ...
+│   ├── settings.py                      # pydantic-settings; reads env vars  [planned]
 │   ├── agents/
-│   │   ├── tier1/{orchestrator,verifier,regulatory_rag}.py
-│   │   ├── tier2/{p1_scope,p2_data,p3_model,p4_output,p5_governance,p6_report}.py
-│   │   └── tier3/{l_branch,cyber,privacy}.py
-│   ├── tools/                           # §4 deterministic tools (one file per family)
-│   │   ├── data/, model/, fairness/, llm/, governance/
-│   ├── state.py                         # AuditState TypedDict (§5.1)
-│   ├── graph.py                         # LangGraph definition (§6)
-│   ├── csp.py                           # Risk-Tier × Phase CSP (§6.2)
-│   ├── art43.py                         # select_art43_procedure (§3.5)
-│   ├── annex_iii.py                     # AnnexIIIEntry + classifier (§3.6)
-│   ├── cgsa/                            # §10.2 pull client + parsers
-│   │   ├── pull.py
-│   │   ├── ingest.py
-│   │   └── fixtures/                    # offline-mode JSON
-│   ├── intake/                          # §6 Stage 0 — three-stage intake pipeline
-│   │   ├── triage.py                    # StageATriage form handler + art43_preview call
-│   │   ├── dossier.py                   # AnnexIVDossier upload handler + annex_iv_validator
-│   │   ├── completeness.py              # intake_completeness_calculator (§9.1 KPI 0)
-│   │   ├── diff.py                      # declaration_diff tool (declaration_verification map)
-│   │   └── fixtures/                   # offline Stage A/B fixtures for demo + tests
-│   ├── evidence/
-│   │   ├── store.py                     # MinIO + Postgres index
-│   │   └── schemas/                     # T01a–T18 JSON Schemas
-│   ├── eval/
-│   │   ├── intake_completeness.py       # §9.1 KPI 0 (intake_completeness_score)
-│   │   ├── completeness.py              # §9.1 KPI 1
-│   │   ├── coverage.py                  # §9.1 KPI 2
-│   │   └── llm_judge.py
-│   ├── api/                             # FastAPI app (engagement CRUD)
+│   │   ├── base.py                      # BaseAgent ABC + message TypedDicts
+│   │   ├── intake_validator.py          # IntakeValidator (Stage 0 A/B/C)
+│   │   ├── tier1/
+│   │   │   ├── orchestrator.py          # 9-node LangGraph StateGraph
+│   │   │   ├── verifier.py              # Verifier — rubric critique loop
+│   │   │   └── regulatory_rag.py        # RegulatoryRAG — offline KB + Qdrant
+│   │   ├── tier2/
+│   │   │   ├── scope_agent.py           # Phase 1 — Scope & Risk Classifier
+│   │   │   ├── data_auditor.py          # Phase 2 — Data Governance Auditor
+│   │   │   ├── model_validator.py       # Phase 3 — Model Validation Agent
+│   │   │   ├── output_fairness.py       # Phase 4 — Output Fairness Tester
+│   │   │   ├── governance_agent.py      # Phase 5 — Governance Agent (S4 integration)
+│   │   │   └── report_architect.py      # Phase 6 — Report Architect
+│   │   └── tier3/
+│   │       ├── uagf_tam_l.py            # L-Branch — GPAI Arts. 51–55 specialist
+│   │       ├── cyber_agent.py           # Cyber Security Sub-Agent
+│   │       └── privacy_agent.py         # Privacy DPO Sub-Agent
+│   ├── tools/                           # §4 deterministic tools (one module per tool)
+│   │   ├── triage_render.py             # Stage A form validator
+│   │   ├── annex_iv_validator.py        # Stage B dossier validator
+│   │   ├── intake_completeness_calculator.py  # KPI 0
+│   │   ├── art43_select.py              # Art. 43 procedure selector
+│   │   ├── annex_iii_classify.py        # Annex III classifier
+│   │   ├── declaration_diff.py          # Declaration diff (§3.6)
+│   │   ├── csp_solver.py                # Risk-Tier × Phase CSP (§6.2)
+│   │   ├── completeness_score.py        # KPI 1
+│   │   ├── regulatory_coverage.py       # KPI 2
+│   │   ├── data_profile.py / missingness_scan.py / class_balance.py / pii_scan.py
+│   │   ├── metric_suite.py / shap_explain.py / lime_explain.py / gradcam_explain.py / robustness_probe.py
+│   │   ├── demographic_parity.py / equal_opportunity.py / disparate_impact.py / subgroup_metrics.py / toxicity_classifier.py
+│   │   ├── cgsa_pull.py / cgsa_ingest.py  # §10.2 S4 pull client + schema validator
+│   │   ├── ragas_eval.py / groundedness_check.py / prompt_injection_suite.py / trajectory_audit.py
+│   │   └── template_render.py / report_render.py  # T01–T18 rendering
+│   ├── platform/
+│   │   ├── state.py                     # AuditState TypedDict + all nested types (§5.1)
+│   │   └── evidence.py                  # EvidenceStore — in-memory / MinIO-compatible (§5.2)
+│   ├── api/                             # FastAPI engagement CRUD  [planned]
 │   │   └── main.py
-│   └── ui/                              # Streamlit demo (§14.7)
-│       └── app.py
+│   └── ui/
+│       └── app.py                       # Streamlit demo (§14.7): streamlit run aaa/ui/app.py
 ├── schemas/
-│   └── cgsa/v1.0.0/uagf_cgsa_aaa_schema.json    # vendored S4 schema (pinned)
-├── templates/                           # 20 Jinja2 partials (T01a/T01b/T01c + T02–T18)
-│   └── intake/                          # T01a, T01b, T01c partials + JSON schemas
-├── tests/
+│   └── cgsa/v1.0.0/
+│       └── uagf_cgsa_aaa_schema.json    # vendored S4 schema (canonical pinned copy)
+├── templates/                           # 20 JSON Schemas (T01a/T01b/T01c + T02–T18)
+├── packages/
+│   └── uagf_tam_templates/              # MIT-licenced distributable template package
+│       ├── pyproject.toml
+│       ├── src/uagf_tam_templates/      # load_schema / validate / render_partial API
+│       └── tests/
+├── scripts/
+│   ├── fixtures/
+│   │   ├── uci_german_credit/           # stage_a.json / stage_b.json / stage_c.json
+│   │   └── cgsa/                        # uci-german-credit-001.json + smoke fixtures
+│   └── smoke_group{6,7,8,9,11}.py       # ad-hoc end-to-end smoke tests
+├── tests/                               # pytest test suite  [planned]
 │   ├── unit/                            # per-agent + per-tool
 │   ├── contract/                        # CGSA pull + schema drift
 │   ├── golden/                          # frozen end-to-end traces
 │   └── e2e/                             # German Credit, M5, Hamburg, LLM cases
 ├── infra/
-│   ├── tofu/                            # OpenTofu modules (Hetzner / Scaleway)
-│   └── runbook.md                       # ops playbook (§14.6)
-└── data/                                # exposé, schemas, sample inputs (gitignored client data)
+│   ├── tofu/                            # OpenTofu modules (Hetzner / Scaleway)  [planned]
+│   └── runbook.md                       # ops playbook (§14.9)  [planned]
+├── data/
+│   ├── Updated_Expose_S5_UAGF_TAM_AAA_Updated.txt  # exposé document
+│   └── files/                           # schema explorer JSX + supplementary files
+└── out/                                 # generated audit outputs (gitignored in production)
 ```
+
+> **Note:** Items marked `[planned]` are declared in this architecture but not yet present in the
+> repository. They are required before the thesis demo deployment (§14.10). The thesis Streamlit demo
+> (`make demo`) and the full offline pipeline (`make m4-full`) work today without them; the
+> `[planned]` items are needed only for production deployment and CI gating.
 
 ### 14.2 Dependency Manifest (`requirements.txt` / `requirements-dev.txt`)
 
@@ -1358,10 +1386,10 @@ test:     ; $(PYTHON) -m pytest -q
 coverage: ; $(PYTHON) -m pytest --cov=aaa --cov-report=term-missing --cov-fail-under=80
 
 # --- intake targets ---
-intake-validate:; $(PYTHON) -m aaa.cli intake validate --fixture aaa/intake/fixtures/german_credit_stage_b.json
-                # Runs annex_iv_validator + intake_completeness_calculator; prints score + field list
-intake-demo:    ; AAA_OFFLINE_MODE=true $(PYTHON) -m aaa.cli intake demo --case german_credit
-                # Simulates the full Stage A → B → C wizard in the terminal using offline fixtures
+intake-validate:; $(PYTHON) -m aaa.cli run --engagement-id eng-validate-001 --intake-dir scripts/fixtures/uci_german_credit --offline
+                # Runs IntakeValidator (Stage 0 A/B/C) on the UCI German Credit fixture; prints JSON summary
+intake-demo:    ; AAA_OFFLINE_MODE=true CGSA_FIXTURE_DIR=scripts/fixtures/cgsa $(PYTHON) -m aaa.cli run --engagement-id eng-demo-001 --intake-dir scripts/fixtures/uci_german_credit --cgsa-fixture-dir scripts/fixtures/cgsa --offline
+                # Full offline demo: IntakeValidator → Orchestrator → final verdict (no LLM calls)
 
 # --- exposé milestones ---
 m3-linear:    ; $(PYTHON) -m aaa.cli run --case german_credit --pipeline linear   # M3 (Week 7)
@@ -1416,12 +1444,12 @@ jobs:
 
 ### 14.7 Streamlit Demo (`aaa/ui/app.py`)
 
-The thesis Deliverable 1 (line 82) is *"Deployed on Streamlit Cloud (demo version with sample AI system)"*. The demo runs the full LangGraph pipeline in `AAA_OFFLINE_MODE=true`, with CGSA payload sourced from `aaa/cgsa/fixtures/`.
+The thesis Deliverable 1 (line 82) is *"Deployed on Streamlit Cloud (demo version with sample AI system)"*. The demo runs the full LangGraph pipeline in `AAA_OFFLINE_MODE=true`, with CGSA payload sourced from `scripts/fixtures/cgsa/`.
 
 Pages:
 
-1. **Stage A — Triage** — The demo pre-fills all ~20 Stage A fields from `aaa/intake/fixtures/german_credit_stage_a.json` when the user clicks "Load German Credit example". The `art43_preview` result is displayed immediately so the user sees the expected conformity-assessment procedure before uploading any artefact. In the production Next.js portal, this is a two-step wizard (form → preview confirmation).
-2. **Stage B — Annex IV Dossier** — Upload Annex IV §1–§9 documentation. In the demo, all fields are pre-filled from `german_credit_stage_b.json`. The `annex_iv_validator` runs on submission and the `intake_completeness_score` is displayed with a per-section breakdown. Fields below the 0.80 gate are highlighted in red with a remediation hint. *(Note: the "Load German Credit example" button is a shortcut that bypasses the completeness gate for demo purposes — `intake_completeness_score` is forced to 1.0 in offline mode.)*
+1. **Stage A — Triage** — The demo pre-fills all ~20 Stage A fields from `scripts/fixtures/uci_german_credit/stage_a.json` when the user clicks "Load German Credit example". The `art43_preview` result is displayed immediately so the user sees the expected conformity-assessment procedure before uploading any artefact. In the production Next.js portal, this is a two-step wizard (form → preview confirmation).
+2. **Stage B — Annex IV Dossier** — Upload Annex IV §1–§9 documentation. In the demo, all fields are pre-filled from `scripts/fixtures/uci_german_credit/stage_b.json`. The `annex_iv_validator` runs on submission and the `intake_completeness_score` is displayed with a per-section breakdown. Fields below the 0.80 gate are highlighted in red with a remediation hint. *(Note: the "Load German Credit example" button is a shortcut that bypasses the completeness gate for demo purposes — `intake_completeness_score` is forced to 1.0 in offline mode.)*
 3. **Stage C — Scoped Access** (skipped in offline demo) — In offline mode this step shows a read-only summary of what would be collected (endpoint URL, access scope, expiry). In the production portal a secure vault form is rendered by the Next.js frontend; no credentials flow through Streamlit.
 4. **Live audit** — Streams Langfuse trace events from the running engagement, one row per phase. Each row shows: phase id, agent, status (`pending`/`running`/`accept`/`rerun`/`escalated`), token/time spent, link to artefact in MinIO.
 5. **Report** — When `final_verdict` is set, renders T18 PDF inline (PDF.js component) with a download button. Side panel shows all three KPIs (`intake_completeness_score`, `completeness_score`, `regulatory_coverage_pct`) against the case-study human-expert benchmark.
@@ -1491,7 +1519,7 @@ Run after every deploy and after every milestone target. All eleven steps must p
 6. `make m3-linear` — produces 6 admitted artefacts (T01a, T01b, T01c, T02, T04, T06) in MinIO; `completeness_score >= 0.30`.
 7. `make m4-full` — produces 19 of 20 templates (T16 skipped on non-LLM); PDF rendered in ≤ 2 hours wall-clock (exposé SLA); `intake_completeness_score >= 0.80`, `completeness_score >= 0.85`, `regulatory_coverage_pct >= 80`.
 8. `.venv/bin/pytest tests/intake/test_completeness.py` — unit tests for `intake_completeness_calculator` covering all nine Annex IV sections + L-branch conditional fields; all cases pass.
-9. `.venv/bin/pytest tests/contract/test_cgsa_pull.py` — pull from S4 FastAPI, validate, hydrate against all fixtures in `aaa/cgsa/fixtures/`.
+9. `.venv/bin/pytest tests/contract/test_cgsa_pull.py` — pull from S4 FastAPI, validate, hydrate against all fixtures in `scripts/fixtures/cgsa/`.
 10. `.venv/bin/pytest tests/e2e/test_uagf_tam_l.py` — L-branch end-to-end produces T16; UAGF-TAM-L PDF emitted; `intake_completeness_score` present in T01c.
 11. Open Streamlit demo at `http://localhost:8501`, click "Load German Credit example", verify Stage A triage page shows `art43_preview`; proceed through Stage B; observe `intake_completeness_score` displayed; click through to live trace; download PDF; verify it contains T05 (Article 43 decision), T17 (compliance matrix), and T01c (intake completeness report).
 
@@ -1508,3 +1536,81 @@ Run after every deploy and after every milestone target. All eleven steps must p
 | M7 Paper Draft | 19 | Workshop paper draft references trace IDs from M5/M6 runs (full reproducibility). |
 | M8 Submit | 21 | Streamlit Cloud demo URL live; GitHub repo public with MIT licence on `uagf-tam-templates`; PyPI package published. |
 | M9 Final | 24 | `tofu apply` against `prod` workspace; thesis appendix lists every container image digest used in the final audits. |
+
+
+### 14.12 Thesis-Scope Addendum — Deferred Components & Auxiliary Assets
+
+The architecture above describes the **target system**. For the thesis
+deliverables (M1–M9) several components are intentionally deferred, replaced
+with lightweight stand-ins, or kept as reference material only. This section
+records what is in-scope vs out-of-scope so reviewers do not mistake an
+intentional simplification for a gap.
+
+#### 14.12.1 Next.js client portal — deferred
+
+Sections §14.5 and §14.7 reference a **production Next.js portal** as the
+user-facing application (multi-tenant SSO, secure Stage C vault form,
+embedded PDF.js viewer). For the thesis deliverable D1 the **Streamlit demo
+in `aaa/ui/app.py` is the sole UI**:
+
+- All Stage A/B/C flows that would live in the Next.js portal are simulated
+  by the Streamlit pages (Stage C is a read-only summary, not a credential
+  intake form).
+- There is no `frontend/` or `portal/` directory in the repository; the
+  ARCHITECTURE references to the Next.js portal describe the *target*
+  topology only.
+- The `NEXTAUTH_SECRET` / `NEXTAUTH_URL` entries in `.env.example` are
+  placeholders kept for documentation parity with §14.8 and have no
+  runtime effect on the Streamlit demo.
+
+#### 14.12.2 Storage backends — in-memory for the thesis demo
+
+The FastAPI app (`aaa/api/main.py`) uses an **in-memory dict** for the
+engagement store so the `/healthz` and engagement CRUD endpoints work
+without Docker services running. The production-grade SQLAlchemy + Postgres
+implementation is reached via:
+
+- `docker-compose.yml` (brings up Postgres, MinIO, Qdrant, Valkey,
+  Langfuse, OpenBao), and
+- `alembic upgrade head` (applies `alembic/versions/0001_initial_schema.py`
+  which creates `engagements`, `evidence_artefacts`, and
+  `langgraph_checkpoints`).
+
+`aaa/platform/evidence.py` similarly ships with an in-memory `EvidenceStore`
+suitable for offline demos; a MinIO-backed implementation is the production
+target.
+
+#### 14.12.3 Schema explorer (`data/files/uagf_schema_explorer.jsx`)
+
+The JSX file under `data/files/` is a **standalone reference document** that
+visualises the CGSA schema (`schemas/cgsa/v1.0.0/uagf_cgsa_aaa_schema.json`)
+for human reviewers. It is not wired into any runtime:
+
+- It is not imported by the Streamlit demo (`aaa/ui/app.py`).
+- The repository does not ship a `package.json` or JSX build pipeline; the
+  file cannot be opened or served as-is from this repo.
+- It is kept consistent with the schema content (same enums, same required
+  fields) and is used as a documentation aid when discussing the schema
+  with S4 maintainers and the thesis committee.
+
+If the Next.js portal (14.12.1) is ever built, the explorer can be hosted
+inside it; until then, treat it as a static reference artefact.
+
+#### 14.12.4 Components that are *planned* and *required for production* but not for the thesis demo
+
+The following are declared in `ARCHITECTURE.md` and **must exist before
+production deployment (M9)** but are not on the critical path for the
+thesis demo (M3/M4):
+
+- A production Next.js portal (14.12.1).
+- A MinIO-backed `EvidenceStore` replacing the in-memory implementation.
+- A Postgres-backed engagement repository replacing the in-memory dict in
+  `aaa/api/main.py`.
+- The `aaa.cli pause` / `resume` / `purge` subcommands referenced in
+  `infra/runbook.md`.
+- The `tests/` tree at full coverage (≥ 80 %) referenced by `ci.yml`.
+
+The thesis demo (`make demo`) and offline pipeline (`make m4-full`) run
+without any of these — they exercise the LangGraph orchestrator, the 12
+agents, the CGSA ingest path, and the T01–T18 templates against the bundled
+UCI German Credit fixture.

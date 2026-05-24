@@ -1,0 +1,58 @@
+# AAA — Release uagf-tam-templates to PyPI (§14.6)
+# Triggered by a tag of the form tpl-v* (e.g. tpl-v0.1.0).
+name: templates_release
+
+on:
+  push:
+    tags: ["tpl-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write   # OIDC trusted publishing
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/uagf_tam_templates
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine pytest pytest-cov jsonschema jinja2
+
+      - name: Run package tests with coverage
+        run: |
+          pip install -e .
+          pytest --cov=uagf_tam_templates --cov-fail-under=80
+
+      - name: Build sdist + wheel
+        run: python -m build
+
+      - name: Check distributions
+        run: twine check dist/*
+
+      - name: Skip if version already on PyPI
+        id: precheck
+        run: |
+          version=$(python -c "import tomllib,sys; print(tomllib.loads(open('pyproject.toml','rb').read().decode())['project']['version'])")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if pip index versions uagf-tam-templates 2>/dev/null | grep -q "\b$version\b"; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to PyPI (trusted publisher)
+        if: steps.precheck.outputs.exists != 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/uagf_tam_templates/dist/

@@ -5,8 +5,8 @@ into the AAA ``AuditState`` (§4.5).
 Workflow:
 
   1. ``schema_validate(payload, "1.0.0")`` against the vendored
-     ``data/files/uagf_cgsa_aaa_schema.json``.  Failure ⇒ raises
-     ``CGSAIngestError`` so the GovernanceAgent can ``escalate_hitl``.
+     ``schemas/cgsa/v1.0.0/uagf_cgsa_aaa_schema.json`` (§10.2 canonical path).
+     Failure ⇒ raises ``CGSAIngestError`` so the GovernanceAgent can ``escalate_hitl``.
   2. Map the payload into the typed ``CGSAPayload`` shape (§5.4
      consumption map — every required field is consumed, nothing dropped).
   3. Surface low-confidence controls (``confidence < 0.6``) and CSP
@@ -26,9 +26,9 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Vendored schema path — module-relative so the tool is portable.
+# Canonical vendored schema path per ARCHITECTURE §10.2 / §14.1.
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
-_VENDORED_SCHEMA = _REPO_ROOT / "data" / "files" / "uagf_cgsa_aaa_schema.json"
+_VENDORED_SCHEMA = _REPO_ROOT / "schemas" / "cgsa" / "v1.0.0" / "uagf_cgsa_aaa_schema.json"
 
 _LOW_CONFIDENCE_THRESHOLD = 0.6
 _REQUIRED_TOP_LEVEL_KEYS = (

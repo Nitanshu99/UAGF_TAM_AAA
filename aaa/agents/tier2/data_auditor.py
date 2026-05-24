@@ -27,12 +27,12 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
-from src.agents.base import BaseAgent, Dispatch, Report
-from src.platform.evidence import EvidenceStore
-from src.tools.data_profile import data_profile
-from src.tools.missingness_scan import missingness_scan
-from src.tools.class_balance import class_balance
-from src.tools.pii_scan import pii_scan
+from aaa.agents.base import BaseAgent, Dispatch, Report
+from aaa.platform.evidence import EvidenceStore
+from aaa.tools.data_profile import data_profile
+from aaa.tools.missingness_scan import missingness_scan
+from aaa.tools.class_balance import class_balance
+from aaa.tools.pii_scan import pii_scan
 
 logger = logging.getLogger(__name__)
 

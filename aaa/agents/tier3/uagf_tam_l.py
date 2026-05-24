@@ -21,12 +21,12 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
-from src.agents.base import BaseAgent, Dispatch, Report
-from src.platform.evidence import EvidenceStore
-from src.tools.groundedness_check import groundedness_check
-from src.tools.prompt_injection_suite import prompt_injection_suite
-from src.tools.ragas_eval import ragas_eval
-from src.tools.trajectory_audit import trajectory_audit
+from aaa.agents.base import BaseAgent, Dispatch, Report
+from aaa.platform.evidence import EvidenceStore
+from aaa.tools.groundedness_check import groundedness_check
+from aaa.tools.prompt_injection_suite import prompt_injection_suite
+from aaa.tools.ragas_eval import ragas_eval
+from aaa.tools.trajectory_audit import trajectory_audit
 
 logger = logging.getLogger(__name__)
 

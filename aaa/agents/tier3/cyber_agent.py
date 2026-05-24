@@ -20,10 +20,10 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
-from src.agents.base import BaseAgent, Dispatch, Report
-from src.platform.evidence import EvidenceStore
-from src.tools.prompt_injection_suite import prompt_injection_suite
-from src.tools.robustness_probe import robustness_probe
+from aaa.agents.base import BaseAgent, Dispatch, Report
+from aaa.platform.evidence import EvidenceStore
+from aaa.tools.prompt_injection_suite import prompt_injection_suite
+from aaa.tools.robustness_probe import robustness_probe
 
 logger = logging.getLogger(__name__)
 

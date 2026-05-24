@@ -27,8 +27,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from src.agents.base import BaseAgent, IntakeDispatch
-from src.platform.state import (
+from aaa.agents.base import BaseAgent, IntakeDispatch
+from aaa.platform.state import (
     AuditState,
     ClientSubmission,
     StageATriage,
@@ -36,11 +36,11 @@ from src.platform.state import (
     StageCAccess,
     Art43Decision,
 )
-from src.platform.evidence import EvidenceStore
-from src.tools.triage_render import triage_render
-from src.tools.annex_iv_validator import annex_iv_validator
-from src.tools.intake_completeness_calculator import intake_completeness_calculator
-from src.tools.art43_select import art43_select_from_state
+from aaa.platform.evidence import EvidenceStore
+from aaa.tools.triage_render import triage_render
+from aaa.tools.annex_iv_validator import annex_iv_validator
+from aaa.tools.intake_completeness_calculator import intake_completeness_calculator
+from aaa.tools.art43_select import art43_select_from_state
 
 # Threshold defined in §9.1 and §6.2 constraint 7.
 COMPLETENESS_GATE = 0.80

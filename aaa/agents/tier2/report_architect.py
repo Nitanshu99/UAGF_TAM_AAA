@@ -21,10 +21,10 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from src.agents.base import BaseAgent, Dispatch, Report
-from src.platform.evidence import EvidenceStore
-from src.tools.template_render import template_render
-from src.tools.report_render import report_render
+from aaa.agents.base import BaseAgent, Dispatch, Report
+from aaa.platform.evidence import EvidenceStore
+from aaa.tools.template_render import template_render
+from aaa.tools.report_render import report_render
 
 logger = logging.getLogger(__name__)
 
