@@ -16,17 +16,17 @@
 ### Files created
 | File | Purpose |
 |------|---------|
-| `src/__init__.py` and all package `__init__.py` files | Module resolution for `src.*` imports |
-| `src/platform/state.py` | `AuditState` TypedDict + all nested types (§5.1, §5.4) |
-| `src/agents/base.py` | `BaseAgent` ABC + `IntakeDispatch`, `Dispatch`, `Report`, `Critique` message types (§5.3) |
-| `src/platform/evidence.py` | `EvidenceStore` — in-memory mock, MinIO-compatible interface (§5.2) |
-| `src/agents/tier1/regulatory_rag.py` | Placeholder `RegulatoryRAG(BaseAgent)` — to be fleshed out in Group 3 (§3.1 #3) |
+| `aaa/__init__.py` and all package `__init__.py` files | Module resolution for `aaa.*` imports |
+| `aaa/platform/state.py` | `AuditState` TypedDict + all nested types (§5.1, §5.4) |
+| `aaa/agents/base.py` | `BaseAgent` ABC + `IntakeDispatch`, `Dispatch`, `Report`, `Critique` message types (§5.3) |
+| `aaa/platform/evidence.py` | `EvidenceStore` — in-memory mock, MinIO-compatible interface (§5.2) |
+| `aaa/agents/tier1/regulatory_rag.py` | Placeholder `RegulatoryRAG(BaseAgent)` — to be fleshed out in Group 3 (§3.1 #3) |
 
 ### What was built
-- **`src/platform/state.py`** — All TypedDicts: `StageATriage`, `AnnexIVDossier`, `StageCAccess`, `ClientSubmission`, `AnnexIIIEntry`, `Art43Decision`, `ArtefactRef`, `CGSAPayload`, `CGSAMetadata`, `CGSAOverallScores`, `CGSAAAPhase5Handoff`, `BlockingFinding`, `PositiveFinding`, `LowConfidenceControl`, `FollowUpItem`, `RemediationItem`, `Finding`. Every CGSA/S4 hand-off field from §5.4 is a typed key on `AuditState`.
-- **`src/agents/base.py`** — `BaseAgent` abstract class; four inter-agent message TypedDicts covering the full `Dispatch → Report → Critique` cycle.
-- **`src/platform/evidence.py`** — `store_artefact(engagement_id, phase, artefact_type, content, agent_name) → uri` and `get_artefact(uri)`. SHA-256 computed on every write.
-- **`src/agents/tier1/regulatory_rag.py`** — stub `process(query)` and `search(query)` methods; returns hard-coded strings. Real RAG wired in Group 3.
+- **`aaa/platform/state.py`** — All TypedDicts: `StageATriage`, `AnnexIVDossier`, `StageCAccess`, `ClientSubmission`, `AnnexIIIEntry`, `Art43Decision`, `ArtefactRef`, `CGSAPayload`, `CGSAMetadata`, `CGSAOverallScores`, `CGSAAAPhase5Handoff`, `BlockingFinding`, `PositiveFinding`, `LowConfidenceControl`, `FollowUpItem`, `RemediationItem`, `Finding`. Every CGSA/S4 hand-off field from §5.4 is a typed key on `AuditState`.
+- **`aaa/agents/base.py`** — `BaseAgent` abstract class; four inter-agent message TypedDicts covering the full `Dispatch → Report → Critique` cycle.
+- **`aaa/platform/evidence.py`** — `store_artefact(engagement_id, phase, artefact_type, content, agent_name) → uri` and `get_artefact(uri)`. SHA-256 computed on every write.
+- **`aaa/agents/tier1/regulatory_rag.py`** — stub `process(query)` and `search(query)` methods; returns hard-coded strings. Real RAG wired in Group 3.
 
 ### Key design decisions
 - `AuditState` uses `Optional[X]` everywhere (not `X | None`) for Python 3.9 compatibility via `from __future__ import annotations`.
@@ -41,14 +41,14 @@
 ### Files created
 | File | Purpose |
 |------|---------|
-| `src/templates/T01a_stage_a_triage.json` | JSON Schema (draft-07) — Stage A ~20-question triage form |
-| `src/templates/T01b_annex_iv_dossier.json` | JSON Schema — Annex IV §1–§9 technical documentation |
-| `src/templates/T01c_intake_completeness_report.json` | JSON Schema — per-section completeness report + gate status |
-| `src/tools/triage_render.py` | Validates T01a payload; annotates with human-readable labels |
-| `src/tools/annex_iv_validator.py` | Validates T01b payload; enforces L-branch conditional fields |
-| `src/tools/intake_completeness_calculator.py` | Computes KPI 0 (`intake_completeness_score`) with §9.1 weights |
-| `src/tools/art43_select.py` | Deterministic Art. 43 procedure selector — preview + final modes |
-| `src/agents/intake_validator.py` | `IntakeValidator(BaseAgent)` — Stage 0 A/B/C workflow |
+| `templates/T01a_stage_a_triage.json` | JSON Schema (draft-07) — Stage A ~20-question triage form |
+| `templates/T01b_annex_iv_dossier.json` | JSON Schema — Annex IV §1–§9 technical documentation |
+| `templates/T01c_intake_completeness_report.json` | JSON Schema — per-section completeness report + gate status |
+| `aaa/tools/triage_render.py` | Validates T01a payload; annotates with human-readable labels |
+| `aaa/tools/annex_iv_validator.py` | Validates T01b payload; enforces L-branch conditional fields |
+| `aaa/tools/intake_completeness_calculator.py` | Computes KPI 0 (`intake_completeness_score`) with §9.1 weights |
+| `aaa/tools/art43_select.py` | Deterministic Art. 43 procedure selector — preview + final modes |
+| `aaa/agents/intake_validator.py` | `IntakeValidator(BaseAgent)` — Stage 0 A/B/C workflow |
 
 ### What was built
 - **T01a schema** — required fields: `provider_name`, `system_name`, `version`, `intended_purpose`, `declared_modality`, `declared_risk_tier`, `declared_annex_iii_sections`, `deployment_context`, `provider_elects_third_party`, `gdpr_overlap`, `gpai_general_purpose`, `special_category_data`. Optional: `art43_preview`, `cgsa_assessment_id`, `deployer_name`.
@@ -74,12 +74,12 @@
 ### Files created
 | File | Purpose |
 |------|---------|
-| `src/tools/csp_solver.py` | `build_phase_csp(state) → Problem`; `solve_phase_plan(state) → dict` wrapping `python-constraint` (§6.2) |
-| `src/tools/completeness_score.py` | KPI 1 rubric checker over admitted phase artefacts T02–T16 (§9.1) |
-| `src/tools/regulatory_coverage.py` | KPI 2 article checklist: Arts. 9, 10, 13, 14, 15, 17, 43; Annex III; GPAI 51–55 (§9.1) |
-| `src/agents/tier1/orchestrator.py` | `Orchestrator(BaseAgent)` — 9-node LangGraph `StateGraph`; `_InMemoryCheckpointer` offline / `PostgresSaver` production |
-| `src/agents/tier1/verifier.py` | `Verifier(BaseAgent)` — rubric critique loop; deterministic offline path; LLM path via LiteLLM (litellm); max 2 reruns before `escalate_hitl` |
-| `src/agents/tier1/regulatory_rag.py` | **Fleshed out** — offline KB covering Arts. 9/10/13/43/Annex III/GPAI 51; lazy LlamaIndex+Qdrant in production |
+| `aaa/tools/csp_solver.py` | `build_phase_csp(state) → Problem`; `solve_phase_plan(state) → dict` wrapping `python-constraint` (§6.2) |
+| `aaa/tools/completeness_score.py` | KPI 1 rubric checker over admitted phase artefacts T02–T16 (§9.1) |
+| `aaa/tools/regulatory_coverage.py` | KPI 2 article checklist: Arts. 9, 10, 13, 14, 15, 17, 43; Annex III; GPAI 51–55 (§9.1) |
+| `aaa/agents/tier1/orchestrator.py` | `Orchestrator(BaseAgent)` — 9-node LangGraph `StateGraph`; `_InMemoryCheckpointer` offline / `PostgresSaver` production |
+| `aaa/agents/tier1/verifier.py` | `Verifier(BaseAgent)` — rubric critique loop; deterministic offline path; LLM path via LiteLLM (litellm); max 2 reruns before `escalate_hitl` |
+| `aaa/agents/tier1/regulatory_rag.py` | **Fleshed out** — offline KB covering Arts. 9/10/13/43/Annex III/GPAI 51; lazy LlamaIndex+Qdrant in production |
 
 ### What was built
 - **`csp_solver`** — `build_phase_csp` encodes the full §6.2 catalogue (9 hard constraints: LLM routing, biometrics, special-cat data, high-risk P5, prohibited halt, etc.); `solve_phase_plan` returns the most conservative (M-preferring) solution; raises `ValueError` on over-constraint (triggers HITL).
@@ -104,13 +104,13 @@
 ### Files created
 | File | Purpose |
 |------|---------|
-| `src/templates/T02_system_card.json` | JSON Schema — provider/deployer identity, modality, deployment context, `declaration_verification` map (Art. 13 §3) |
-| `src/templates/T03_annex_iii_mapping.json` | JSON Schema — list of `AnnexIIIEntry` with provenance (Annex III) |
-| `src/templates/T04_risk_tier_decision.json` | JSON Schema — `risk_tier` + rationale + Art. 6 §3 derogation (Art. 6, Art. 7) |
-| `src/templates/T05_art43_decision.json` | JSON Schema — `art43_select` final output; binding statement (Art. 43) |
-| `src/tools/annex_iii_classify.py` | Keyword/rule classifier over Annex III catalogue; lazy LlamaIndex+Qdrant in production; returns `list[AnnexIIIEntry]` with `provenance` |
-| `src/tools/declaration_diff.py` | Deep-diff of declared vs verified scalar fields; `diff_annex_iii_sections` for section-level diff; any `"mismatch"` triggers HITL |
-| `src/agents/tier2/scope_agent.py` | `ScopeAgent(BaseAgent)` — Phase 1 declaration verifier; loads T01a/T01b; enforces Art. 5 gate; classifies Annex III; emits T02–T05; returns `Report` with `declaration_verification_delta` |
+| `templates/T02_system_card.json` | JSON Schema — provider/deployer identity, modality, deployment context, `declaration_verification` map (Art. 13 §3) |
+| `templates/T03_annex_iii_mapping.json` | JSON Schema — list of `AnnexIIIEntry` with provenance (Annex III) |
+| `templates/T04_risk_tier_decision.json` | JSON Schema — `risk_tier` + rationale + Art. 6 §3 derogation (Art. 6, Art. 7) |
+| `templates/T05_art43_decision.json` | JSON Schema — `art43_select` final output; binding statement (Art. 43) |
+| `aaa/tools/annex_iii_classify.py` | Keyword/rule classifier over Annex III catalogue; lazy LlamaIndex+Qdrant in production; returns `list[AnnexIIIEntry]` with `provenance` |
+| `aaa/tools/declaration_diff.py` | Deep-diff of declared vs verified scalar fields; `diff_annex_iii_sections` for section-level diff; any `"mismatch"` triggers HITL |
+| `aaa/agents/tier2/scope_agent.py` | `ScopeAgent(BaseAgent)` — Phase 1 declaration verifier; loads T01a/T01b; enforces Art. 5 gate; classifies Annex III; emits T02–T05; returns `Report` with `declaration_verification_delta` |
 
 ### What was built
 - **T02_system_card** — provider identity, verified modality, `declaration_verification` map, Art. 5 flag, GPAI screening result.
@@ -136,14 +136,14 @@
 ### Files created
 | File | Purpose |
 |------|---------|
-| `src/templates/T06_datasheet_for_datasets.json` | Gebru-2021 datasheet schema: motivation, composition, collection, preprocessing, uses, distribution, maintenance (Art. 10 §2–§3) |
-| `src/templates/T07_data_quality_report.json` | Missingness, class balance, drift, PII scan results (Art. 10 §2, §4) |
-| `src/templates/T08_special_category_data_log.json` | Art. 10 §5 lawful-basis log; special-category flag (Art. 10 §5, GDPR Art. 9) |
-| `src/tools/data_profile.py` | ydata-profiling wrapper; pandas fallback; returns T07 `dataset_summary` dict (§4.1) |
-| `src/tools/missingness_scan.py` | pandas-based; per-column missingness rates; returns T07 `missingness` dict (§4.1) |
-| `src/tools/class_balance.py` | Pure-pandas class distribution + imbalance flag; returns T07 `class_balance` dict (§4.1) |
-| `src/tools/pii_scan.py` | Presidio `AnalyzerEngine`; keyword-regex fallback; flags special-category data (§4.1) |
-| `src/agents/tier2/data_auditor.py` | `DataAuditor(BaseAgent)` — Phase 2 Data Governance Auditor (Art. 10) |
+| `templates/T06_datasheet_for_datasets.json` | Gebru-2021 datasheet schema: motivation, composition, collection, preprocessing, uses, distribution, maintenance (Art. 10 §2–§3) |
+| `templates/T07_data_quality_report.json` | Missingness, class balance, drift, PII scan results (Art. 10 §2, §4) |
+| `templates/T08_special_category_data_log.json` | Art. 10 §5 lawful-basis log; special-category flag (Art. 10 §5, GDPR Art. 9) |
+| `aaa/tools/data_profile.py` | ydata-profiling wrapper; pandas fallback; returns T07 `dataset_summary` dict (§4.1) |
+| `aaa/tools/missingness_scan.py` | pandas-based; per-column missingness rates; returns T07 `missingness` dict (§4.1) |
+| `aaa/tools/class_balance.py` | Pure-pandas class distribution + imbalance flag; returns T07 `class_balance` dict (§4.1) |
+| `aaa/tools/pii_scan.py` | Presidio `AnalyzerEngine`; keyword-regex fallback; flags special-category data (§4.1) |
+| `aaa/agents/tier2/data_auditor.py` | `DataAuditor(BaseAgent)` — Phase 2 Data Governance Auditor (Art. 10) |
 
 ### What was built
 - **T06 schema** — all 7 Gebru-2021 sections required: `motivation`, `composition`, `collection_process`, `preprocessing_cleaning_labelling`, `uses`, `distribution`, `maintenance`; `additionalProperties: false` throughout.
@@ -171,15 +171,15 @@
 ### Files created
 | File | Purpose |
 |------|---------|
-| `src/templates/T09_model_card.json` | JSON Schema — architecture, training regime, performance metrics, known limitations (Art. 13 §3, Art. 15) |
-| `src/templates/T10_explainability_report.json` | JSON Schema — SHAP/LIME/Grad-CAM outputs + interpretation (Art. 13 §1–§2) |
-| `src/templates/T11_robustness_report.json` | JSON Schema — adversarial probe results, accuracy under perturbation (Art. 15) |
-| `src/tools/metric_suite.py` | `metric_suite(...)` — accuracy/F1/AUC/calibration; sklearn path with pure-Python fallback |
-| `src/tools/shap_explain.py` | `shap_explain(...)` — SHAP feature importance; variance-proxy fallback when `shap` unavailable |
-| `src/tools/lime_explain.py` | `lime_explain(...)` — per-instance local explanations; empty-features fallback when `lime` unavailable |
-| `src/tools/gradcam_explain.py` | `gradcam_explain(...)` — CV-only Grad-CAM heat-maps; no-op fallback when `pytorch-grad-cam` or `torch` unavailable |
-| `src/tools/robustness_probe.py` | `robustness_probe(...)` — FGSM/PGD/text/tabular probes; `NOT_TESTED` verdict when `foolbox`/`textattack` unavailable |
-| `src/agents/tier2/model_validator.py` | `ModelValidator(BaseAgent)` — Claude Opus; orchestrates the five tools; populates T09–T11; emits `Report` with `declaration_verification_delta.phase_artefacts` |
+| `templates/T09_model_card.json` | JSON Schema — architecture, training regime, performance metrics, known limitations (Art. 13 §3, Art. 15) |
+| `templates/T10_explainability_report.json` | JSON Schema — SHAP/LIME/Grad-CAM outputs + interpretation (Art. 13 §1–§2) |
+| `templates/T11_robustness_report.json` | JSON Schema — adversarial probe results, accuracy under perturbation (Art. 15) |
+| `aaa/tools/metric_suite.py` | `metric_suite(...)` — accuracy/F1/AUC/calibration; sklearn path with pure-Python fallback |
+| `aaa/tools/shap_explain.py` | `shap_explain(...)` — SHAP feature importance; variance-proxy fallback when `shap` unavailable |
+| `aaa/tools/lime_explain.py` | `lime_explain(...)` — per-instance local explanations; empty-features fallback when `lime` unavailable |
+| `aaa/tools/gradcam_explain.py` | `gradcam_explain(...)` — CV-only Grad-CAM heat-maps; no-op fallback when `pytorch-grad-cam` or `torch` unavailable |
+| `aaa/tools/robustness_probe.py` | `robustness_probe(...)` — FGSM/PGD/text/tabular probes; `NOT_TESTED` verdict when `foolbox`/`textattack` unavailable |
+| `aaa/agents/tier2/model_validator.py` | `ModelValidator(BaseAgent)` — Claude Opus; orchestrates the five tools; populates T09–T11; emits `Report` with `declaration_verification_delta.phase_artefacts` |
 | `scripts/smoke_group6.py` | Offline smoke test — runs Orchestrator end-to-end, validates T09–T11 against their schemas, prints verifier critiques and final verdict |
 
 ### What was built
@@ -211,14 +211,14 @@
 ### Files created
 | File | Purpose |
 |------|---------|
-| `src/agents/tier2/output_fairness.py` | `OutputFairnessTester(BaseAgent)` — runs 5 fairness/toxicity tools; builds T12, T13; emits `Report` |
-| `src/tools/demographic_parity.py` | Selection-rate parity across groups; fairlearn/pure-Python fallback |
-| `src/tools/equal_opportunity.py` | True-positive-rate gap; fairlearn/pure-Python fallback |
-| `src/tools/disparate_impact.py` | EEOC four-fifths-rule ratio; aif360/pure-Python fallback |
-| `src/tools/subgroup_metrics.py` | Per-group accuracy/SR/TPR/FPR breakdown |
-| `src/tools/toxicity_classifier.py` | Detoxify wrapper; 200-prediction sample; keyword-regex fallback |
-| `src/templates/T12_output_fairness_report.json` | JSON Schema (draft-07) for Output Fairness Report |
-| `src/templates/T13_output_sampling_log.json` | JSON Schema (draft-07) for Output Sampling Log |
+| `aaa/agents/tier2/output_fairness.py` | `OutputFairnessTester(BaseAgent)` — runs 5 fairness/toxicity tools; builds T12, T13; emits `Report` |
+| `aaa/tools/demographic_parity.py` | Selection-rate parity across groups; fairlearn/pure-Python fallback |
+| `aaa/tools/equal_opportunity.py` | True-positive-rate gap; fairlearn/pure-Python fallback |
+| `aaa/tools/disparate_impact.py` | EEOC four-fifths-rule ratio; aif360/pure-Python fallback |
+| `aaa/tools/subgroup_metrics.py` | Per-group accuracy/SR/TPR/FPR breakdown |
+| `aaa/tools/toxicity_classifier.py` | Detoxify wrapper; 200-prediction sample; keyword-regex fallback |
+| `templates/T12_output_fairness_report.json` | JSON Schema (draft-07) for Output Fairness Report |
+| `templates/T13_output_sampling_log.json` | JSON Schema (draft-07) for Output Sampling Log |
 | `scripts/smoke_group7.py` | End-to-end smoke test — asserts T12/T13 stored, schema-valid, verdicts consistent |
 
 ### Files modified
@@ -248,11 +248,11 @@
 ### Files created
 | File | Purpose |
 |------|---------|
-| `src/templates/T14_governance_findings.json` | JSON Schema (draft-07) — lift of `aaa_phase5_handoff` + domains/controls/hard-constraint results + risk-tier match + Tier-3 spawn recommendations (Art. 9, 10, 13, 14, 17) |
-| `src/templates/T15_monitoring_logging_review.json` | JSON Schema (draft-07) — Annex IV §6/§7/§9 ops review against Art. 12 / 17 / 72 |
-| `src/tools/cgsa_pull.py` | HTTP client; pulls CGSA payload from `{S4_CGSA_BASE_URL}/api/v1/assessments/{id}` with 5-attempt exponential back-off, `X-Schema-Version` pinning, 404 → HITL, 401 → re-auth surface; offline mode (`AAA_OFFLINE_MODE=true` or `CGSA_FIXTURE_DIR`) reads `{id}.json` from disk |
-| `src/tools/cgsa_ingest.py` | `schema_validate(payload, "1.0.0")` against the vendored `data/files/uagf_cgsa_aaa_schema.json` (jsonschema path + shallow-required fallback); maps every §5.4 row into a `state_delta`; aggregates low-confidence controls (CGSA + per-domain `confidence < 0.6`); CSP failure → forces `cgsa_phase5_verdict=FAIL`; emits typed `RemediationItem` list |
-| `src/agents/tier2/governance_agent.py` | `GovernanceAgent(BaseAgent)` — Claude Opus; orchestrates pull + ingest → risk-tier cross-check → Tier-3 spawn decisions → T14 + T15 build → EvidenceStore writes → `Report` with full §5.4 hydration on `declaration_verification_delta`; `_escalate_report` surface for pull/ingest failure |
+| `templates/T14_governance_findings.json` | JSON Schema (draft-07) — lift of `aaa_phase5_handoff` + domains/controls/hard-constraint results + risk-tier match + Tier-3 spawn recommendations (Art. 9, 10, 13, 14, 17) |
+| `templates/T15_monitoring_logging_review.json` | JSON Schema (draft-07) — Annex IV §6/§7/§9 ops review against Art. 12 / 17 / 72 |
+| `aaa/tools/cgsa_pull.py` | HTTP client; pulls CGSA payload from `{S4_CGSA_BASE_URL}/api/v1/assessments/{id}` with 5-attempt exponential back-off, `X-Schema-Version` pinning, 404 → HITL, 401 → re-auth surface; offline mode (`AAA_OFFLINE_MODE=true` or `CGSA_FIXTURE_DIR`) reads `{id}.json` from disk |
+| `aaa/tools/cgsa_ingest.py` | `schema_validate(payload, "1.0.0")` against the canonical `schemas/cgsa/v1.0.0/uagf_cgsa_aaa_schema.json` (jsonschema path + shallow-required fallback); maps every §5.4 row into a `state_delta`; aggregates low-confidence controls; CSP failure → forces `cgsa_phase5_verdict=FAIL`; emits typed `RemediationItem` list |
+| `aaa/agents/tier2/governance_agent.py` | `GovernanceAgent(BaseAgent)` — Claude Opus; orchestrates pull + ingest → risk-tier cross-check → Tier-3 spawn decisions → T14 + T15 build → EvidenceStore writes → `Report` with full §5.4 hydration on `declaration_verification_delta`; `_escalate_report` surface for pull/ingest failure |
 | `scripts/fixtures/cgsa/smoke-group8-001.json` | Offline CGSA fixture — high-risk system, csp_satisfiable=false, 1 blocking finding (C07), 1 low-confidence control (C30), 1 required follow-up |
 | `scripts/smoke_group8.py` | Offline smoke test — pulls fixture, runs GovernanceAgent, validates T14/T15 against their schemas, asserts §5.4 hydration keys / CSP-fail verdict / risk-tier match / Tier-3 spawns / HITL trigger |
 
@@ -283,12 +283,12 @@
 ## ✅ Group 9: Phase 6 — Report Architect — COMPLETE
 
 **What was built:**
-- `src/templates/T17_compliance_matrix.json` — JSON-Schema (draft-07) for the Article × Verdict × evidence-URI table. Covers Arts. 9, 10, 13, 14, 15, 17, 43, 50, 72, Annex III/IV, GPAI 51–55. Each row carries `source_phase`, `supporting_template_ids`, `cgsa_control_ids`, `blocking_findings`, and optional `rationale`.
-- `src/templates/T18_audit_report.json` — JSON-Schema (draft-07) for the master Annex IV-aligned conformity-assessment report. Embeds T01a–T17 by URI reference; carries KPI triads with `kpiN_band`, `art43_decision`, `executive_summary`, `remediation_roadmap`, `rendered_report` block (pdf + json URIs), and full `engagement_metadata`.
-- `src/tools/template_render.py` — Generic template rendering utility: loads `src/templates/<id>.json`, validates with `jsonschema` (skips gracefully if absent), renders via jinja2 HTML partial when available (falls back to `json.dumps`), persists payload + fragment to `EvidenceStore`, returns `ArtefactRef`.
-- `src/tools/report_render.py` — Stitches T18 payload into a PDF (ReportLab A4 canvas with page-overflow handling) and a machine-readable JSON artefact; text-fallback renderer when ReportLab is absent; both URIs returned as `{pdf_uri, pdf_bytes_size, json_uri, renderer}`.
-- `src/agents/tier2/report_architect.py` — `ReportArchitect(BaseAgent)`: deterministic (no LLM). Builds T17 from `compliance_matrix` + `verifier_critiques` + `phase_artefacts` threaded through `declaration_summary`; derives per-article `source_phase` from `_ARTICLE_PHASE` map; builds T18 with KPI bands, executive summary, embedded artefacts, and `rendered_report` block; calls `template_render` × 2 and `report_render` × 1; emits `Report` with `final_verdict` in `declaration_verification_delta`.
-- `src/agents/tier1/orchestrator.py` — Wired `self._report_architect = ReportArchitect(...)` in `__init__`; added `_node_phase_6_impl` bound method (real agent dispatch with thread-pool asyncio pattern + stub fallback); updated both `_build_graph` and `_run_sequential` to use `_node_phase_6_impl`.
+- `templates/T17_compliance_matrix.json` — JSON-Schema (draft-07) for the Article × Verdict × evidence-URI table. Covers Arts. 9, 10, 13, 14, 15, 17, 43, 50, 72, Annex III/IV, GPAI 51–55. Each row carries `source_phase`, `supporting_template_ids`, `cgsa_control_ids`, `blocking_findings`, and optional `rationale`.
+- `templates/T18_audit_report.json` — JSON-Schema (draft-07) for the master Annex IV-aligned conformity-assessment report. Embeds T01a–T17 by URI reference; carries KPI triads with `kpiN_band`, `art43_decision`, `executive_summary`, `remediation_roadmap`, `rendered_report` block (pdf + json URIs), and full `engagement_metadata`.
+- `aaa/tools/template_render.py` — Generic template rendering utility: loads `templates/<id>.json`, validates with `jsonschema` (skips gracefully if absent), renders via jinja2 HTML partial when available (falls back to `json.dumps`), persists payload + fragment to `EvidenceStore`, returns `ArtefactRef`.
+- `aaa/tools/report_render.py` — Stitches T18 payload into a PDF (ReportLab A4 canvas with page-overflow handling) and a machine-readable JSON artefact; text-fallback renderer when ReportLab is absent; both URIs returned as `{pdf_uri, pdf_bytes_size, json_uri, renderer}`.
+- `aaa/agents/tier2/report_architect.py` — `ReportArchitect(BaseAgent)`: deterministic (no LLM). Builds T17 from `compliance_matrix` + `verifier_critiques` + `phase_artefacts` threaded through `declaration_summary`; derives per-article `source_phase` from `_ARTICLE_PHASE` map; builds T18 with KPI bands, executive summary, embedded artefacts, and `rendered_report` block; calls `template_render` × 2 and `report_render` × 1; emits `Report` with `final_verdict` in `declaration_verification_delta`.
+- `aaa/agents/tier1/orchestrator.py` — Wired `self._report_architect = ReportArchitect(...)` in `__init__`; added `_node_phase_6_impl` bound method (real agent dispatch with thread-pool asyncio pattern + stub fallback); updated both `_build_graph` and `_run_sequential` to use `_node_phase_6_impl`.
 - `scripts/smoke_group9.py` — Instantiates `ReportArchitect` directly; seeds a synthetic `high`-risk engagement (9-article compliance matrix, 14 admitted artefacts); validates T17/T18 against their schemas; asserts all in-scope articles appear in `T17.articles`; checks `rendered_report.json_uri` non-empty and `renderer` in `{reportlab, text_fallback}`; verifies `tool_calls`; exits 0. Regression: `smoke_group7.py` and `smoke_group8.py` still exit 0.
 
 ### Key design decisions
@@ -308,19 +308,19 @@
 ### Files created
 | File | Purpose |
 |------|---------|
-| `src/agents/tier3/uagf_tam_l.py` | `UagfTamLBranch(BaseAgent)` — Claude Opus; replaces Phases 2–4 for LLM/agentic/GPAI; golden-set, RAGAs, groundedness, injection, trajectory; emits T16 (§3.3 #10) |
-| `src/agents/tier3/cyber_agent.py` | `CyberSecurityAgent(BaseAgent)` — Claude Sonnet; extends T11 with deeper FGSM/PGD + prompt-injection probes; emits blocking finding on critical exploit (§3.3 #11) |
-| `src/agents/tier3/privacy_agent.py` | `PrivacyDPOAgent(BaseAgent)` — Claude Sonnet; extends T08 with lawful-basis entries, DPIA cross-ref, PII deep-dive (§3.3 #12) |
-| `src/tools/ragas_eval.py` | `ragas_eval(questions, contexts, answers) → dict` — faithfulness + answer relevance; `ragas` lib / pure-Python fallback |
-| `src/tools/groundedness_check.py` | `groundedness_check(context, answer) → dict` — groundedness score; `trulens` / pure-Python fallback |
-| `src/tools/prompt_injection_suite.py` | `prompt_injection_suite(target_uri, system_prompt) → dict` — injection + jailbreak probes; `garak` / deterministic fallback |
-| `src/tools/trajectory_audit.py` | `trajectory_audit(traces, permitted_tools) → dict` — Langfuse trace parser; tool-call sequence analysis (§4.4) |
-| `src/templates/T16_uagf_tam_l_evidence.json` | JSON Schema (draft-07) — golden-set, RAGAs, groundedness, prompt-injection, trajectory results (Art. 15; GPAI Arts. 51–55) |
+| `aaa/agents/tier3/uagf_tam_l.py` | `UagfTamLBranch(BaseAgent)` — Claude Opus; replaces Phases 2–4 for LLM/agentic/GPAI; golden-set, RAGAs, groundedness, injection, trajectory; emits T16 (§3.3 #10) |
+| `aaa/agents/tier3/cyber_agent.py` | `CyberSecurityAgent(BaseAgent)` — Claude Sonnet; extends T11 with deeper FGSM/PGD + prompt-injection probes; emits blocking finding on critical exploit (§3.3 #11) |
+| `aaa/agents/tier3/privacy_agent.py` | `PrivacyDPOAgent(BaseAgent)` — Claude Sonnet; extends T08 with lawful-basis entries, DPIA cross-ref, PII deep-dive (§3.3 #12) |
+| `aaa/tools/ragas_eval.py` | `ragas_eval(questions, contexts, answers) → dict` — faithfulness + answer relevance; `ragas` lib / pure-Python fallback |
+| `aaa/tools/groundedness_check.py` | `groundedness_check(context, answer) → dict` — groundedness score; `trulens` / pure-Python fallback |
+| `aaa/tools/prompt_injection_suite.py` | `prompt_injection_suite(target_uri, system_prompt) → dict` — injection + jailbreak probes; `garak` / deterministic fallback |
+| `aaa/tools/trajectory_audit.py` | `trajectory_audit(traces, permitted_tools) → dict` — Langfuse trace parser; tool-call sequence analysis (§4.4) |
+| `templates/T16_uagf_tam_l_evidence.json` | JSON Schema (draft-07) — golden-set, RAGAs, groundedness, prompt-injection, trajectory results (Art. 15; GPAI Arts. 51–55) |
 
 ### Files modified
 | File | Change |
 |------|--------|
-| `src/agents/tier1/orchestrator.py` | Added `_uagf_tam_l`, `_cyber_agent`, `_privacy_agent` init (graceful fallback); `_node_uagf_tam_l_impl`, `_node_cyber_impl`, `_node_privacy_impl` bound methods; L-branch routing in `_node_parallel_phases_impl`; Tier-3 spawn dispatch after Phase 5 |
+| `aaa/agents/tier1/orchestrator.py` | Added `_uagf_tam_l`, `_cyber_agent`, `_privacy_agent` init (graceful fallback); `_node_uagf_tam_l_impl`, `_node_cyber_impl`, `_node_privacy_impl` bound methods; L-branch routing in `_node_parallel_phases_impl`; Tier-3 spawn dispatch after Phase 5 |
 
 ### What was built
 - **`UagfTamLBranch`** — replaces Phases 2–4 for generative modalities; runs golden-set (naive exact-match pass/fail), RAGAs (faithfulness + answer relevance), groundedness, prompt-injection suite, and trajectory audit (agentic only); derives `PASS / PASS_WITH_OBSERVATIONS / FAIL` verdict; stores T16 in EvidenceStore; emits full `Report` with `declaration_verification_delta`.
@@ -351,8 +351,8 @@
 | `scripts/fixtures/uci_german_credit/stage_c.json` | Synthetic T01c Stage C live-system access metadata |
 | `scripts/fixtures/cgsa/uci-german-credit-001.json` | CGSA payload fixture loaded offline by `cgsa_pull`; schema-valid (`source_frameworks`/`maturity_label` enums fixed; `satisfied_constraints` as object array) |
 | `scripts/smoke_group11.py` | End-to-end reference smoke — IntakeValidator → Orchestrator → final state; asserts 12-stage execution, KPI gates, T17/T18 schema validity, Art. 9 / Art. 43 / Annex III evidence traceability |
-| `src/cli.py` | `python -m src.cli run --engagement-id <id> --intake-dir <path>` — wires IntakeValidator → Orchestrator; prints JSON summary; optional `--output-file`, `--cgsa-fixture-dir`, `--offline` flags |
-| `src/app/__init__.py`, `src/app/streamlit_app.py` | Streamlit demo — Stage A/B forms driven by T01a/T01b schemas; live `intake_completeness_score` preview; full-run button; T17/T18 download buttons |
+| `aaa/cli.py` | `python -m aaa.cli run --engagement-id <id> --intake-dir <path>` — wires IntakeValidator → Orchestrator; prints JSON summary; optional `--output-file`, `--cgsa-fixture-dir`, `--offline` flags |
+| `aaa/ui/app.py` | Streamlit demo — Stage A/B forms driven by T01a/T01b schemas; live `intake_completeness_score` preview; full-run button; T17/T18 download buttons. Run with: `streamlit run aaa/ui/app.py` |
 | `packages/uagf_tam_templates/pyproject.toml` | MIT-licenced PyPI package skeleton (hatchling backend; semver 0.1.0; jsonschema + jinja2 deps; pytest-cov ≥ 80 % gate) |
 | `packages/uagf_tam_templates/src/uagf_tam_templates/__init__.py` | Loader API: `list_templates`, `schema_path`, `load_schema`, `validate`, `partial_env`, `render_partial`, `SchemaNotFoundError` |
 | `packages/uagf_tam_templates/src/uagf_tam_templates/schemas/T*.json` | Packaged copies of all 20 T01a–T18 schemas |
@@ -363,14 +363,14 @@
 ### Files modified
 | File | Change |
 |------|--------|
-| `src/agents/intake_validator.py` | Replaced `art43_preview.procedure` attribute access with `art43_preview["procedure"]` (Art43Decision is a TypedDict, not a dataclass); same fix for `t01c_content["art43_preview_procedure"]` |
+| `aaa/agents/intake_validator.py` | Replaced `art43_preview.procedure` attribute access with `art43_preview["procedure"]` (Art43Decision is a TypedDict, not a dataclass); same fix for `t01c_content["art43_preview_procedure"]` |
 
 ### What was built
 - **UCI German Credit reference fixture** — full Stage A / Stage B / Stage C payloads sized to pass `intake_completeness_calculator` (KPI 0 = 1.00) and matching the CGSA fixture by `cgsa_assessment_id`. Validates against T01a, T01b, T01c schemas without warnings.
 - **CGSA fixture** — re-uses the §10.2 fixture-mode loader from `cgsa_pull`. Required schema fixes: `source_frameworks` restricted to the 12-framework enum (replaced "ISO 23894" → "ISO 42001"); `maturity_label` restricted to {absent, initial, developing, defined, optimised} (replaced "managed" → "optimised"); `satisfied_constraints` reshaped from ID strings to objects with `control_id`/`control_name`/`required_score`/`actual_score`/`eu_ai_act_article`.
 - **smoke_group11.py** — drives IntakeValidator (Stage 0 A/B/C) then `orch.run(initial_state)` to preserve T01a/T01b/T01c artefacts (calling `orch.process({...})` would re-initialise state and drop them). Asserts: 19 expected template IDs present; KPI 0 ≥ 0.80; KPI 1 ≥ 0.75; KPI 2 ≥ 75 %; `final_verdict ∈ {PASS, PASS_WITH_OBSERVATIONS, FAIL}`; T17 + T18 validate against packaged schemas; T17 rows for Art.9, Art.43, Annex_III have at least one evidence URI present in `phase_artefacts`. Reference run: `intake_completeness_score=1.00`, `completeness_score=0.88`, `regulatory_coverage_pct=88.9`, verdict `PASS_WITH_OBSERVATIONS`.
-- **`src/cli.py`** — single `run` subcommand: loads Stage A/B[/C] from `--intake-dir`, stores raw payloads in `EvidenceStore`, runs `IntakeValidator.process()` → `Orchestrator.run()`, prints a JSON summary (`final_verdict`, `phase_artefacts`, `compliance_matrix`, KPIs, art43 decision) and optionally writes it to `--output-file`. Exit codes 0 / 2 (intake gate) / 3 (pipeline error).
-- **`src/app/streamlit_app.py`** — wizard UI: Stage A field-by-field form sourced from the T01a `enum`s; Stage B JSON editor seeded with the fixture; live KPI 0 progress bar; "Run full audit" triggers the same pipeline as the CLI; displays compliance matrix, phase artefact URIs, three KPI metrics; offers three download buttons (full AuditState JSON, T17, T18).
+- **`aaa/cli.py`** — single `run` subcommand: loads Stage A/B[/C] from `--intake-dir`, stores raw payloads in `EvidenceStore`, runs `IntakeValidator.process()` → `Orchestrator.run()`, prints a JSON summary (`final_verdict`, `phase_artefacts`, `compliance_matrix`, KPIs, art43 decision) and optionally writes it to `--output-file`. Exit codes 0 / 2 (intake gate) / 3 (pipeline error).
+- **`aaa/ui/app.py`** — wizard UI: Stage A field-by-field form sourced from the T01a `enum`s; Stage B JSON editor seeded with the fixture; live KPI 0 progress bar; "Run full audit" triggers the same pipeline as the CLI; displays compliance matrix, phase artefact URIs, three KPI metrics; offers three download buttons (full AuditState JSON, T17, T18).
 - **`uagf-tam-templates` package** — distributable subset of `src/templates/` plus a clean loader API + Jinja2 partials for T17/T18. Tests cover discovery, schema validity, draft-07 acceptance/rejection, partial rendering, and semver. Publish flow documented in `README.md`.
 
 ### Key design decisions
