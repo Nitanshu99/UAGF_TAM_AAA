@@ -15,30 +15,47 @@ End-to-end implementation of the 12-agent system specified in [`ARCHITECTURE.md`
 | File | Purpose |
 |------|---------|
 | [`README.md`](./README.md) | This file — high-level orientation, repo layout, bootstrap quick-start. |
+| [`USER_MANUAL.md`](./USER_MANUAL.md) | Step-by-step developer guide: install, run the CLI/API/UI, write tests, troubleshoot. |
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Authoritative multi-agent design (§1–§13) and dependency manifest (§14). |
-| [`USER_MANUAL.md`](./USER_MANUAL.md) | Deep-dive into technologies and directory walkthroughs. |
+| [`tasks.md`](./tasks.md) | Per-group implementation log (Groups 1–11). |
+| [`infra/runbook.md`](./infra/runbook.md) | On-call runbook mirroring `ARCHITECTURE.md` §14.9. |
 
 ---
 
 ## 1. Repository Layout
 
 ```
-UAGF_TAM/
-├── ARCHITECTURE.md                      # Authoritative multi-agent design
-├── pyproject.toml                       # Package metadata
-├── requirements.txt                     # Runtime dependencies (no pinning)
-├── requirements-dev.txt                 # Dev/test dependencies
-├── Makefile                             # One-line targets per milestone
-├── .env.example                         # Environment template
-├── aaa/                                 # Unified agentic auditor package
-│   ├── agents/                          # Agents 1–12, LangGraph composition
-│   ├── tools/                           # Deterministic MCP tool servers
-│   ├── intake/                          # Three-stage intake pipeline
-│   ├── api/                             # FastAPI platform
-│   └── ui/                              # Streamlit demo
-├── schemas/                             # Vendored S4 CGSA schemas
-├── templates/                           # Audit-evidence templates (T01–T18)
-└── tests/                               # Unit, contract, and e2e tests
+UAGF_TAM_AAA/
+├── ARCHITECTURE.md                # Authoritative multi-agent design
+├── README.md                      # This file
+├── USER_MANUAL.md                 # Developer guide
+├── tasks.md                       # Per-group implementation log
+├── Makefile                       # One-line targets per milestone
+├── pyproject.toml                 # Package metadata + pytest config
+├── requirements.txt               # Runtime dependencies
+├── requirements-dev.txt           # Dev/test dependencies (extends runtime)
+├── .env.example                   # Environment template
+├── docker-compose.yml             # Local dev stack (Postgres/MinIO/...)
+├── docker-compose.prod.yml        # Production stack
+├── alembic.ini, alembic/          # Database migrations
+├── aaa/                           # Unified agentic auditor package
+│   ├── agents/                    # Tier 1/2/3 agents + IntakeValidator
+│   ├── tools/                     # ~30 deterministic MCP tools
+│   ├── platform/                  # AuditState, EvidenceStore
+│   ├── api/main.py                # FastAPI app (engagement CRUD + health)
+│   ├── ui/app.py                  # Streamlit demo
+│   ├── cli.py                     # `python -m aaa.cli run ...`
+│   └── settings.py                # pydantic-settings config singleton
+├── schemas/cgsa/v1.0.0/           # Vendored S4 CGSA schemas
+├── templates/                     # Audit-evidence templates (T01a–T18)
+├── packages/uagf_tam_templates/   # Distributable template package (PyPI-ready)
+├── scripts/
+│   ├── setup.py                   # One-shot environment bootstrap
+│   └── fixtures/                  # Reference engagement payloads
+├── infra/tofu/                    # OpenTofu IaC stub
+├── infra/runbook.md               # On-call runbook
+├── .github/workflows/             # CI, schema-drift, release pipelines
+└── tests/                         # unit / contract / golden / e2e
 ```
 
 ---
@@ -50,8 +67,8 @@ UAGF_TAM/
 | **Agents** | Agents 1–12, LangGraph state machine, prompts, Verifier loop | §3, §5.1, §6, §8.2 |
 | **Tools** | MCP servers for SHAP, fairness, RAGAs, schema validation, CSP solver | §4 |
 | **Platform** | FastAPI, Postgres (`AuditState` + evidence), S3 Evidence Store | §5.2, §10 |
-| **Intake** | Three-stage intake pipeline (Stage A/B/C) | §6 Stage 0 |
-| **QA / Eval** | Per-tool unit tests, per-agent LLM-as-judge, e2e golden set | §9.1 |
+| **Intake** | Three-stage intake pipeline (Stage A/B/C) inside `aaa/agents/intake_validator.py` | §6 Stage 0 |
+| **QA / Eval** | Unit / contract / golden / e2e suites under `tests/` | §9.1 |
 
 ---
 
@@ -59,65 +76,56 @@ UAGF_TAM/
 
 | Contract | Producer | Consumer(s) | File |
 |----------|----------|-------------|------|
-| `AuditState` typed dict | Platform | Agents, QA | `contracts/audit_state.py` |
-| Agent messages (Dispatch / Report / Critique) | Agents | Platform (for persistence) | `contracts/messages.py` |
-| MCP tool envelope | Tools | Agents | `contracts/mcp_tool_schema.json` |
-| Evidence Store URI scheme | Platform | Agents, Tools, UI, QA | `contracts/evidence_uri.md` |
-| REST surface (engagement lifecycle, CGSA ingest, HITL actions) | Platform | UI, QA | `contracts/openapi.yaml` |
-| CGSA payload (from upstream S4) | external S4 | Phase 5 agent via Platform webhook | `contracts/cgsa_schema.json` |
-| CGSA schema (versioned) | external S4 | Agents (Phase 5) | `schemas/cgsa/v1.0.0/uagf_cgsa_aaa_schema.json` |
+| `AuditState` typed dict | Platform | Agents, QA | `aaa/platform/state.py` |
+| Agent messages (Dispatch / Report / Critique) | Agents | Platform | `aaa/agents/base.py` |
+| Evidence Store URI scheme | Platform | Agents, Tools, UI | `aaa/platform/evidence.py` |
+| REST surface (engagement lifecycle, healthz) | Platform | UI, QA | `aaa/api/main.py` |
+| CGSA payload (from upstream S4) | external S4 | Phase 5 agent | `schemas/cgsa/v1.0.0/uagf_cgsa_aaa_schema.json` |
+| CGSA schema-version drift gate | CI | Engineering | `.github/workflows/s4_contract.yml` |
 
-**Rule:** any change to a file in `contracts/` requires a PR labelled `contract-change`. `contracts/CHANGELOG.md` MUST be updated in the same PR.
+**Rule:** any change to `aaa/platform/state.py` or `schemas/cgsa/**` requires the schema-drift gate to be acknowledged in the PR.
 
 ---
 
 ## 4. Getting Started (Bootstrap)
 
-Full step-by-step instructions live in [`ARCHITECTURE.md`](./ARCHITECTURE.md) §14.
-
-### 4.1 Prerequisites
-
-| Requirement | Version | Notes |
-|-------------|---------|-------|
-| Python | **3.12** | Required for all agentic components. |
-| Node.js | **≥ 20** | Required for the Next.js portal (if applicable). |
-| Docker | latest | Runs Postgres, MinIO, Valkey, OpenBao, Langfuse. |
-
-### 4.2 Installation
+### 4.1 One-shot setup (recommended)
 
 ```bash
-# 1. Clone and configure environment
-git clone <repo-url> UAGF_TAM && cd UAGF_TAM
-cp .env.example .env
-
-# 2. Start the infrastructure
-docker compose up -d
-
-# 3. Setup Python environment
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
-pip install -e .
-pre-commit install
-
-# 4. Initialise and run
-python -m alembic upgrade head
-python -m pytest tests/unit
+git clone <repo-url> UAGF_TAM_AAA && cd UAGF_TAM_AAA
+python3.12 scripts/setup.py            # creates venv, installs deps, copies .env, runs smoke test
 ```
+
+`scripts/setup.py` is idempotent — re-running it will only redo the steps that are missing.
+Flags: `--no-docker` (skip docker compose up), `--no-migrate` (skip alembic), `--with-prod-deps` (install full runtime requirements).
+
+### 4.2 Manual setup
+
+| Step | Command |
+|------|---------|
+| Create venv | `python3.12 -m venv .venv && source .venv/bin/activate` |
+| Install dev deps | `pip install -r requirements-dev.txt` |
+| Copy env file | `cp .env.example .env` |
+| Start infra (optional) | `docker compose up -d` |
+| Run migrations (optional) | `python -m alembic upgrade head` |
+| Run tests | `pytest -m "not e2e"` |
+
+Full walkthrough in [`USER_MANUAL.md`](./USER_MANUAL.md).
 
 ### 4.3 Running the Services
 
 | Component | Command |
 |-----------|---------|
 | FastAPI Platform | `uvicorn aaa.api.main:app --reload` |
-| Streamlit Demo | `streamlit run aaa/ui/app.py` |
+| Streamlit Demo | `AAA_OFFLINE_MODE=true streamlit run aaa/ui/app.py` |
+| CLI (offline demo) | `python -m aaa.cli run --engagement-id eng-demo-001 --intake-dir scripts/fixtures/uci_german_credit --cgsa-fixture-dir scripts/fixtures/cgsa --offline` |
 | Infrastructure | `docker compose up -d` |
 
 ### 4.4 Verification
 
 ```bash
-python -m pytest tests/unit
-python -m aaa.cli run --case german_credit --offline
+pytest -m "not e2e" --cov=aaa --cov-fail-under=80     # full unit+contract+golden suite
+make intake-demo                                       # offline end-to-end on UCI German Credit
 ```
 
 ---
@@ -125,7 +133,7 @@ python -m aaa.cli run --case german_credit --offline
 ## 5. Branch & PR Rules
 
 - **Trunk-based**, one long-lived branch: `main`.
-- Every PR must pass the `ci.yml` workflow (ruff, mypy, pytest).
+- Every PR must pass the `ci.yml` workflow (ruff, mypy, pytest, coverage ≥ 80 %).
 - No code may violate the architectural boundaries defined in `ARCHITECTURE.md`.
 
 ---
@@ -134,7 +142,7 @@ python -m aaa.cli run --case german_credit --offline
 
 The thesis is considered tech-complete when, on the 50-engagement golden set:
 
-- End-to-end PASS/FAIL/PASS_W_OBS verdicts agree with the human expert label on **≥ 90%** of engagements.
+- End-to-end PASS/FAIL/PASS_W_OBS verdicts agree with the human expert label on **≥ 90 %** of engagements.
 - Median engagement cost stays under the configured per-tier budget.
 - Every report PDF carries a verifiable SHA-256 chain back to its evidence artefacts.
-- The S4 → S5 webhook successfully ingests a CGSA payload and the Phase 5 agent's verdict matches `aaa_phase5_handoff.phase5_verdict` for **100%** of valid payloads.
+- The S4 → S5 webhook successfully ingests a CGSA payload and the Phase 5 agent's verdict matches `aaa_phase5_handoff.phase5_verdict` for **100 %** of valid payloads.
