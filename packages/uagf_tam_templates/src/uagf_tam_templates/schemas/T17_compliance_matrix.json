@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T17_compliance_matrix:1.0.0",
+  "title": "T17 — Compliance Matrix (Phase 6 / Report Architect)",
+  "description": "Article × verdict × evidence-URI table covering every EU AI Act article in scope for the engagement (Arts. 9, 10, 13, 14, 15, 17, 43; Annex III; GPAI 51–55). Assembled by the Orchestrator's compliance_matrix node and embedded by reference in T18.",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "risk_tier",
+    "is_llm_or_agentic",
+    "in_scope_articles",
+    "articles",
+    "kpi_summary",
+    "final_verdict",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "AAA engagement identifier."
+    },
+    "risk_tier": {
+      "type": "string",
+      "enum": ["prohibited", "high", "limited", "minimal", "gpai"],
+      "description": "Phase 1 verified risk tier driving the in-scope article set."
+    },
+    "is_llm_or_agentic": {
+      "type": "boolean",
+      "description": "Router flag — when true, GPAI 51–55 are added to the in-scope set."
+    },
+    "in_scope_articles": {
+      "type": "array",
+      "description": "Sorted list of article identifiers in scope for this engagement (from regulatory_coverage.ARTICLE_SET).",
+      "items": { "type": "string" }
+    },
+    "articles": {
+      "type": "array",
+      "description": "One row per in-scope article: verdict, evidence URIs, supporting template IDs, and source phase.",
+      "items": {
+        "type": "object",
+        "required": ["article", "verdict", "evidence_uris", "supporting_template_ids", "source_phase"],
+        "additionalProperties": false,
+        "properties": {
+          "article": {
+            "type": "string",
+            "description": "Article identifier (e.g. 'Art.9', 'Art.43', 'Annex_III', 'GPAI_51')."
+          },
+          "verdict": {
+            "type": "string",
+            "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_APPLICABLE", "PENDING"]
+          },
+          "evidence_uris": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "URIs of admitted phase artefacts that cite this article."
+          },
+          "supporting_template_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Template IDs (e.g. 'T09_model_card') whose verifier critique cited this article."
+          },
+          "source_phase": {
+            "type": "string",
+            "enum": ["P1", "P2", "P3", "P4", "P5", "P6", "L", "CYBER", "PRIV", "ORCH"],
+            "description": "Phase or specialist that primarily contributed evidence for this article."
+          },
+          "rationale": {
+            "type": ["string", "null"],
+            "description": "Free-text rationale assembled by the Orchestrator (one sentence)."
+          },
+          "cgsa_control_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "CGSA controls (from S4 §5.4) backing this article verdict, if any."
+          },
+          "blocking_findings": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Finding IDs that block this article from PASS."
+          }
+        }
+      }
+    },
+    "kpi_summary": {
+      "type": "object",
+      "description": "Snapshot of the three §9.1 KPIs at compliance-matrix assembly time.",
+      "required": ["intake_completeness_score", "completeness_score", "regulatory_coverage_pct"],
+      "additionalProperties": false,
+      "properties": {
+        "intake_completeness_score": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 },
+        "completeness_score": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 },
+        "regulatory_coverage_pct": { "type": ["number", "null"], "minimum": 0.0, "maximum": 100.0 }
+      }
+    },
+    "completeness_breakdown": {
+      "type": "object",
+      "description": "Per-template KPI 1 breakdown from completeness_score_breakdown().",
+      "additionalProperties": true
+    },
+    "coverage_breakdown": {
+      "type": "object",
+      "description": "Per-article KPI 2 breakdown from regulatory_coverage_breakdown().",
+      "additionalProperties": true
+    },
+    "art43_decision": {
+      "type": ["object", "null"],
+      "description": "Final Art. 43 procedure selection from Phase 1.",
+      "additionalProperties": true
+    },
+    "blocking_findings_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "final_verdict": {
+      "type": "string",
+      "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL"]
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

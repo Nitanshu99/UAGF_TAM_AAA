@@ -1,0 +1,233 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T14_governance_findings:1.0.0",
+  "title": "T14 — Governance Findings (Phase 5 / S4 CGSA Hand-off)",
+  "description": "Lift of the S4 CGSA aaa_phase5_handoff payload into the AAA Phase 5 governance findings artefact. Covers EU AI Act Art. 9, 10, 13, 14, 17.",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "cgsa_schema_version",
+    "cgsa_metadata",
+    "overall_scores",
+    "phase5_verdict",
+    "phase5_narrative_summary",
+    "blocking_findings_count",
+    "blocking_findings",
+    "positive_findings",
+    "low_confidence_controls",
+    "domains",
+    "hard_constraint_results",
+    "remediation_roadmap",
+    "risk_tier_match",
+    "tier3_spawn_recommendations",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "AAA engagement identifier (not to be confused with CGSA assessment_id)."
+    },
+    "cgsa_schema_version": {
+      "type": "string",
+      "description": "Pinned S4 CGSA schema version (must equal 1.0.0)."
+    },
+    "cgsa_metadata": {
+      "type": "object",
+      "required": ["assessment_id", "organisation_name", "system_under_audit", "cgsa_version", "assessment_timestamp", "risk_tier", "document_sources"],
+      "additionalProperties": false,
+      "properties": {
+        "assessment_id": { "type": "string", "description": "CGSA assessment UUID." },
+        "organisation_name": { "type": "string" },
+        "system_under_audit": { "type": "string" },
+        "cgsa_version": { "type": "string" },
+        "assessment_timestamp": { "type": "string" },
+        "risk_tier": { "type": "string", "enum": ["minimal", "limited", "high"] },
+        "document_sources": { "type": "array", "items": { "type": "string" } },
+        "uagf_gmm_version": { "type": ["string", "null"] }
+      }
+    },
+    "overall_scores": {
+      "type": "object",
+      "required": ["composite_maturity_score", "composite_maturity_label", "eu_ai_act_coverage_pct", "csp_satisfiable", "governance_verdict"],
+      "additionalProperties": false,
+      "properties": {
+        "composite_maturity_score": { "type": "number", "minimum": 0.0, "maximum": 4.0 },
+        "composite_maturity_label": { "type": "string", "enum": ["absent", "initial", "developing", "defined", "optimised"] },
+        "eu_ai_act_coverage_pct": { "type": "number", "minimum": 0.0, "maximum": 100.0 },
+        "csp_satisfiable": { "type": "boolean" },
+        "governance_verdict": { "type": "string", "enum": ["compliant", "partially_compliant", "non_compliant"] },
+        "controls_assessed": { "type": ["integer", "null"], "minimum": 0 },
+        "controls_meeting_threshold": { "type": ["integer", "null"], "minimum": 0 },
+        "controls_below_threshold": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "phase5_verdict": {
+      "type": "string",
+      "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL"],
+      "description": "Phase 5 verdict — driven primarily by aaa_phase5_handoff.phase5_verdict."
+    },
+    "phase5_narrative_summary": {
+      "type": "string",
+      "description": "Pre-written 3–5 sentence narrative from CGSA (verbatim or lightly edited)."
+    },
+    "blocking_findings_count": { "type": "integer", "minimum": 0 },
+    "blocking_findings": {
+      "type": "array",
+      "description": "Hard-constraint-violating findings — one row per blocking item.",
+      "items": {
+        "type": "object",
+        "required": ["control_id", "control_name", "finding", "eu_ai_act_article", "remediation_action"],
+        "additionalProperties": false,
+        "properties": {
+          "control_id": { "type": "string" },
+          "control_name": { "type": "string" },
+          "finding": { "type": "string" },
+          "eu_ai_act_article": { "type": "string" },
+          "remediation_action": { "type": "string" },
+          "gap_severity": { "type": ["string", "null"], "enum": ["critical", "high", "medium", "low", null] }
+        }
+      }
+    },
+    "positive_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["control_id", "control_name", "maturity_score", "finding"],
+        "additionalProperties": false,
+        "properties": {
+          "control_id": { "type": "string" },
+          "control_name": { "type": "string" },
+          "maturity_score": { "type": "integer", "minimum": 0, "maximum": 4 },
+          "finding": { "type": "string" }
+        }
+      }
+    },
+    "low_confidence_controls": {
+      "type": "array",
+      "description": "Controls with CGSA extraction confidence < 0.60 — every entry produces a Phase 5 limitations bullet and a HITL flag.",
+      "items": {
+        "type": "object",
+        "required": ["control_id", "control_name", "confidence", "flag_reason"],
+        "additionalProperties": false,
+        "properties": {
+          "control_id": { "type": "string" },
+          "control_name": { "type": "string" },
+          "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+          "flag_reason": { "type": "string" }
+        }
+      }
+    },
+    "domains": {
+      "type": "array",
+      "description": "Six UAGF-GMM governance domains (D1–D6) with per-domain scores.",
+      "items": {
+        "type": "object",
+        "required": ["domain_id", "domain_name", "domain_score"],
+        "additionalProperties": false,
+        "properties": {
+          "domain_id": { "type": "string", "enum": ["D1", "D2", "D3", "D4", "D5", "D6"] },
+          "domain_name": { "type": "string" },
+          "domain_score": { "type": "number", "minimum": 0.0, "maximum": 4.0 },
+          "domain_eu_ai_act_articles": { "type": "array", "items": { "type": "string" } },
+          "controls_count": { "type": ["integer", "null"], "minimum": 0 }
+        }
+      }
+    },
+    "hard_constraint_results": {
+      "type": "object",
+      "required": ["csp_satisfiable", "violated_constraints"],
+      "additionalProperties": false,
+      "properties": {
+        "csp_satisfiable": { "type": "boolean" },
+        "total_hard_constraints": { "type": ["integer", "null"], "minimum": 0 },
+        "violated_constraints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["control_id", "control_name", "required_score", "actual_score", "eu_ai_act_article", "violation_description"],
+            "additionalProperties": false,
+            "properties": {
+              "control_id": { "type": "string" },
+              "control_name": { "type": "string" },
+              "required_score": { "type": "integer", "minimum": 0, "maximum": 4 },
+              "actual_score": { "type": "integer", "minimum": 0, "maximum": 4 },
+              "score_delta": { "type": ["integer", "null"] },
+              "eu_ai_act_article": { "type": "string" },
+              "violation_description": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "remediation_roadmap": {
+      "type": "array",
+      "description": "Verbatim CGSA remediation_roadmap ordered by rank.",
+      "items": {
+        "type": "object",
+        "required": ["rank", "control_id", "control_name", "gap_severity", "action", "eu_ai_act_article"],
+        "additionalProperties": false,
+        "properties": {
+          "rank": { "type": "integer", "minimum": 1 },
+          "control_id": { "type": "string" },
+          "control_name": { "type": "string" },
+          "gap_severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+          "current_score": { "type": ["integer", "null"], "minimum": 0, "maximum": 4 },
+          "target_score": { "type": ["integer", "null"], "minimum": 0, "maximum": 4 },
+          "action": { "type": "string" },
+          "eu_ai_act_article": { "type": "string" },
+          "effort_estimate": { "type": ["string", "null"], "enum": ["low", "medium", "high", null] },
+          "timeline_weeks": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "aaa_recommended_follow_up": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["recommendation", "rationale"],
+        "additionalProperties": false,
+        "properties": {
+          "recommendation": { "type": "string" },
+          "rationale": { "type": "string" },
+          "urgency": { "type": ["string", "null"], "enum": ["required_before_report_completion", "recommended", "optional", null] }
+        }
+      }
+    },
+    "risk_tier_match": {
+      "type": "object",
+      "description": "Cross-check of CGSA metadata.risk_tier against AAA Phase 1 verified risk_tier.",
+      "required": ["match", "phase1_risk_tier", "cgsa_risk_tier"],
+      "additionalProperties": false,
+      "properties": {
+        "match": { "type": "boolean" },
+        "phase1_risk_tier": { "type": "string" },
+        "cgsa_risk_tier": { "type": "string" },
+        "hitl_triggered": { "type": "boolean", "default": false }
+      }
+    },
+    "tier3_spawn_recommendations": {
+      "type": "object",
+      "description": "On-demand Tier-3 sub-agent spawning decisions per §3.3.",
+      "required": ["cyber_spawn", "privacy_spawn"],
+      "additionalProperties": false,
+      "properties": {
+        "cyber_spawn": { "type": "boolean" },
+        "cyber_rationale": { "type": ["string", "null"] },
+        "privacy_spawn": { "type": "boolean" },
+        "privacy_rationale": { "type": ["string", "null"] }
+      }
+    },
+    "cgsa_report_url": {
+      "type": ["string", "null"],
+      "description": "URL of the full CGSA Streamlit PDF report, if deployed."
+    },
+    "hitl_required": { "type": "boolean", "default": false },
+    "hitl_reason": { "type": ["string", "null"] },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

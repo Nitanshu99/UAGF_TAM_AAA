@@ -1,0 +1,19 @@
+# AAA — Autonomous AI Auditor: development dependencies (Python 3.12)
+# Extends runtime deps per ARCHITECTURE.md §14.2.
+
+-r requirements.txt
+
+# --- test ---
+pytest
+pytest-asyncio
+pytest-cov
+
+# --- lint / typecheck ---
+ruff
+mypy
+
+# --- pre-commit hooks ---
+pre-commit
+
+# --- migrations (used by `make migrate`) ---
+alembic

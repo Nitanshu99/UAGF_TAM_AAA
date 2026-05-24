@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T02_system_card:1.0.0",
+  "title": "T02 — System Card (Phase 1 Scope)",
+  "description": "Provider/deployer identity, modality, deployment context, and declaration_verification map produced by the Phase 1 Scope Agent. EU AI Act Art. 13 §3.",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "provider_name",
+    "system_name",
+    "version",
+    "intended_purpose",
+    "declared_modality",
+    "verified_modality",
+    "deployment_context",
+    "is_llm_or_agentic",
+    "declaration_verification",
+    "phase1_summary",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this audit engagement."
+    },
+    "provider_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Legal name of the AI system provider (Art. 13 §3)."
+    },
+    "deployer_name": {
+      "type": ["string", "null"],
+      "description": "Legal name of the deployer, if different from provider (Art. 13 §3)."
+    },
+    "system_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Commercial or internal name of the AI system."
+    },
+    "version": {
+      "type": "string",
+      "description": "Semantic version of the AI system under audit."
+    },
+    "intended_purpose": {
+      "type": "string",
+      "minLength": 20,
+      "description": "Intended purpose as verified by Phase 1 (Art. 13 §3)."
+    },
+    "declared_modality": {
+      "type": "string",
+      "enum": ["tabular", "cv", "nlp", "time_series", "llm", "agentic", "gpai"],
+      "description": "Client-declared primary technical modality (from Stage A)."
+    },
+    "verified_modality": {
+      "type": "string",
+      "enum": ["tabular", "cv", "nlp", "time_series", "llm", "agentic", "gpai"],
+      "description": "Phase 1 verified modality (may differ from declared)."
+    },
+    "deployment_context": {
+      "type": "string",
+      "enum": ["b2b", "b2c", "public_sector", "internal"],
+      "description": "Primary deployment context, verified by Phase 1."
+    },
+    "is_llm_or_agentic": {
+      "type": "boolean",
+      "description": "True if verified_modality is llm, agentic, or gpai — triggers L-branch routing."
+    },
+    "provider_elects_third_party": {
+      "type": "boolean",
+      "description": "Whether the provider elects third-party notified-body assessment (Art. 43 §1(b))."
+    },
+    "gdpr_overlap": {
+      "type": "boolean",
+      "description": "Whether the system processes personal data subject to GDPR."
+    },
+    "special_category_data": {
+      "type": "boolean",
+      "description": "Whether the system processes special-category data (Art. 10 §5)."
+    },
+    "declaration_verification": {
+      "type": "object",
+      "description": "Map of field name to Phase 1 verification verdict (§3.6, §8.4). Any 'mismatch' triggers HITL.",
+      "additionalProperties": {
+        "type": "string",
+        "enum": ["match", "mismatch", "corrected", "not_verifiable"]
+      }
+    },
+    "phase1_summary": {
+      "type": "string",
+      "minLength": 20,
+      "description": "Narrative summary of Phase 1 scope verification findings (Art. 13 §3)."
+    },
+    "art5_prohibited": {
+      "type": "boolean",
+      "description": "True if Phase 1 determined the system is prohibited under Art. 5. Engagement halted if true."
+    },
+    "gpai_screening_result": {
+      "type": ["string", "null"],
+      "description": "GPAI screening narrative if gpai_general_purpose was declared or detected."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this artefact was generated."
+    }
+  }
+}

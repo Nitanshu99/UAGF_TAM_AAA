@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T01c_intake_completeness_report:1.0.0",
+  "title": "T01c — Intake Completeness Report",
+  "description": "Per-section Annex IV completeness scoring, list of missing/incomplete fields, the intake_completeness_score KPI, and any preview-vs-final Art. 43 delta. EU AI Act Art. 11.",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "generated_at",
+    "intake_completeness_score",
+    "section_scores",
+    "missing_required_fields",
+    "missing_conditional_fields",
+    "gate_passed"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "description": "Unique identifier of the audit engagement."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this report was generated."
+    },
+    "intake_completeness_score": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "KPI 0: weighted completeness fraction across all Annex IV §1–§9 sections. Must be >= 0.80 to unlock Phase 1."
+    },
+    "section_scores": {
+      "type": "object",
+      "description": "Per-section (1–9) completeness score (0.0–1.0) and weight.",
+      "required": ["1","2","3","4","5","6","7","8","9"],
+      "additionalProperties": false,
+      "properties": {
+        "1": { "$ref": "#/definitions/sectionScore" },
+        "2": { "$ref": "#/definitions/sectionScore" },
+        "3": { "$ref": "#/definitions/sectionScore" },
+        "4": { "$ref": "#/definitions/sectionScore" },
+        "5": { "$ref": "#/definitions/sectionScore" },
+        "6": { "$ref": "#/definitions/sectionScore" },
+        "7": { "$ref": "#/definitions/sectionScore" },
+        "8": { "$ref": "#/definitions/sectionScore" },
+        "9": { "$ref": "#/definitions/sectionScore" }
+      }
+    },
+    "missing_required_fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["field", "section", "reason"],
+        "properties": {
+          "field": { "type": "string" },
+          "section": { "type": "integer", "minimum": 1, "maximum": 9 },
+          "reason": { "type": "string" }
+        }
+      },
+      "description": "List of required Annex IV fields that are missing or empty."
+    },
+    "missing_conditional_fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["field", "condition", "applicable"],
+        "properties": {
+          "field": { "type": "string" },
+          "condition": { "type": "string" },
+          "applicable": { "type": "boolean" }
+        }
+      },
+      "description": "Conditional fields (L-branch) that are missing, with applicability flag."
+    },
+    "gate_passed": {
+      "type": "boolean",
+      "description": "True if intake_completeness_score >= 0.80. Phase 1 is blocked while false."
+    },
+    "art43_preview_procedure": {
+      "type": ["string", "null"],
+      "enum": ["annex_vi_internal_control", "annex_vii_notified_body", "not_applicable", null],
+      "description": "Art. 43 preview procedure from T01a."
+    },
+    "art43_final_procedure": {
+      "type": ["string", "null"],
+      "enum": ["annex_vi_internal_control", "annex_vii_notified_body", "not_applicable", null],
+      "description": "Art. 43 final procedure after Phase 1 verification. Null until Phase 1 completes."
+    },
+    "art43_delta": {
+      "type": ["string", "null"],
+      "description": "Human-readable description of any difference between preview and final Art. 43 procedure."
+    },
+    "hitl_threshold_override": {
+      "type": ["object", "null"],
+      "description": "If a senior reviewer lowered the 0.80 gate, this records the override.",
+      "properties": {
+        "reviewer": { "type": "string" },
+        "new_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "rationale": { "type": "string" },
+        "override_timestamp": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "definitions": {
+    "sectionScore": {
+      "type": "object",
+      "required": ["score", "weight", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+        "label": { "type": "string" }
+      }
+    }
+  }
+}

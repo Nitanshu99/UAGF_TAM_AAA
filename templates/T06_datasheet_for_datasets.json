@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T06_datasheet_for_datasets:1.0.0",
+  "title": "T06 — Datasheet for Datasets",
+  "description": "Gebru-2021 datasheet capturing dataset motivation, composition, collection, preprocessing, uses, distribution, and maintenance. EU AI Act Art. 10 §2–§3.",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "motivation",
+    "composition",
+    "collection_process",
+    "preprocessing_cleaning_labelling",
+    "uses",
+    "distribution",
+    "maintenance",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this audit engagement."
+    },
+    "motivation": {
+      "type": "object",
+      "description": "Why was the dataset created? Who created it and on whose behalf?",
+      "required": ["purpose", "creators", "funding_sources"],
+      "additionalProperties": false,
+      "properties": {
+        "purpose": { "type": "string", "minLength": 10 },
+        "creators": { "type": "string", "minLength": 2 },
+        "funding_sources": { "type": "string" },
+        "gap_filled": { "type": ["string", "null"] }
+      }
+    },
+    "composition": {
+      "type": "object",
+      "description": "What does the dataset consist of? How many instances? Are there labels?",
+      "required": ["instances_type", "num_instances", "has_labels", "label_description"],
+      "additionalProperties": false,
+      "properties": {
+        "instances_type": { "type": "string", "minLength": 5 },
+        "num_instances": { "type": "integer", "minimum": 0 },
+        "num_features": { "type": ["integer", "null"], "minimum": 0 },
+        "has_labels": { "type": "boolean" },
+        "label_description": { "type": ["string", "null"] },
+        "sensitive_features": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names of features that are sensitive or protected characteristics."
+        },
+        "missing_data_present": { "type": "boolean" },
+        "missing_data_description": { "type": ["string", "null"] },
+        "confidential_data": { "type": "boolean" },
+        "relationships_to_other_datasets": { "type": ["string", "null"] }
+      }
+    },
+    "collection_process": {
+      "type": "object",
+      "description": "How was the data acquired? Who participated? Were they compensated?",
+      "required": ["acquisition_method", "collection_timeframe", "consent_obtained"],
+      "additionalProperties": false,
+      "properties": {
+        "acquisition_method": { "type": "string", "minLength": 10 },
+        "collection_timeframe": { "type": ["string", "null"] },
+        "consent_obtained": { "type": "boolean" },
+        "consent_mechanism": { "type": ["string", "null"] },
+        "notification_given": { "type": ["boolean", "null"] },
+        "third_party_sources": { "type": ["string", "null"] },
+        "collection_ethical_review": { "type": ["boolean", "null"] }
+      }
+    },
+    "preprocessing_cleaning_labelling": {
+      "type": "object",
+      "description": "Was the data cleaned or pre-processed? Who annotated labels?",
+      "required": ["preprocessing_performed", "preprocessing_description"],
+      "additionalProperties": false,
+      "properties": {
+        "preprocessing_performed": { "type": "boolean" },
+        "preprocessing_description": { "type": ["string", "null"] },
+        "labelling_performed": { "type": "boolean" },
+        "labelling_description": { "type": ["string", "null"] },
+        "label_validation": { "type": ["string", "null"] },
+        "raw_data_available": { "type": ["boolean", "null"] },
+        "software_used": { "type": ["string", "null"] }
+      }
+    },
+    "uses": {
+      "type": "object",
+      "description": "Has the dataset been used? What tasks was it used for? What should it not be used for?",
+      "required": ["intended_tasks", "prohibited_tasks"],
+      "additionalProperties": false,
+      "properties": {
+        "intended_tasks": { "type": "string", "minLength": 10 },
+        "prior_publications": { "type": ["string", "null"] },
+        "prohibited_tasks": { "type": "string" },
+        "impact_on_subpopulations": { "type": ["string", "null"] },
+        "other_known_uses": { "type": ["string", "null"] }
+      }
+    },
+    "distribution": {
+      "type": "object",
+      "description": "How will the dataset be distributed? Under what licence?",
+      "required": ["distribution_method", "licence"],
+      "additionalProperties": false,
+      "properties": {
+        "distribution_method": { "type": "string" },
+        "access_url": { "type": ["string", "null"], "format": "uri" },
+        "licence": { "type": "string" },
+        "ip_restrictions": { "type": ["string", "null"] },
+        "regulatory_restrictions": { "type": ["string", "null"] },
+        "export_controls": { "type": ["boolean", "null"] }
+      }
+    },
+    "maintenance": {
+      "type": "object",
+      "description": "Who maintains the dataset? How are updates versioned?",
+      "required": ["maintainer", "update_plan"],
+      "additionalProperties": false,
+      "properties": {
+        "maintainer": { "type": "string" },
+        "contact": { "type": ["string", "null"] },
+        "update_plan": { "type": "string" },
+        "errata_process": { "type": ["string", "null"] },
+        "retention_period": { "type": ["string", "null"] },
+        "version": { "type": ["string", "null"] }
+      }
+    },
+    "art10_compliance_notes": {
+      "type": ["string", "null"],
+      "description": "Free-text notes on Art. 10 §2–§3 compliance gaps or confirmations."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this artefact was generated."
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T05_art43_decision:1.0.0",
+  "title": "T05 — Article 43 Conformity Assessment Decision",
+  "description": "Binding Art. 43 conformity-assessment procedure selection, produced from art43_select (final mode) after Phase 1 verification. EU AI Act Art. 43.",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "procedure",
+    "rationale",
+    "binding_statement",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this audit engagement."
+    },
+    "procedure": {
+      "type": "string",
+      "enum": ["annex_vi_internal_control", "annex_vii_notified_body", "not_applicable"],
+      "description": "Selected conformity assessment procedure: Annex VI (internal control), Annex VII (third-party notified body), or not applicable."
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 20,
+      "description": "Human-readable rationale for the procedure selection referencing Art. 43 rule(s) applied."
+    },
+    "binding_statement": {
+      "type": "string",
+      "minLength": 20,
+      "description": "Formal binding statement as it will appear in the final audit report (Art. 43)."
+    },
+    "preview_procedure": {
+      "type": ["string", "null"],
+      "enum": ["annex_vi_internal_control", "annex_vii_notified_body", "not_applicable", null],
+      "description": "Preview Art. 43 decision from Stage A (may differ from final if declarations were corrected)."
+    },
+    "delta_from_preview": {
+      "type": "boolean",
+      "description": "True if the final procedure differs from the preview. Triggers HITL declaration-mismatch flag (§8.4)."
+    },
+    "inputs": {
+      "type": "object",
+      "description": "Snapshot of the inputs used by art43_select (final mode) for reproducibility.",
+      "properties": {
+        "risk_tier": { "type": "string" },
+        "annex_iii_section_1_applies": { "type": "boolean" },
+        "harmonised_standards_applied": { "type": "boolean" },
+        "provider_elects_third_party": { "type": "boolean" }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this artefact was generated."
+    }
+  }
+}

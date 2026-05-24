@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T01b_annex_iv_dossier:1.0.0",
+  "title": "T01b — Annex IV Dossier",
+  "description": "Structured Annex IV §1–§9 technical documentation uploaded in Stage B. EU AI Act Art. 11 + Annex IV §1–§9.",
+  "type": "object",
+  "required": [
+    "general_description",
+    "model_type",
+    "design_process",
+    "training_data_description",
+    "data_governance_measures",
+    "monitoring_measures",
+    "logging_capabilities",
+    "accuracy_metrics",
+    "lifecycle_change_log",
+    "harmonised_standards",
+    "other_standards"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "general_description": {
+      "type": "string",
+      "minLength": 50,
+      "description": "§1 General description of the AI system, its intended purpose, and the persons responsible."
+    },
+    "model_type": {
+      "type": "string",
+      "minLength": 1,
+      "description": "§1 Technical type of model, e.g. 'XGBoost classifier v1.2', 'GPT-4 fine-tune'."
+    },
+    "design_process": {
+      "type": "string",
+      "minLength": 30,
+      "description": "§2 Description of the design and development process, including training methodology."
+    },
+    "training_data_description": {
+      "type": "string",
+      "minLength": 30,
+      "description": "§2 Description of training, validation, and test datasets (Art. 10)."
+    },
+    "data_governance_measures": {
+      "type": "string",
+      "minLength": 20,
+      "description": "§2 Data governance and management practices applied."
+    },
+    "monitoring_measures": {
+      "type": "string",
+      "minLength": 20,
+      "description": "§3 Description of monitoring, functioning, and control measures."
+    },
+    "logging_capabilities": {
+      "type": "string",
+      "minLength": 10,
+      "description": "§3 Description of logging capabilities for post-deployment monitoring (Art. 12)."
+    },
+    "accuracy_metrics": {
+      "type": "object",
+      "description": "§4 Performance metrics reported by the provider (e.g. accuracy, F1, AUC).",
+      "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+    },
+    "robustness_metrics": {
+      "type": ["object", "null"],
+      "description": "§4 Robustness metrics if available (e.g. adversarial accuracy).",
+      "additionalProperties": { "type": "number" }
+    },
+    "risk_management_file_uri": {
+      "type": ["string", "null"],
+      "description": "§5 MinIO URI or external URI to the Art. 9 risk management system file."
+    },
+    "lifecycle_change_log": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "§6 Log of significant changes made to the system over its lifecycle."
+    },
+    "harmonised_standards": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "§7 List of harmonised standards applied (e.g. 'ISO/IEC 42001:2023')."
+    },
+    "other_standards": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "§7 Other technical or sector-specific standards applied."
+    },
+    "eu_doc_uri": {
+      "type": ["string", "null"],
+      "description": "§8 URI to the EU Declaration of Conformity (self-assessment route)."
+    },
+    "post_market_plan_uri": {
+      "type": ["string", "null"],
+      "description": "§9 URI to the post-market monitoring plan (Art. 72)."
+    },
+    "system_prompt_uri": {
+      "type": ["string", "null"],
+      "description": "L-branch only: URI to the system prompt (required for llm/agentic/gpai modality)."
+    },
+    "rag_manifest_uri": {
+      "type": ["string", "null"],
+      "description": "L-branch only: URI to the RAG manifest (vector-store schema + retrieval config)."
+    },
+    "tool_inventory": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "L-branch only: list of tool names + permitted scopes for agentic systems."
+    },
+    "guardrail_config_uri": {
+      "type": ["string", "null"],
+      "description": "L-branch only: URI to the guardrail / content-filter configuration."
+    },
+    "golden_set_uri": {
+      "type": ["string", "null"],
+      "description": "L-branch only: URI to the golden Q&A set (≥ 50 pairs) for RAGAs evaluation."
+    }
+  }
+}

@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T18_audit_report:1.0.0",
+  "title": "T18 — Audit Report (Phase 6 / Report Architect)",
+  "description": "Final Annex IV-aligned conformity-assessment report. Embeds T01a–T17 by URI reference; carries the final verdict, the three §9.1 KPIs, the Art. 43 binding statement, the consolidated remediation roadmap and the URI of the rendered PDF + machine-readable JSON.",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "schema_version",
+    "engagement_metadata",
+    "executive_summary",
+    "kpis",
+    "final_verdict",
+    "embedded_artefacts",
+    "compliance_matrix_ref",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": { "type": "string", "minLength": 1 },
+    "schema_version": { "type": "string", "description": "Semver of this T18 schema." },
+    "engagement_metadata": {
+      "type": "object",
+      "required": ["provider_name", "system_name", "version", "modality", "risk_tier", "deployment_context"],
+      "additionalProperties": false,
+      "properties": {
+        "provider_name": { "type": "string" },
+        "deployer_name": { "type": ["string", "null"] },
+        "system_name": { "type": "string" },
+        "version": { "type": "string" },
+        "intended_purpose": { "type": ["string", "null"] },
+        "modality": {
+          "type": "string",
+          "enum": ["tabular", "cv", "nlp", "time_series", "llm", "agentic", "gpai"]
+        },
+        "risk_tier": {
+          "type": "string",
+          "enum": ["prohibited", "high", "limited", "minimal", "gpai"]
+        },
+        "deployment_context": {
+          "type": "string",
+          "enum": ["b2b", "b2c", "public_sector", "internal"]
+        },
+        "is_llm_or_agentic": { "type": "boolean" },
+        "annex_iii_sections": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "executive_summary": {
+      "type": "string",
+      "description": "3–6 sentence narrative summarising scope, headline verdict, KPI bands, and blocking-finding count."
+    },
+    "kpis": {
+      "type": "object",
+      "required": ["intake_completeness_score", "completeness_score", "regulatory_coverage_pct"],
+      "additionalProperties": false,
+      "properties": {
+        "intake_completeness_score": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 },
+        "completeness_score": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 },
+        "regulatory_coverage_pct": { "type": ["number", "null"], "minimum": 0.0, "maximum": 100.0 },
+        "kpi0_band": { "type": ["string", "null"], "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", null] },
+        "kpi1_band": { "type": ["string", "null"], "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", null] },
+        "kpi2_band": { "type": ["string", "null"], "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", null] }
+      }
+    },
+    "final_verdict": {
+      "type": "string",
+      "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL"]
+    },
+    "art43_decision": {
+      "type": ["object", "null"],
+      "description": "Final Art. 43 binding statement (from Phase 1).",
+      "additionalProperties": true
+    },
+    "embedded_artefacts": {
+      "type": "object",
+      "description": "Map of template_id → ArtefactRef ({uri, sha256, template_id}) for every admitted T01a–T17 artefact.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["uri", "template_id"],
+        "additionalProperties": true,
+        "properties": {
+          "uri": { "type": "string" },
+          "sha256": { "type": "string" },
+          "template_id": { "type": "string" }
+        }
+      }
+    },
+    "compliance_matrix_ref": {
+      "type": "object",
+      "required": ["uri", "template_id"],
+      "additionalProperties": true,
+      "properties": {
+        "uri": { "type": "string" },
+        "sha256": { "type": "string" },
+        "template_id": { "type": "string" }
+      }
+    },
+    "blocking_findings": {
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "positive_findings": {
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "remediation_roadmap": {
+      "type": "array",
+      "description": "Verbatim from AuditState.remediation_roadmap (CGSA §5.4) plus any Phase 6 additions.",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "cgsa_report_url": { "type": ["string", "null"] },
+    "rendered_report": {
+      "type": "object",
+      "description": "Reportlab PDF + JSON rendering metadata.",
+      "required": ["json_uri"],
+      "additionalProperties": false,
+      "properties": {
+        "pdf_uri": { "type": ["string", "null"] },
+        "pdf_bytes_size": { "type": ["integer", "null"], "minimum": 0 },
+        "json_uri": { "type": "string" },
+        "renderer": { "type": ["string", "null"], "enum": ["reportlab", "text_fallback", null] }
+      }
+    },
+    "hitl_required": { "type": "boolean", "default": false },
+    "hitl_reason": { "type": ["string", "null"] },
+    "verifier_summary": {
+      "type": "object",
+      "description": "Aggregated verifier verdict counts.",
+      "additionalProperties": true
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

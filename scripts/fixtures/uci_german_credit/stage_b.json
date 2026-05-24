@@ -1,0 +1,35 @@
+{
+  "general_description": "Tabular gradient-boosted classifier (XGBoost v2.0) trained on the UCI Statlog (German Credit) dataset to score retail-loan creditworthiness. Provider: Acme Credit AI Ltd. Person responsible: Head of Model Risk. Intended to support, not replace, human credit officers.",
+  "model_type": "gradient_boosted_trees_xgboost_v2",
+  "design_process": "Stratified 80/20 train/test split; 5-fold CV with grid-search hyper-parameter tuning; calibration via isotonic regression; threshold tuned to maximise expected utility under the asymmetric cost matrix recommended in the UCI German Credit metadata.",
+  "training_data_description": "UCI Statlog (German Credit Data) - 1000 instances, 20 attributes (7 numerical, 13 categorical), binary creditworthy target (1 = good risk, 0 = bad risk). Class prior 70/30 good:bad. No sensitive demographic features beyond age (used per Art. 10 derogation only for bias monitoring).",
+  "data_governance_measures": "Data minimisation per Art. 10 §2(b); access restricted to model-development team; provenance documented; quarterly re-collection from the same source; no further enrichment from external broker data.",
+  "monitoring_measures": "Monthly performance review on a held-out production sample; drift detection on the input feature distribution via Population Stability Index; alerting threshold PSI > 0.2.",
+  "logging_capabilities": "Per-prediction log entry recording timestamp, hashed feature vector, model version, returned score, and decision threshold band per Art. 12 §1.",
+  "accuracy_metrics": {
+    "accuracy": 0.78,
+    "auc": 0.82,
+    "f1": 0.71
+  },
+  "robustness_metrics": {
+    "adversarial_accuracy_l_inf_0_01": 0.74
+  },
+  "risk_management_file_uri": "minio://uci-german-credit/risk/risk_management_file_v1.pdf",
+  "lifecycle_change_log": [
+    "v1.0.0 initial release on UCI German Credit"
+  ],
+  "harmonised_standards": [
+    "ISO/IEC 42001:2023",
+    "ISO/IEC 23894:2023"
+  ],
+  "other_standards": [
+    "ISO/IEC 5259-1:2024"
+  ],
+  "eu_doc_uri": "minio://uci-german-credit/eu_doc/declaration_of_conformity_v1.pdf",
+  "post_market_plan_uri": "minio://uci-german-credit/pmm/post_market_monitoring_plan_v1.pdf",
+  "system_prompt_uri": null,
+  "rag_manifest_uri": null,
+  "tool_inventory": null,
+  "guardrail_config_uri": null,
+  "golden_set_uri": null
+}

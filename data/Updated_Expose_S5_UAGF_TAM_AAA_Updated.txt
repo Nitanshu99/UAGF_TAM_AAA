@@ -1,0 +1,113 @@
+﻿SRH UNIVERSITY HAMBURG
+MSc Applied Data Science and Analytics
+Department of Information
+THESIS EXPOSÉ
+UAGF-TAM: The Autonomous AI Auditor (AAA) Multi-Agent Audit System
+ProgrammeMSc Applied Data Science and AnalyticsDepartmentDepartment of InformationModuleMaster Thesis - 27 ECTSDuration6 Months (24 Weeks) - Full TimeFirst SupervisorProf. Dr. Gayan de SilvaContactGayan.deSilva@srh-hochschulen.deSecond Supervisor_________________________________ (to be confirmed)Student NameNitanshu Mayur IdnaniStudent ID100002867Submission Date_________________________________ (to be completed)
+First Supervisor
+Prof. Dr. Gayan de Silva
+Department of Information
+Gayan.deSilva@srh-hochschulen.de
+Signature: ___________________________
+Date: ___________________________Second Supervisor
+
+
+
+Signature: ___________________________
+Date: ___________________________Student
+Name: Nitanshu Mayur Idnani
+
+ID: 100002867
+
+Email: NitanshuMayur.Idnani@stud.srh-university.de
+
+Signature: 
+
+Date: 16/03/2026
+
+1. Research Context and Questions
+The EU AI Act (2024) mandates conformity assessments for high-risk AI systems - yet the audit profession has no standardised technical methodology for conducting them, and no automated tooling exists. Current AI audits are manual, bespoke, inconsistent, and expensive: a typical engagement runs 12-16 weeks and costs £50,000-£150,000. Meanwhile, organisations face a compliance deadline of August 2026. The gap between regulatory obligation and practical audit capability is one of the most pressing unsolved problems in applied AI governance.
+
+This thesis addresses that gap by delivering two interlocking contributions: (1) UAGF-TAM - a Universal Technical AI Audit Methodology defining a 6-phase audit protocol with 18 standardised artefact templates, mapped to EU AI Act Articles 9, 43, and Annex III; and (2) AAA - the Autonomous AI Auditor (AAA), built using appropriate agentic and retrieval-augmented generation (RAG) techniques, which executes the 6-phase UAGF-TAM protocol through a multi-agent pipeline to produce a full EU AI Act-compliant audit report. The system will be validated on three AI systems across three sectors.
+
+Central Research Question: Can a multi-agent AI system reliably execute a 6-phase EU AI Act conformity audit protocol, producing reports of comparable completeness and regulatory coverage to human expert reviewers - in a fraction of the time and cost?
+
+Sub-Questions
+1. What 6-phase audit protocol and 18 artefact templates are necessary and sufficient to satisfy EU AI Act Articles 9, 43, and Annex III requirements for high-risk AI systems?
+2. How does a python-constraint CSP model correctly route mandatory vs optional audit tests by EU AI Act risk tier (minimal/limited/high)?
+3. What is the completeness score and regulatory coverage percentage of AAA audit reports compared to human expert reviewers across 3 case studies?
+4. How does AAA performance generalise across AI system types: tabular classification (Finance), time-series forecasting (Retail), a live production system (Hamburg Hub), and an LLM-based or agentic system validated via the UAGF-TAM-L pathway?
+5. What adaptation effort does AAA require for each new AI system type, and what does this imply for commercial scalability?
+Theoretical Foundation and Cohort Context
+The thesis draws on three bodies of work. AI audit methodology (Mokander et al. 2023; Koshiyama et al. 2022) establishes the practitioner gap: audits exist but are manual, inconsistent, and not mapped to specific regulatory requirements. Multi-agent LLM systems (Wang et al. 2024; multi-agent framework documentation) provide the technical architecture for decomposing a complex audit workflow into specialised, coordinated agents. EU AI Act conformity assessment requirements (Articles 9, 43, Annex III) provide the regulatory specification that the UAGF-TAM protocol must satisfy. Within the cohort, S5 sits at the apex of the UAGF product suite: S4 produces the 38-control governance score; S5 AAA calls S4 CGSA as an API endpoint for the governance phase of the audit. The JSON schema is agreed with the S4 student by Week 4; after that, development is fully independent.
+2. Methodology
+The study proceeds across three phases: protocol design, AAA system development, and four-case validation.
+Phase 1 - UAGF-TAM Protocol Design (Weeks 1-4)
+The 6-phase UAGF-TAM protocol is designed on paper before a single line of code is written. Each phase is specified with: objective, mandatory evidence items, optional evidence items, the corresponding artefact template, and the EU AI Act article it satisfies. The six phases are: (1) Scope - EU AI Act risk classification; (2) Data - data quality, completeness, and bias assessment; (3) Model - performance, explainability, and fairness; (4) Output - output pattern and fairness testing; (5) Ops - monitoring, logging, and incident response documentation review; (6) Report - full audit report compilation. A conditional UAGF-TAM-L branch is embedded in Phase 1: when the system is identified as LLM-based or agentic, Phases 2-4 are replaced by the LLM/Agentic pathway (golden dataset assessment, grounding/consistency/hallucination testing, and differential prompt testing). A python-constraint model encodes which phases are mandatory vs optional per risk tier, ensuring the AAA system routes correctly for minimal, limited, and high-risk systems. If S4 is in the same cohort, the 38-control JSON API schema is agreed at a joint meeting by Week 4.
+Phase 2 - AAA System Development (Weeks 5-13)
+The AAA is built incrementally. Weeks 5-7 establish a linear pipeline (Agents 1-3, no branching) tested end-to-end on the UCI German Credit dataset - the goal is a rough but complete report output before adding complexity. Weeks 8-9 add Agents 4 and 5 and the python-constraint routing logic. Weeks 10-11 add Agent 6 (Report) and reportlab PDF generation, producing a complete 2-hour audit report. Weeks 12-13 add conditional routing logic for risk-tier branching, tool calling for document parsing using appropriate RAG techniques, pytest unit tests per agent, and a GitHub Actions CI/CD pipeline. The system is tested on German Credit at each stage - never move to the next phase until the current one produces correct outputs.
+Phase 3 - Four-Case Study Validation (Weeks 14-17)
+Case Study 1 (Weeks 14-15) audits a Finance model on UCI German Credit: full AAA run, with supervisor review of completeness and regulatory coverage on this case study. Case Study 2 (Weeks 14-15, parallel) audits a Retail forecasting model on M5 data, adapting SHAP to TreeExplainer for time-series. Case Study 3 (Weeks 16-17) audits a live Hamburg Hub production AI system - the most valuable validation, requiring the data privacy agreement signed in Week 1. Findings are discussed with the company contact and sign-off obtained for report publication. Case Study 4 (Weeks 16-17) audits an LLM-based or agentic system sourced from Hamburg Hub or an open dataset, validating the UAGF-TAM-L pathway. All four cases are compiled into a comparison table.
+3. Deliverables - What Exists at End of Week 24
+#DeliverableDescriptionQuality Standard1AAA Multi-Agent Auditor6-agent system: upload AI system docs + model → automated 6-phase UAGF-TAM audit → EU AI Act-compliant PDF report in under 2 hours. Deployed on Streamlit Cloud (demo version with sample AI system).Validated on 4 AI systems across 3 sectors (3 traditional ML + 1 LLM/agentic). Supervisor review on one case study for completeness and regulatory coverage. System URL in thesis.218 Audit Artefact TemplatesOpen-source set of 18 standardised audit evidence templates covering all 6 UAGF-TAM phases. MIT licence. Published on GitHub.Used in all 4 case studies. Reviewed by Hamburg Hub company. Community-ready documentation.33 Case Study Audit ReportsFull AAA audit reports for: (1) Finance - UCI German Credit, (2) Retail - M5 Forecasting, (3) Hamburg Hub live AI system, (4) LLM/Agentic system (Hamburg Hub or open dataset). Comparison table: AAA across all four case studies, covering both traditional ML and LLM/agentic pathways.Hamburg Hub sign-off on report publication. Data privacy agreement in place from Week 1.4Research PaperSubmitted to NeurIPS Workshop on AI Safety or AAAI Workshop by Week 21. Extended version submitted to Computers & Security.Both submission confirmations attached as thesis appendix.5Master ThesisComplete thesis (approx. 15,000-20,000 words) in SRH thesis format.Submitted to SRH Hamburg thesis portal by Week 24.4. 24-Week Delivery Plan
+WeekPhaseTasks & DeliverablesW1-2Lit + DesignLiterature review: EU AI Act Articles 9/43/Annex III, ISO 19011, ISAE 3000, AI auditing papers (Mokander 2023, Koshiyama 2022). Design the 6-phase UAGF-TAM protocol on paper. Define 18 artefact templates. Set up a multi-agent development environment and study multi-agent examples. CRITICAL: Sign Hamburg Hub data privacy agreement this week - Case Study 3 depends on it.W3-4Lit + DesignProtocol design finalisation: for each of 6 phases, define objective, mandatory evidence, optional evidence, artefact template, and EU AI Act article mapping. Design constraint model: risk tier (minimal/limited/high) → mandatory vs optional tests. If S4 in same cohort: agree shared 38-control JSON API contract at joint meeting.W5-7BuildAAA Build - linear pipeline first (no branching). Agent 1 (Scope): EU AI Act risk classifier → outputs risk tier. Agent 2 (Data): pandas data quality checks - completeness, consistency, basic bias scan. Agent 3 (Model): SHAP inline + demographic parity fairness check. Test end-to-end on UCI German Credit. Get a full report output, even if rough. Linear first - agents and branching come later.W8-9BuildAdd Agent 4 (Output): samples 200 model predictions → checks for discriminatory output patterns. Agent 5 (Ops): LLM reviews uploaded monitoring/logging documentation. Add python-constraint: mandatory vs optional test selection by risk tier. Test on German Credit again. Verify constraint routing logic is correct before adding complexity.W10-11BuildAgent 6 (Report): compiles all phase outputs → structures into audit report. reportlab PDF: cover page, executive summary, phase-by-phase findings, EU AI Act regulatory compliance matrix, remediation recommendations. Full end-to-end test: German Credit → complete PDF audit report in under 2 hours.W12-13BuildAdd conditional edges + parallel execution using the chosen agentic framework: if risk tier = minimal → skip Phases 3/4 → Ops + Report. If risk tier = high → all 6 phases in full. Add the UAGF-TAM-L branch: if Phase 1 identifies an LLM or agentic system, route Phases 2-4 to the LLM pathway. Add RAG-based tool calling for document parsing (policy docs, model cards). pytest: unit tests for each agent. CI/CD pipeline added (brief reference only - not the primary focus of this sprint).W14-15Case StudiesCase Study 1 - Finance (UCI German Credit): full AAA audit run. Supervisor review of completeness and regulatory coverage on this case study. Case Study 2 - Retail (M5 Forecasting): adapt AAA for time-series model (TreeExplainer SHAP). Full audit run. Document adaptation effort for each new model type.W16-17Case StudiesCase Study 3 - Hamburg Hub live production AI system (data privacy agreement must be signed). Full AAA run on a real system. Discuss findings with company contact. Obtain sign-off on report publication. Case Study 4 - LLM-based or agentic system from Hamburg Hub or open dataset: validates the UAGF-TAM-L pathway end-to-end. Compile all 4 case study comparison tables: AAA across completeness, accuracy, and regulatory coverage, covering both traditional ML and LLM/agentic systems.W18-19Analysis + WriteFull results analysis: completeness scores, regulatory coverage %, AAA vs human benchmark across 3 case studies. Tool finalisation: UI polish, error handling, edge cases. Release 18 artefact templates on GitHub (MIT licence). Deploy AAA demo on Streamlit Cloud. Write paper draft (4-8 pages, NeurIPS/AAAI Workshop format). Supervisor review.W20Analysis + WriteIncorporate supervisor feedback. Write extended version (7,000+ words) for Computers & Security submission. Finalise GitHub documentation and deployment guide.W21PAPER DEADLINEHARD DEADLINE: Submit workshop paper (NeurIPS/AAAI). Submit extended version to Computers & Security. GitHub: clean repo, README, artefact templates, deployment guide. LinkedIn post: 'I built an AI that audits AI - here is what it found in 3 real systems.'W22-24ThesisThesis writing. Supervisor review Week 23. Final submission Week 24.5. Publication Plan
+Proposed Paper Title
+An AI That Audits AI: A Multi-Agent System for Automated EU AI Act Conformity Assessment
+
+AuthorsProf. Dr. Gayan de Silva; [Student Name]; other supervisors (per SRH authorship policy)Submit byWeek 21 - hard deadline. Two submissions: workshop (4-8 pages) + extended journal version.Target length4-8 pages (NeurIPS/AAAI Workshop) + 7,000-9,000 words (Computers & Security extended)S4 integration noteS5 AAA calls S4 CGSA as an API endpoint for the governance phase. Papers are academically independent - no cross-citations. Integration is at software level only.
+Target Venues - Ranked
+#VenueTypeWhy SuitableCycle1NeurIPS Workshop on AI SafetyWorkshop (A*)Premier venue for AI safety and governance tooling. Multi-agent audit system is exactly in scope. Workshop format (4-8 pages) fits the technical contribution. High-visibility audience.Annual. Check 2025/26 deadline.2AAAI Workshop on AI GovernanceWorkshop (A*)Direct fit for automated EU AI Act conformity assessment. Technical CGSA/AAA pipeline contribution. Shared audience with S4 paper, creating cohort visibility.Annual. Check 2026 deadline.3Computers & SecurityJournal (Q1)Extended version of workshop paper. Automated AI compliance systems are core scope. Falco et al. (2021) and Mokander et al. (2022/2023) establish the precedent lineage. Impact Factor 5.6.Rolling.4Nature Machine IntelligenceJournal (Q1)If case study results are strong, the 'AI auditing AI' finding has broad interdisciplinary appeal. Falco et al. (2021) published here - direct precedent for AI governance policy papers.Rolling. Review 8-12 weeks.5IEEE Transactions on Dependable and Secure ComputingJournal (Q1)AI system reliability, safety, and compliance auditing is core scope. Multi-agent CSP-guided audit pipeline is a strong technical contribution. Impact Factor 7.0.Rolling.6. Required Reading List
+The following papers must be read before Week 3. Annotated notes covering: (a) main argument, (b) methodology, (c) relevance to UAGF-TAM or AAA, and (d) gap this thesis addresses. Submitted to supervisor at Milestone M2.
+
+6. Mokander, J. et al. (2023). Auditing Large Language Models: A Three-Layered Approach. AI & Ethics, 4. - Direct methodology reference: the most current AI audit framework in the literature.
+7. Wang, L. et al. (2024). A Survey on Large Language Model Based Autonomous Agents. Frontiers of Computer Science, 18(6). - Multi-agent LLM systems: theoretical foundation for AAA architecture.
+8. Koshiyama, A. et al. (2022). Towards Algorithm Auditing. Alan Turing Institute. - Practitioner gap analysis: what human auditors currently do and where automation can help.
+9. Falco, G. et al. (2021). Governing AI Safety through Independent Audits. Nature Machine Intelligence, 3. - Policy case for independent AI auditing: published in target journal.
+10. European Parliament (2024). EU AI Act, Articles 9, 43, Annex III. Official Journal L 2024/1689. - Primary regulatory text: the specification the UAGF-TAM must satisfy.
+11. Chase, H. (2022). LangChain. GitHub: langchain-ai/langchain. - Core tool documentation. Read the relevant agentic framework and RAG documentation - required reading before Week 1.
+12. Gebru, T. et al. (2021). Datasheets for Datasets. CACM, 64(12). - Data audit artefact design: informs Phase 2 (Data) evidence templates.
+7. Student Research Space and Optional Extensions
+All extensions require supervisor approval before incorporation. The AAA build timeline has limited slack - unapproved additions directly risk the Week 21 and Week 24 deadlines.
+
+• Additional AI System Types: Case Study 4 (LLM/agentic system) is now a required deliverable validating the UAGF-TAM-L pathway. If a second Hamburg Hub company agrees to participate beyond Case Study 4, a Case Study 5 would further extend generalisability findings. Pursue opportunistically from Week 17 only if all four primary case studies are on track.
+• UAGF-TAM-L Pathway Deepening: The LLM/Agentic pathway (UAGF-TAM-L) is now a mandatory component of the 6-phase protocol, triggered when Phase 1 identifies an LLM-based or agentic system. Additional optional deepening - such as extended prompt injection testing or red-teaming - may be incorporated with supervisor approval. Maximum 1 additional week.
+• Commercial Scalability Analysis: Given the AAA's commercial potential (replacing 12-16 week manual audits), an explicit cost and time comparison - AAA vs human audit across all 3 case studies - would strengthen both the paper and the commercial case. This can be incorporated into the results section at zero additional research cost.
+• UAGF Product Suite Integration Test: If S4 CGSA is deployed in the same cohort, an integrated end-to-end test (S4 governance score feeding into S5 AAA via API) should be conducted in Week 17 as a demonstration of the full UAGF product suite. This is a demonstration only - the two theses remain academically independent.
+8. Supervision Milestones
+MilestoneWeekStudent SubmitsSupervisor ActionM1 Kickoff1Signed exposé + multi-agent development environment set up and tested + Hamburg Hub data privacy agreement signed + UAGF-TAM 6-phase protocol design on paperReview protocol design. Confirm Hamburg Hub contact. Agree S4 JSON schema meeting if applicable.M2 Protocol Finalised4UAGF-TAM protocol document: 6 phases × objective/evidence/template/EU AI Act mapping + 18 artefact templates drafted + constraint model designedReview protocol. Approve constraint routing logic before build begins.M3 Linear Pipeline7Working linear AAA (Agents 1-3) on German Credit. Full end-to-end report output, even if rough.Review output quality. Identify gaps in audit coverage. Approve for Agents 4-6 build.M4 Full AAA Pipeline11All 6 agents working. Conditional branching by risk tier. Full PDF report from German Credit in under 2 hours.Review report quality and regulatory coverage. Approve for case study phase.M5 Case Studies 1+215Case Study 1 (Finance) + Case Study 2 (Retail) audit reports. Supervisor review of Case Study 1 for completeness and regulatory coverage.Review completeness scores. Approve approach for Hamburg Hub live case study.M6 Case Study 317Hamburg Hub case study audit report + company sign-off confirmation + Case Study 4 LLM/agentic audit report (UAGF-TAM-L validated) + 4-case comparison tableReview live system audit. Written feedback within 3 days.M7 Paper Draft19Workshop paper draft (4-8 pages) + extended journal version draftWritten feedback within 5 working days.M8 Submit21Workshop + journal submission confirmations + deployed demo URL + GitHub linkCountersign submission record.M9 Final24Thesis portal submission confirmationConfirm receipt. Sign off.9. Student Declaration
+By signing this exposé, the student confirms they have read and understood the full research plan and commit to the following:
+
+• I have read and understood the complete exposé including research questions, methodology, deliverables, and timeline.
+• I commit to submitting a research paper to the target venue by Week 21. I understand this is a hard deadline.
+• I commit to submitting the complete thesis to the SRH Hamburg portal by Week 24.
+• I will attend all supervision milestones and submit required materials before each checkpoint.
+• I will not expand the research scope without written approval from the first supervisor.
+• I will use AI-assisted coding tools responsibly: all generated code must be reviewed, understood, and tested by me. AI tools may not be used to write the literature review, discussion, or conclusions.
+• I confirm this is my own research proposal and I have not submitted any substantially similar proposal elsewhere.
+
+First Supervisor
+Prof. Dr. Gayan de Silva
+Department of Information
+Gayan.deSilva@srh-hochschulen.de
+Signature: ____________________________
+Date: ____________________________Second Supervisor
+
+
+
+Signature: ____________________________
+Date: ____________________________Student
+Name: Nitanshu Mayur Idnani
+
+ID: 100002867
+
+Email: NitanshuMayur.Idnani@stud.srh-university.de
+
+Signature: 
+
+Date: 16/03/2026
+- End of Exposé -
+SRH University Hamburg · MSc Applied Data Science and Analytics · Department of Information
+SRH UNIVERSITY HAMBURG  |  MSc Applied Data Science and Analytics  |  Thesis Exposé
+
+SRH University Hamburg · MSc Applied Data Science and Analytics · Department of Information
+

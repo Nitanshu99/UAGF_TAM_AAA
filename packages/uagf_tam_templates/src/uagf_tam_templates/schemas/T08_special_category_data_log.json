@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T08_special_category_data_log:1.0.0",
+  "title": "T08 — Special Category Data Log",
+  "description": "Art. 10 §5 lawful-basis log for special-category personal data. Only populated when special_category_data = true. EU AI Act Art. 10 §5; GDPR Art. 9.",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "special_category_data_present",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this audit engagement."
+    },
+    "special_category_data_present": {
+      "type": "boolean",
+      "description": "True if any special-category personal data (GDPR Art. 9) has been detected or declared."
+    },
+    "special_categories_detected": {
+      "type": "array",
+      "description": "GDPR Art. 9 special categories present in training or test data.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "racial_or_ethnic_origin",
+          "political_opinions",
+          "religious_beliefs",
+          "trade_union_membership",
+          "genetic_data",
+          "biometric_data",
+          "health_data",
+          "sex_life_or_orientation",
+          "criminal_convictions"
+        ]
+      }
+    },
+    "lawful_basis_entries": {
+      "type": "array",
+      "description": "One entry per special category, recording the Art. 10 §5 lawful basis claimed.",
+      "items": {
+        "type": "object",
+        "required": [
+          "special_category",
+          "lawful_basis",
+          "basis_reference"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "special_category": {
+            "type": "string",
+            "description": "The GDPR Art. 9 special category to which this entry applies."
+          },
+          "lawful_basis": {
+            "type": "string",
+            "enum": [
+              "art9_2a_explicit_consent",
+              "art9_2b_employment_obligations",
+              "art9_2c_vital_interests",
+              "art9_2d_legitimate_foundation",
+              "art9_2e_manifestly_public_data",
+              "art9_2f_legal_claims",
+              "art9_2g_public_interest",
+              "art9_2h_medical_purposes",
+              "art9_2i_public_health",
+              "art9_2j_archiving_research",
+              "ai_act_art10_5_statistical_correction"
+            ],
+            "description": "Claimed lawful basis under GDPR Art. 9 §2 or EU AI Act Art. 10 §5."
+          },
+          "basis_reference": {
+            "type": "string",
+            "description": "Document or policy reference substantiating the lawful basis claim."
+          },
+          "dpa_consultation_required": {
+            "type": ["boolean", "null"],
+            "description": "Whether a DPIA or DPA consultation is required for this processing."
+          },
+          "dpia_conducted": {
+            "type": ["boolean", "null"],
+            "description": "Whether a Data Protection Impact Assessment has been conducted."
+          },
+          "dpia_reference": {
+            "type": ["string", "null"],
+            "description": "Reference to the DPIA document if conducted."
+          },
+          "data_minimisation_confirmed": {
+            "type": ["boolean", "null"],
+            "description": "Confirmation that data minimisation principle (GDPR Art. 5(1)(c)) is satisfied."
+          },
+          "retention_period": {
+            "type": ["string", "null"],
+            "description": "Stated retention period for this special-category data."
+          }
+        }
+      }
+    },
+    "art10_5_statistical_correction_applies": {
+      "type": "boolean",
+      "description": "True if special-category data is retained strictly to correct bias under EU AI Act Art. 10 §5.",
+      "default": false
+    },
+    "statistical_correction_rationale": {
+      "type": ["string", "null"],
+      "description": "Mandatory rationale if art10_5_statistical_correction_applies is true."
+    },
+    "privacy_tier3_triggered": {
+      "type": "boolean",
+      "description": "True when this log triggers the Privacy/DPO Sub-Agent (Tier-3) spawning condition.",
+      "default": false
+    },
+    "hitl_review_required": {
+      "type": "boolean",
+      "description": "True if HITL review is required before processing can continue.",
+      "default": false
+    },
+    "hitl_review_reason": {
+      "type": ["string", "null"],
+      "description": "Reason for the HITL review requirement."
+    },
+    "compliance_narrative": {
+      "type": ["string", "null"],
+      "description": "Free-text narrative on Art. 10 §5 / GDPR Art. 9 compliance status."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this artefact was generated."
+    }
+  }
+}

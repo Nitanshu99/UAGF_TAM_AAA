@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T01a_stage_a_triage:1.0.0",
+  "title": "T01a — Stage A Triage Form",
+  "description": "~20-question triage form submitted at the start of each engagement. Carries the preview Art. 43 decision. EU AI Act Art. 11, Annex IV §1.",
+  "type": "object",
+  "required": [
+    "provider_name",
+    "system_name",
+    "version",
+    "intended_purpose",
+    "declared_modality",
+    "declared_risk_tier",
+    "declared_annex_iii_sections",
+    "deployment_context",
+    "provider_elects_third_party",
+    "gdpr_overlap",
+    "gpai_general_purpose",
+    "special_category_data"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "provider_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Legal name of the AI system provider (Art. 11)."
+    },
+    "deployer_name": {
+      "type": ["string", "null"],
+      "description": "Legal name of the deployer, if different from provider."
+    },
+    "system_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Commercial or internal name of the AI system."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+",
+      "description": "Semantic version of the AI system under audit."
+    },
+    "intended_purpose": {
+      "type": "string",
+      "minLength": 20,
+      "description": "Intended purpose as described by the provider (Art. 13 §3)."
+    },
+    "declared_modality": {
+      "type": "string",
+      "enum": ["tabular", "cv", "nlp", "time_series", "llm", "agentic", "gpai"],
+      "description": "Client-declared primary technical modality."
+    },
+    "declared_risk_tier": {
+      "type": "string",
+      "enum": ["high", "limited", "minimal", "gpai"],
+      "description": "Client self-assessed risk tier per Art. 6 / Annex III."
+    },
+    "declared_annex_iii_sections": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["1","2","3","4","5","6","7","8"] },
+      "uniqueItems": true,
+      "description": "Annex III sections the client declares apply to this system."
+    },
+    "deployment_context": {
+      "type": "string",
+      "enum": ["b2b", "b2c", "public_sector", "internal"],
+      "description": "Primary deployment context."
+    },
+    "provider_elects_third_party": {
+      "type": "boolean",
+      "description": "Whether the provider elects third-party notified-body assessment (Art. 43 §1(b))."
+    },
+    "gdpr_overlap": {
+      "type": "boolean",
+      "description": "Whether the system processes personal data subject to GDPR."
+    },
+    "gpai_general_purpose": {
+      "type": "boolean",
+      "description": "Whether the system is a general-purpose AI model (Arts. 51–55)."
+    },
+    "special_category_data": {
+      "type": "boolean",
+      "description": "Whether the system processes special-category data (Art. 10 §5, GDPR Art. 9)."
+    },
+    "art43_preview": {
+      "type": ["string", "null"],
+      "enum": ["annex_vi_internal_control", "annex_vii_notified_body", "not_applicable", null],
+      "description": "Preview Art. 43 decision computed from declared values at Stage A submission."
+    },
+    "cgsa_assessment_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "UUID of the upstream S4 CGSA assessment, if available."
+    }
+  }
+}

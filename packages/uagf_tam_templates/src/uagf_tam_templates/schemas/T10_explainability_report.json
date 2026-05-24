@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T10_explainability_report:1.0.0",
+  "title": "T10 — Explainability Report",
+  "description": "Explainability evidence from SHAP / Grad-CAM / LIME tools with human interpretation. EU AI Act Art. 13 §1–§2 (transparency and interpretability).",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "modality",
+    "techniques_applied",
+    "global_explanation",
+    "interpretation",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this audit engagement."
+    },
+    "modality": {
+      "type": "string",
+      "enum": ["tabular", "cv", "nlp", "time_series", "llm", "agentic", "gpai"]
+    },
+    "techniques_applied": {
+      "type": "array",
+      "description": "Names of explainability techniques actually executed.",
+      "items": {
+        "type": "string",
+        "enum": ["shap", "lime", "gradcam", "feature_importance", "none"]
+      }
+    },
+    "global_explanation": {
+      "type": "object",
+      "description": "Global feature-importance ranking from SHAP or surrogate model.",
+      "required": ["technique", "feature_importance"],
+      "additionalProperties": false,
+      "properties": {
+        "technique": { "type": "string" },
+        "feature_importance": {
+          "type": "array",
+          "description": "List of {feature, importance} sorted by absolute importance desc.",
+          "items": {
+            "type": "object",
+            "required": ["feature", "importance"],
+            "additionalProperties": false,
+            "properties": {
+              "feature": { "type": "string" },
+              "importance": { "type": "number" },
+              "rank": { "type": ["integer", "null"], "minimum": 1 }
+            }
+          }
+        },
+        "sample_size": { "type": ["integer", "null"], "minimum": 0 },
+        "tool": { "type": ["string", "null"] }
+      }
+    },
+    "local_explanations": {
+      "type": ["array", "null"],
+      "description": "Per-instance explanations from LIME (representative sample).",
+      "items": {
+        "type": "object",
+        "required": ["instance_id", "prediction", "top_features"],
+        "additionalProperties": false,
+        "properties": {
+          "instance_id": { "type": "string" },
+          "prediction": { "type": ["string", "number"] },
+          "predicted_probability": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "top_features": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["feature", "contribution"],
+              "additionalProperties": false,
+              "properties": {
+                "feature": { "type": "string" },
+                "contribution": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "visual_explanations": {
+      "type": ["array", "null"],
+      "description": "Grad-CAM heatmap references for CV modality.",
+      "items": {
+        "type": "object",
+        "required": ["image_id", "heatmap_uri"],
+        "additionalProperties": false,
+        "properties": {
+          "image_id": { "type": "string" },
+          "heatmap_uri": { "type": "string" },
+          "target_class": { "type": ["string", "null"] },
+          "layer": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "interpretation": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Human-readable narrative interpreting the explanations (Art. 13 §1)."
+    },
+    "skipped_reason": {
+      "type": ["string", "null"],
+      "description": "If techniques could not run (e.g. no trained model accessible) this explains why."
+    },
+    "art13_compliance_notes": {
+      "type": ["string", "null"],
+      "description": "Notes on Art. 13 §1–§2 transparency and interpretability compliance."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this artefact was generated."
+    }
+  }
+}

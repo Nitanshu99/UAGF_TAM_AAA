@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T11_robustness_report:1.0.0",
+  "title": "T11 — Robustness Report",
+  "description": "Adversarial robustness probe results: clean vs perturbed accuracy, attack success rates, robustness verdict. EU AI Act Art. 15 (accuracy, robustness, cybersecurity).",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "modality",
+    "clean_accuracy",
+    "probes",
+    "overall_robustness_verdict",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this audit engagement."
+    },
+    "modality": {
+      "type": "string",
+      "enum": ["tabular", "cv", "nlp", "time_series", "llm", "agentic", "gpai"]
+    },
+    "clean_accuracy": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Baseline accuracy on unperturbed evaluation set."
+    },
+    "evaluation_sample_size": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "probes": {
+      "type": "array",
+      "description": "One entry per attack probe executed.",
+      "items": {
+        "type": "object",
+        "required": ["probe_name", "attack_family", "adversarial_accuracy", "attack_success_rate"],
+        "additionalProperties": false,
+        "properties": {
+          "probe_name": { "type": "string" },
+          "attack_family": {
+            "type": "string",
+            "enum": ["fgsm", "pgd", "deepfool", "textattack", "noise_injection", "feature_perturbation", "other"]
+          },
+          "epsilon": { "type": ["number", "null"], "minimum": 0 },
+          "norm": { "type": ["string", "null"] },
+          "adversarial_accuracy": { "type": "number", "minimum": 0, "maximum": 1 },
+          "attack_success_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+          "accuracy_drop": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "tool": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "noise_robustness": {
+      "type": ["object", "null"],
+      "description": "Performance under random noise perturbations (non-adversarial).",
+      "additionalProperties": false,
+      "properties": {
+        "noise_type": { "type": ["string", "null"] },
+        "noise_level": { "type": ["number", "null"] },
+        "accuracy_under_noise": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+      }
+    },
+    "overall_robustness_verdict": {
+      "type": "string",
+      "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_TESTED"],
+      "description": "Aggregate robustness verdict for Art. 15 compliance."
+    },
+    "min_adversarial_accuracy": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Minimum adversarial accuracy across all probes — drives the verdict."
+    },
+    "robustness_narrative": {
+      "type": ["string", "null"],
+      "description": "Free-text narrative summarising robustness findings and Art. 15 alignment."
+    },
+    "skipped_reason": {
+      "type": ["string", "null"],
+      "description": "If no probes could be run (e.g. no model access) this explains why."
+    },
+    "art15_compliance_notes": {
+      "type": ["string", "null"],
+      "description": "Notes on Art. 15 accuracy / robustness / cybersecurity compliance."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this artefact was generated."
+    }
+  }
+}

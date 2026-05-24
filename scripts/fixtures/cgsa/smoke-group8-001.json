@@ -1,0 +1,155 @@
+{
+  "schema_version": "1.0.0",
+  "metadata": {
+    "assessment_id": "smoke-group8-001",
+    "organisation_name": "Acme Audit Demo GmbH",
+    "system_under_audit": "Credit Risk Scorer v1.0",
+    "cgsa_version": "1.0.0",
+    "assessment_timestamp": "2026-03-16T14:30:00Z",
+    "risk_tier": "high",
+    "document_sources": ["AI_Policy_v1.pdf", "Risk_Framework.docx"],
+    "uagf_gmm_version": "1.0.0"
+  },
+  "overall_scores": {
+    "composite_maturity_score": 2.7,
+    "composite_maturity_label": "developing",
+    "eu_ai_act_coverage_pct": 68.4,
+    "csp_satisfiable": false,
+    "governance_verdict": "partially_compliant",
+    "controls_assessed": 38,
+    "controls_meeting_threshold": 24,
+    "controls_below_threshold": 14
+  },
+  "domains": [
+    {
+      "domain_id": "D1", "domain_name": "Risk Management", "domain_score": 2.8,
+      "domain_eu_ai_act_articles": ["Article 9"],
+      "controls": [
+        {
+          "control_id": "C01", "control_name": "Risk Identification",
+          "maturity_score": 3, "maturity_label": "defined",
+          "evidence_summary": "Risk identification documented.",
+          "confidence": 0.85,
+          "source_frameworks": ["EU AI Act", "ISO 42001"],
+          "eu_ai_act_articles": ["Article 9"],
+          "hard_constraint": {"applicable": true, "threshold_score": 3, "satisfied": true},
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D2", "domain_name": "Data Governance", "domain_score": 2.0,
+      "domain_eu_ai_act_articles": ["Article 10"],
+      "controls": [
+        {
+          "control_id": "C07", "control_name": "Data Quality Management",
+          "maturity_score": 2, "maturity_label": "developing",
+          "evidence_summary": "Partial validation only.",
+          "confidence": 0.78,
+          "source_frameworks": ["EU AI Act"],
+          "eu_ai_act_articles": ["Article 10 point 2"],
+          "hard_constraint": {"applicable": true, "threshold_score": 3, "satisfied": false},
+          "gap_severity": "critical"
+        }
+      ]
+    },
+    {
+      "domain_id": "D3", "domain_name": "Model Development and Testing", "domain_score": 2.5,
+      "domain_eu_ai_act_articles": ["Article 15"],
+      "controls": [
+        {
+          "control_id": "C14", "control_name": "Model Testing",
+          "maturity_score": 3, "maturity_label": "defined",
+          "evidence_summary": "Unit tests documented.",
+          "confidence": 0.90,
+          "source_frameworks": ["ISO 42001"],
+          "eu_ai_act_articles": ["Article 15"],
+          "hard_constraint": {"applicable": true, "threshold_score": 3, "satisfied": true},
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D4", "domain_name": "Transparency and Explainability", "domain_score": 2.5,
+      "domain_eu_ai_act_articles": ["Article 13"],
+      "controls": [
+        {
+          "control_id": "C20", "control_name": "Model Card",
+          "maturity_score": 3, "maturity_label": "defined",
+          "evidence_summary": "Model card present.",
+          "confidence": 0.80,
+          "source_frameworks": ["EU AI Act"],
+          "eu_ai_act_articles": ["Article 13"],
+          "hard_constraint": {"applicable": true, "threshold_score": 3, "satisfied": true},
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D5", "domain_name": "Human Oversight and Accountability", "domain_score": 2.5,
+      "domain_eu_ai_act_articles": ["Article 14"],
+      "controls": [
+        {
+          "control_id": "C26", "control_name": "Human Oversight Roles",
+          "maturity_score": 3, "maturity_label": "defined",
+          "evidence_summary": "Roles defined.",
+          "confidence": 0.82,
+          "source_frameworks": ["EU AI Act"],
+          "eu_ai_act_articles": ["Article 14"],
+          "hard_constraint": {"applicable": true, "threshold_score": 3, "satisfied": true},
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D6", "domain_name": "Monitoring and Incident Response", "domain_score": 2.2,
+      "domain_eu_ai_act_articles": ["Article 17", "Article 72"],
+      "controls": [
+        {
+          "control_id": "C30", "control_name": "Incident Response Procedures",
+          "maturity_score": 2, "maturity_label": "developing",
+          "evidence_summary": "Partial IR plan referenced.",
+          "confidence": 0.54,
+          "source_frameworks": ["EU AI Act"],
+          "eu_ai_act_articles": ["Article 72"],
+          "hard_constraint": {"applicable": true, "threshold_score": 3, "satisfied": false},
+          "gap_severity": "high"
+        }
+      ]
+    }
+  ],
+  "eu_ai_act_compliance_matrix": {
+    "article_9":  {"article_reference": "Article 9",  "article_title": "Risk management system", "status": "satisfied", "controls_mapped": ["C01"], "controls_satisfied": ["C01"], "coverage_pct": 100.0, "hard_constraints_violated": [], "article_summary": "Article 9 satisfied."},
+    "article_10": {"article_reference": "Article 10", "article_title": "Data and data governance", "status": "not_satisfied", "controls_mapped": ["C07"], "controls_satisfied": [], "coverage_pct": 0.0, "hard_constraints_violated": ["C07"], "article_summary": "Article 10 not satisfied — C07 hard constraint violated."},
+    "article_13": {"article_reference": "Article 13", "article_title": "Transparency to deployers", "status": "satisfied", "controls_mapped": ["C20"], "controls_satisfied": ["C20"], "coverage_pct": 100.0, "hard_constraints_violated": [], "article_summary": "Article 13 satisfied."}
+  },
+  "hard_constraint_results": {
+    "csp_satisfiable": false,
+    "total_hard_constraints": 18,
+    "violated_constraints": [
+      {"control_id": "C07", "control_name": "Data Quality Management", "required_score": 3, "actual_score": 2, "score_delta": 1, "eu_ai_act_article": "Article 10 point 2", "violation_description": "Data validation pipeline missing."}
+    ],
+    "satisfied_constraints": []
+  },
+  "remediation_roadmap": [
+    {"rank": 1, "control_id": "C07", "control_name": "Data Quality Management", "gap_severity": "critical", "current_score": 2, "target_score": 3, "action": "Define and document a formal data validation pipeline.", "eu_ai_act_article": "Article 10 point 2", "effort_estimate": "medium", "timeline_weeks": 4, "priority_rationale": "Hard constraint violation on a high-risk system."}
+  ],
+  "aaa_phase5_handoff": {
+    "phase5_verdict": "FAIL",
+    "phase5_narrative_summary": "Three hard constraint violations under Articles 9 and 10. EU AI Act coverage 68.4% below 80% threshold.",
+    "blocking_findings_count": 1,
+    "blocking_findings": [
+      {"control_id": "C07", "control_name": "Data Quality Management", "finding": "No formal data validation pipeline.", "eu_ai_act_article": "Article 10 point 2", "remediation_action": "Define and document a formal data validation pipeline."}
+    ],
+    "positive_findings": [
+      {"control_id": "C01", "control_name": "Risk Identification", "maturity_score": 3, "finding": "Risk identification formally documented."}
+    ],
+    "low_confidence_controls": [
+      {"control_id": "C30", "control_name": "Incident Response Procedures", "confidence": 0.54, "flag_reason": "No dedicated IR section."}
+    ],
+    "aaa_recommended_follow_up": [
+      {"recommendation": "Request the Data Management Plan.", "rationale": "C07 below threshold.", "urgency": "required_before_report_completion"}
+    ],
+    "cgsa_report_url": "https://cgsa.example/reports/smoke-group8-001"
+  }
+}

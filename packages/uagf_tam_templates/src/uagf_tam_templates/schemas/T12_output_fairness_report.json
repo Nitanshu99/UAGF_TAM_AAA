@@ -1,0 +1,181 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T12_output_fairness_report:1.0.0",
+  "title": "T12 — Output Fairness Report",
+  "description": "Demographic parity, equal opportunity, disparate impact, and subgroup performance metrics. EU AI Act Art. 10 §2(f) (bias detection), Art. 15 §1 (accuracy and non-discrimination).",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "modality",
+    "sensitive_features",
+    "demographic_parity",
+    "equal_opportunity",
+    "disparate_impact",
+    "subgroup_metrics",
+    "overall_fairness_verdict",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this audit engagement."
+    },
+    "modality": {
+      "type": "string",
+      "enum": ["tabular", "cv", "nlp", "time_series", "llm", "agentic", "gpai"]
+    },
+    "sensitive_features": {
+      "type": "array",
+      "description": "Names of sensitive attributes used in fairness analysis (e.g. ['gender', 'age_group']).",
+      "items": { "type": "string" }
+    },
+    "evaluation_sample_size": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "demographic_parity": {
+      "type": "object",
+      "description": "Selection-rate parity across groups from demographic_parity tool.",
+      "required": ["metric", "verdict", "sample_size"],
+      "additionalProperties": false,
+      "properties": {
+        "metric": { "type": "string" },
+        "difference": { "type": ["number", "null"] },
+        "ratio": { "type": ["number", "null"] },
+        "group_rates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["group", "selection_rate"],
+            "additionalProperties": false,
+            "properties": {
+              "group": { "type": "string" },
+              "selection_rate": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "verdict": {
+          "type": "string",
+          "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_TESTED"]
+        },
+        "sample_size": { "type": "integer", "minimum": 0 },
+        "tool": { "type": ["string", "null"] },
+        "positive_label": { "type": ["string", "null"] }
+      }
+    },
+    "equal_opportunity": {
+      "type": "object",
+      "description": "True-positive-rate gap across groups from equal_opportunity tool.",
+      "required": ["metric", "verdict", "sample_size"],
+      "additionalProperties": false,
+      "properties": {
+        "metric": { "type": "string" },
+        "difference": { "type": ["number", "null"] },
+        "tpr_by_group": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["group", "true_positive_rate"],
+            "additionalProperties": false,
+            "properties": {
+              "group": { "type": "string" },
+              "true_positive_rate": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "verdict": {
+          "type": "string",
+          "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_TESTED"]
+        },
+        "sample_size": { "type": "integer", "minimum": 0 },
+        "tool": { "type": ["string", "null"] },
+        "positive_label": { "type": ["string", "null"] }
+      }
+    },
+    "disparate_impact": {
+      "type": "object",
+      "description": "Four-fifths-rule ratio from disparate_impact tool (EEOC 1978; AIF360).",
+      "required": ["metric", "verdict", "sample_size"],
+      "additionalProperties": false,
+      "properties": {
+        "metric": { "type": "string" },
+        "ratio": { "type": ["number", "null"] },
+        "privileged_group": { "type": ["string", "null"] },
+        "unprivileged_group": { "type": ["string", "null"] },
+        "privileged_selection_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "unprivileged_selection_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "four_fifths_rule_passed": { "type": ["boolean", "null"] },
+        "verdict": {
+          "type": "string",
+          "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_TESTED"]
+        },
+        "sample_size": { "type": "integer", "minimum": 0 },
+        "tool": { "type": ["string", "null"] },
+        "positive_label": { "type": ["string", "null"] }
+      }
+    },
+    "subgroup_metrics": {
+      "type": "object",
+      "description": "Per-group accuracy/selection-rate/TPR/FPR breakdown.",
+      "required": ["metric", "verdict", "sample_size"],
+      "additionalProperties": false,
+      "properties": {
+        "metric": { "type": "string" },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["group", "size", "accuracy", "selection_rate", "true_positive_rate", "false_positive_rate"],
+            "additionalProperties": false,
+            "properties": {
+              "group": { "type": "string" },
+              "size": { "type": "integer", "minimum": 0 },
+              "accuracy": { "type": "number", "minimum": 0, "maximum": 1 },
+              "selection_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+              "true_positive_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+              "false_positive_rate": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "accuracy_gap": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "worst_group": { "type": ["string", "null"] },
+        "best_group": { "type": ["string", "null"] },
+        "verdict": {
+          "type": "string",
+          "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_TESTED"]
+        },
+        "sample_size": { "type": "integer", "minimum": 0 },
+        "tool": { "type": ["string", "null"] },
+        "positive_label": { "type": ["string", "null"] }
+      }
+    },
+    "overall_fairness_verdict": {
+      "type": "string",
+      "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_TESTED"],
+      "description": "Aggregate fairness verdict across all metrics for Art. 10 §2(f) / Art. 15 §1 compliance."
+    },
+    "fairness_narrative": {
+      "type": ["string", "null"],
+      "description": "Free-text narrative summarising fairness findings and Article alignment."
+    },
+    "skipped_reason": {
+      "type": ["string", "null"],
+      "description": "If fairness analysis could not be executed (e.g. no labelled eval set or no sensitive feature) this explains why."
+    },
+    "art10_2f_compliance_notes": {
+      "type": ["string", "null"],
+      "description": "Notes on Art. 10 §2(f) bias-detection-and-correction obligation."
+    },
+    "art15_1_compliance_notes": {
+      "type": ["string", "null"],
+      "description": "Notes on Art. 15 §1 accuracy / non-discrimination obligation."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this artefact was generated."
+    }
+  }
+}

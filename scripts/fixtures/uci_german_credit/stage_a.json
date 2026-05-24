@@ -1,0 +1,17 @@
+{
+  "provider_name": "Acme Credit AI Ltd.",
+  "deployer_name": "Sample Reference Bank",
+  "system_name": "CreditScoreReference",
+  "version": "1.0.0",
+  "intended_purpose": "Assess creditworthiness of retail loan applicants on the UCI German Credit feature set for human-in-the-loop credit decisions.",
+  "declared_modality": "tabular",
+  "declared_risk_tier": "high",
+  "declared_annex_iii_sections": ["5"],
+  "deployment_context": "b2b",
+  "provider_elects_third_party": false,
+  "gdpr_overlap": true,
+  "gpai_general_purpose": false,
+  "special_category_data": false,
+  "art43_preview": null,
+  "cgsa_assessment_id": "uci-german-credit-001"
+}

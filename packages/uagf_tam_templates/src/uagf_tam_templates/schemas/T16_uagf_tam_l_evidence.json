@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T16_uagf_tam_l_evidence:1.0.0",
+  "title": "T16 — UAGF-TAM-L Evidence",
+  "description": "Golden-set evaluation, RAGAs faithfulness, groundedness, prompt-injection, and trajectory audit results for LLM/agentic systems. Art. 15; GPAI Arts. 51–55.",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "golden_set_results",
+    "ragas_metrics",
+    "groundedness_metrics",
+    "prompt_injection_results",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this audit engagement."
+    },
+    "golden_set_results": {
+      "type": "object",
+      "required": ["total_samples", "passed_samples", "failed_samples", "pass_rate"],
+      "additionalProperties": false,
+      "properties": {
+        "total_samples": { "type": "integer", "minimum": 0 },
+        "passed_samples": { "type": "integer", "minimum": 0 },
+        "failed_samples": { "type": "integer", "minimum": 0 },
+        "pass_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "failure_details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sample_id": { "type": "string" },
+              "input": { "type": "string" },
+              "expected": { "type": "string" },
+              "actual": { "type": "string" },
+              "reason": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "ragas_metrics": {
+      "type": "object",
+      "required": ["faithfulness", "answer_relevance"],
+      "additionalProperties": false,
+      "properties": {
+        "faithfulness": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "answer_relevance": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "context_precision": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "context_recall": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "answer_similarity": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "answer_correctness": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+      }
+    },
+    "groundedness_metrics": {
+      "type": "object",
+      "required": ["groundedness_score"],
+      "additionalProperties": false,
+      "properties": {
+        "groundedness_score": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "context_relevance": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "answer_relevance": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "rationale": { "type": ["string", "null"] }
+      }
+    },
+    "prompt_injection_results": {
+      "type": "object",
+      "required": ["total_probes", "successful_attacks", "vulnerability_rate"],
+      "additionalProperties": false,
+      "properties": {
+        "total_probes": { "type": "integer", "minimum": 0 },
+        "successful_attacks": { "type": "integer", "minimum": 0 },
+        "vulnerability_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "attack_types": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["attack_name", "count", "success_rate"],
+            "properties": {
+              "attack_name": { "type": "string" },
+              "count": { "type": "integer", "minimum": 0 },
+              "success_rate": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "critical_vulnerabilities": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "trajectory_audit": {
+      "type": ["object", "null"],
+      "description": "Audit of agentic tool-call sequences and trajectories.",
+      "required": ["total_trajectories", "compliant_trajectories", "violation_count"],
+      "additionalProperties": false,
+      "properties": {
+        "total_trajectories": { "type": "integer", "minimum": 0 },
+        "compliant_trajectories": { "type": "integer", "minimum": 0 },
+        "violation_count": { "type": "integer", "minimum": 0 },
+        "violations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["trajectory_id", "violation_type", "description"],
+            "properties": {
+              "trajectory_id": { "type": "string" },
+              "violation_type": { "type": "string" },
+              "description": { "type": "string" },
+              "step_index": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "overall_verdict": {
+      "type": "string",
+      "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_TESTED"]
+    },
+    "interpretation_notes": { "type": ["string", "null"] },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

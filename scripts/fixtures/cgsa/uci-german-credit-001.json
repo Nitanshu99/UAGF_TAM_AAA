@@ -1,0 +1,162 @@
+{
+  "schema_version": "1.0.0",
+  "metadata": {
+    "assessment_id": "uci-german-credit-001",
+    "organisation_name": "Acme Credit AI Ltd.",
+    "system_under_audit": "CreditScoreReference v1.0.0",
+    "cgsa_version": "1.0.0",
+    "assessment_timestamp": "2026-05-20T12:00:00Z",
+    "risk_tier": "high",
+    "document_sources": [
+      "AI_Policy_v1.pdf",
+      "Risk_Management_File_v1.pdf",
+      "Data_Governance_v1.pdf"
+    ],
+    "uagf_gmm_version": "1.0.0"
+  },
+  "overall_scores": {
+    "composite_maturity_score": 3.4,
+    "composite_maturity_label": "defined",
+    "eu_ai_act_coverage_pct": 92.5,
+    "csp_satisfiable": true,
+    "governance_verdict": "compliant",
+    "controls_assessed": 38,
+    "controls_meeting_threshold": 35,
+    "controls_below_threshold": 3
+  },
+  "domains": [
+    {
+      "domain_id": "D1", "domain_name": "Risk Management", "domain_score": 3.5,
+      "domain_eu_ai_act_articles": ["Article 9"],
+      "controls": [
+        {
+          "control_id": "C01", "control_name": "Risk Identification",
+          "maturity_score": 4, "maturity_label": "optimised",
+          "evidence_summary": "Risk register and Art. 9 risk management file present.",
+          "confidence": 0.92,
+          "source_frameworks": ["EU AI Act", "ISO 42001"],
+          "eu_ai_act_articles": ["Article 9"],
+          "hard_constraint": {"applicable": true, "threshold_score": 3, "satisfied": true},
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D2", "domain_name": "Data Governance", "domain_score": 3.0,
+      "domain_eu_ai_act_articles": ["Article 10"],
+      "controls": [
+        {
+          "control_id": "C07", "control_name": "Data Quality Management",
+          "maturity_score": 3, "maturity_label": "defined",
+          "evidence_summary": "Data validation pipeline documented per Art. 10 §2(b).",
+          "confidence": 0.88,
+          "source_frameworks": ["EU AI Act"],
+          "eu_ai_act_articles": ["Article 10 point 2"],
+          "hard_constraint": {"applicable": true, "threshold_score": 3, "satisfied": true},
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D3", "domain_name": "Model Development and Testing", "domain_score": 3.5,
+      "domain_eu_ai_act_articles": ["Article 15"],
+      "controls": [
+        {
+          "control_id": "C14", "control_name": "Model Testing",
+          "maturity_score": 4, "maturity_label": "optimised",
+          "evidence_summary": "Cross-validated metrics + robustness probe documented.",
+          "confidence": 0.91,
+          "source_frameworks": ["ISO 42001"],
+          "eu_ai_act_articles": ["Article 15"],
+          "hard_constraint": {"applicable": true, "threshold_score": 3, "satisfied": true},
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D4", "domain_name": "Transparency and Explainability", "domain_score": 3.2,
+      "domain_eu_ai_act_articles": ["Article 13"],
+      "controls": [
+        {
+          "control_id": "C20", "control_name": "Model Card",
+          "maturity_score": 3, "maturity_label": "defined",
+          "evidence_summary": "Model card lifted from T09 with intended-purpose and limitations.",
+          "confidence": 0.86,
+          "source_frameworks": ["EU AI Act"],
+          "eu_ai_act_articles": ["Article 13"],
+          "hard_constraint": {"applicable": true, "threshold_score": 3, "satisfied": true},
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D5", "domain_name": "Human Oversight and Accountability", "domain_score": 3.4,
+      "domain_eu_ai_act_articles": ["Article 14"],
+      "controls": [
+        {
+          "control_id": "C26", "control_name": "Human Oversight Roles",
+          "maturity_score": 4, "maturity_label": "optimised",
+          "evidence_summary": "Two-person review on every decline; oversight roles defined.",
+          "confidence": 0.90,
+          "source_frameworks": ["EU AI Act"],
+          "eu_ai_act_articles": ["Article 14"],
+          "hard_constraint": {"applicable": true, "threshold_score": 3, "satisfied": true},
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D6", "domain_name": "Monitoring and Incident Response", "domain_score": 3.3,
+      "domain_eu_ai_act_articles": ["Article 17", "Article 72"],
+      "controls": [
+        {
+          "control_id": "C30", "control_name": "Incident Response Procedures",
+          "maturity_score": 3, "maturity_label": "defined",
+          "evidence_summary": "Documented IR runbook + Art. 72 post-market plan.",
+          "confidence": 0.84,
+          "source_frameworks": ["EU AI Act", "ISO 42001"],
+          "eu_ai_act_articles": ["Article 72"],
+          "hard_constraint": {"applicable": true, "threshold_score": 3, "satisfied": true},
+          "gap_severity": null
+        }
+      ]
+    }
+  ],
+  "eu_ai_act_compliance_matrix": {
+    "article_9":  {"article_reference": "Article 9",  "article_title": "Risk management system",   "status": "satisfied", "controls_mapped": ["C01"], "controls_satisfied": ["C01"], "coverage_pct": 100.0, "hard_constraints_violated": [], "article_summary": "Article 9 satisfied."},
+    "article_10": {"article_reference": "Article 10", "article_title": "Data and data governance", "status": "satisfied", "controls_mapped": ["C07"], "controls_satisfied": ["C07"], "coverage_pct": 100.0, "hard_constraints_violated": [], "article_summary": "Article 10 satisfied."},
+    "article_13": {"article_reference": "Article 13", "article_title": "Transparency to deployers", "status": "satisfied", "controls_mapped": ["C20"], "controls_satisfied": ["C20"], "coverage_pct": 100.0, "hard_constraints_violated": [], "article_summary": "Article 13 satisfied."},
+    "article_14": {"article_reference": "Article 14", "article_title": "Human oversight",          "status": "satisfied", "controls_mapped": ["C26"], "controls_satisfied": ["C26"], "coverage_pct": 100.0, "hard_constraints_violated": [], "article_summary": "Article 14 satisfied."},
+    "article_15": {"article_reference": "Article 15", "article_title": "Accuracy and robustness",  "status": "satisfied", "controls_mapped": ["C14"], "controls_satisfied": ["C14"], "coverage_pct": 100.0, "hard_constraints_violated": [], "article_summary": "Article 15 satisfied."},
+    "article_17": {"article_reference": "Article 17", "article_title": "Quality management system","status": "satisfied", "controls_mapped": ["C30"], "controls_satisfied": ["C30"], "coverage_pct": 100.0, "hard_constraints_violated": [], "article_summary": "Article 17 satisfied."}
+  },
+  "hard_constraint_results": {
+    "csp_satisfiable": true,
+    "total_hard_constraints": 18,
+    "violated_constraints": [],
+    "satisfied_constraints": [
+      {"control_id": "C01", "control_name": "Risk Identification",         "required_score": 3, "actual_score": 4, "eu_ai_act_article": "Article 9"},
+      {"control_id": "C07", "control_name": "Data Quality Management",     "required_score": 3, "actual_score": 3, "eu_ai_act_article": "Article 10 point 2"},
+      {"control_id": "C14", "control_name": "Model Testing",               "required_score": 3, "actual_score": 4, "eu_ai_act_article": "Article 15"},
+      {"control_id": "C20", "control_name": "Model Card",                  "required_score": 3, "actual_score": 3, "eu_ai_act_article": "Article 13"},
+      {"control_id": "C26", "control_name": "Human Oversight Roles",       "required_score": 3, "actual_score": 4, "eu_ai_act_article": "Article 14"},
+      {"control_id": "C30", "control_name": "Incident Response Procedures","required_score": 3, "actual_score": 3, "eu_ai_act_article": "Article 72"}
+    ]
+  },
+  "remediation_roadmap": [],
+  "aaa_phase5_handoff": {
+    "phase5_verdict": "PASS",
+    "phase5_narrative_summary": "All six CGSA domains meet or exceed maturity threshold 3. CSP is satisfiable. EU AI Act coverage 92.5% (>= 80%).",
+    "blocking_findings_count": 0,
+    "blocking_findings": [],
+    "positive_findings": [
+      {"control_id": "C01", "control_name": "Risk Identification", "maturity_score": 4, "finding": "Risk identification formally documented and reviewed quarterly."},
+      {"control_id": "C26", "control_name": "Human Oversight Roles", "maturity_score": 4, "finding": "Two-person review on every adverse credit decision."}
+    ],
+    "low_confidence_controls": [],
+    "aaa_recommended_follow_up": [
+      {"recommendation": "Re-assess D6 incident response in 12 months.", "rationale": "Maintain Art. 72 evidence freshness.", "urgency": "recommended"}
+    ],
+    "cgsa_report_url": "https://cgsa.example/reports/uci-german-credit-001"
+  }
+}

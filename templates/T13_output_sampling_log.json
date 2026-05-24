@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T13_output_sampling_log:1.0.0",
+  "title": "T13 — Output Sampling Log",
+  "description": "Log of up to 200 sampled predictions with discriminatory-pattern flags from toxicity_classifier. EU AI Act Art. 15 §1 (accuracy and non-discrimination).",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "modality",
+    "sampling_strategy",
+    "sample_size",
+    "toxicity_results",
+    "discriminatory_pattern_detected",
+    "overall_verdict",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this audit engagement."
+    },
+    "modality": {
+      "type": "string",
+      "enum": ["tabular", "cv", "nlp", "time_series", "llm", "agentic", "gpai"]
+    },
+    "sampling_strategy": {
+      "type": "string",
+      "enum": ["random", "stratified", "first_n", "provided", "none"],
+      "description": "How the prediction sample was drawn (≤ 200 entries per §4A T13 spec)."
+    },
+    "sample_size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of predictions actually sampled (cap = 200)."
+    },
+    "predictions_sample": {
+      "type": "array",
+      "description": "One entry per sampled prediction.",
+      "items": {
+        "type": "object",
+        "required": ["prediction_id", "predicted_value"],
+        "additionalProperties": false,
+        "properties": {
+          "prediction_id": { "type": "string" },
+          "predicted_value": { "type": ["string", "number", "boolean", "null"] },
+          "true_value": { "type": ["string", "number", "boolean", "null"] },
+          "sensitive_attributes": {
+            "type": ["object", "null"],
+            "description": "Map of sensitive-attribute name → value for this prediction.",
+            "additionalProperties": { "type": ["string", "number", "boolean", "null"] }
+          },
+          "input_excerpt": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "toxicity_results": {
+      "type": "object",
+      "description": "Toxicity / discriminatory-pattern scoring from toxicity_classifier tool.",
+      "required": ["sample_size", "flagged_count", "flagged_pct", "entries", "verdict"],
+      "additionalProperties": false,
+      "properties": {
+        "sample_size": { "type": "integer", "minimum": 0 },
+        "flagged_count": { "type": "integer", "minimum": 0 },
+        "flagged_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["prediction_id", "toxicity_score", "flagged"],
+            "additionalProperties": false,
+            "properties": {
+              "prediction_id": { "type": "string" },
+              "text_excerpt": { "type": ["string", "null"] },
+              "toxicity_score": { "type": "number", "minimum": 0, "maximum": 1 },
+              "flagged": { "type": "boolean" },
+              "flagged_categories": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        },
+        "categories_observed": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "verdict": {
+          "type": "string",
+          "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_TESTED"]
+        },
+        "tool": { "type": ["string", "null"] },
+        "threshold": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "discriminatory_pattern_detected": {
+      "type": "boolean",
+      "description": "True if at least one sampled prediction was flagged for a discriminatory pattern."
+    },
+    "discriminatory_pattern_examples": {
+      "type": "array",
+      "description": "Up to 10 redacted excerpts of flagged predictions for HITL review.",
+      "items": {
+        "type": "object",
+        "required": ["prediction_id", "category"],
+        "additionalProperties": false,
+        "properties": {
+          "prediction_id": { "type": "string" },
+          "category": { "type": "string" },
+          "excerpt": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "overall_verdict": {
+      "type": "string",
+      "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_TESTED"],
+      "description": "Aggregate verdict for the output-sampling log."
+    },
+    "hitl_review_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Set true when any discriminatory pattern is flagged — triggers HITL per §8.4."
+    },
+    "hitl_review_reason": {
+      "type": ["string", "null"]
+    },
+    "sampling_narrative": {
+      "type": ["string", "null"],
+      "description": "Free-text narrative describing the sampling approach and discriminatory-pattern findings."
+    },
+    "art15_1_compliance_notes": {
+      "type": ["string", "null"],
+      "description": "Notes on Art. 15 §1 non-discrimination obligation for the sampled outputs."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this artefact was generated."
+    }
+  }
+}

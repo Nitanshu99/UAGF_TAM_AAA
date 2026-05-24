@@ -1,0 +1,629 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/uagf/cgsa-aaa-schema/v1.0.0/schema.json",
+  "title": "UAGF-CGSA → AAA API Contract",
+  "description": "JSON schema defining the output of S4 CGSA (Constraint-Based Governance Scoring Agent) consumed by S5 AAA (Autonomous AI Auditor) as the input to Phase 5 (Governance) of the 6-phase UAGF-TAM audit protocol. Agreed between S4 and S5 students at joint meeting by Week 4.",
+  "schema_version": "1.0.0",
+  "agreed_by_week": 4,
+  "eu_ai_act_version": "Regulation (EU) 2024/1689",
+
+  "type": "object",
+  "required": ["metadata", "overall_scores", "domains", "eu_ai_act_compliance_matrix", "hard_constraint_results", "remediation_roadmap", "aaa_phase5_handoff"],
+
+  "properties": {
+
+    "metadata": {
+      "type": "object",
+      "description": "Identifies the organisation, system under audit, and the CGSA run that produced this report.",
+      "required": ["assessment_id", "organisation_name", "system_under_audit", "cgsa_version", "assessment_timestamp", "risk_tier", "document_sources"],
+      "properties": {
+        "assessment_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for this CGSA assessment run. Used by AAA to deduplicate and trace the governance phase input.",
+          "example": "a3f7c2d1-8b4e-4f9a-bc12-0e5d6f7a8b9c"
+        },
+        "organisation_name": {
+          "type": "string",
+          "description": "Name of the organisation whose governance documentation was assessed.",
+          "example": "Hamburg Hub GmbH"
+        },
+        "system_under_audit": {
+          "type": "string",
+          "description": "Name or identifier of the specific AI system being audited. Used by AAA to match governance findings to the correct system in the 6-phase report.",
+          "example": "Credit Risk Scoring Model v2.1"
+        },
+        "cgsa_version": {
+          "type": "string",
+          "description": "Semantic version of the CGSA tool that produced this output.",
+          "example": "1.0.0"
+        },
+        "assessment_timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of when the CGSA assessment completed.",
+          "example": "2026-03-16T14:30:00Z"
+        },
+        "risk_tier": {
+          "type": "string",
+          "enum": ["minimal", "limited", "high"],
+          "description": "EU AI Act risk tier of the system under audit. Determines which hard constraints are active in the CSP model. AAA uses this to confirm it matches the Phase 1 (Scope) classification.",
+          "example": "high"
+        },
+        "document_sources": {
+          "type": "array",
+          "description": "List of governance document filenames parsed by the CGSA LangChain pipeline to produce this assessment.",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "example": ["AI_Policy_v3.pdf", "Risk_Management_Framework.docx", "Model_Card_CreditRisk.pdf"]
+        },
+        "uagf_gmm_version": {
+          "type": "string",
+          "description": "Version of the 38-control UAGF-GMM library used for scoring.",
+          "example": "1.0.0"
+        }
+      }
+    },
+
+    "overall_scores": {
+      "type": "object",
+      "description": "Top-level summary scores consumed by AAA for the Phase 5 executive summary and the audit report compliance matrix.",
+      "required": ["composite_maturity_score", "composite_maturity_label", "eu_ai_act_coverage_pct", "csp_satisfiable", "governance_verdict"],
+      "properties": {
+        "composite_maturity_score": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 4.0,
+          "description": "Weighted average maturity score across all 38 controls. Scale: 0=Absent, 1=Initial, 2=Developing, 3=Defined, 4=Optimised.",
+          "example": 2.7
+        },
+        "composite_maturity_label": {
+          "type": "string",
+          "enum": ["absent", "initial", "developing", "defined", "optimised"],
+          "description": "Human-readable label corresponding to the composite_maturity_score band.",
+          "example": "developing"
+        },
+        "eu_ai_act_coverage_pct": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "description": "Percentage of EU AI Act Articles 9, 10, and 13 requirements that are satisfied by the assessed governance documentation, based on control scores meeting or exceeding their thresholds.",
+          "example": 68.4
+        },
+        "csp_satisfiable": {
+          "type": "boolean",
+          "description": "Whether the python-constraint CSP solver found a valid, constraint-satisfying assignment for all 38 controls. FALSE means at least one hard constraint is violated — the system is non-compliant for its risk tier. AAA uses this as a binary gate for the Phase 5 verdict.",
+          "example": false
+        },
+        "governance_verdict": {
+          "type": "string",
+          "enum": ["compliant", "partially_compliant", "non_compliant"],
+          "description": "Overall governance compliance verdict for this system. Derived from csp_satisfiable and eu_ai_act_coverage_pct. AAA inserts this directly into the Phase 5 findings section of the audit report.",
+          "example": "partially_compliant"
+        },
+        "controls_assessed": {
+          "type": "integer",
+          "description": "Total number of controls scored in this assessment (should equal 38 for a full run).",
+          "example": 38
+        },
+        "controls_meeting_threshold": {
+          "type": "integer",
+          "description": "Number of controls meeting or exceeding their required threshold for the given risk_tier.",
+          "example": 24
+        },
+        "controls_below_threshold": {
+          "type": "integer",
+          "description": "Number of controls failing to meet the minimum required threshold. AAA uses this count in the Phase 5 gap summary.",
+          "example": 14
+        }
+      }
+    },
+
+    "domains": {
+      "type": "array",
+      "description": "The 6 governance domains of the UAGF-GMM, each containing their respective controls. AAA iterates these to populate the Phase 5 governance findings table.",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["domain_id", "domain_name", "domain_score", "controls"],
+        "properties": {
+          "domain_id": {
+            "type": "string",
+            "enum": ["D1", "D2", "D3", "D4", "D5", "D6"],
+            "description": "Unique domain identifier."
+          },
+          "domain_name": {
+            "type": "string",
+            "description": "Human-readable domain name.",
+            "enum": [
+              "Risk Management",
+              "Data Governance",
+              "Model Development and Testing",
+              "Transparency and Explainability",
+              "Human Oversight and Accountability",
+              "Monitoring and Incident Response"
+            ]
+          },
+          "domain_score": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 4.0,
+            "description": "Mean maturity score across all controls within this domain."
+          },
+          "domain_eu_ai_act_articles": {
+            "type": "array",
+            "description": "EU AI Act articles primarily satisfied by controls in this domain.",
+            "items": { "type": "string" },
+            "example": ["Article 9", "Article 10"]
+          },
+          "controls": {
+            "type": "array",
+            "description": "Individual UAGF-GMM controls belonging to this domain.",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["control_id", "control_name", "maturity_score", "maturity_label", "evidence_summary", "confidence", "eu_ai_act_articles", "hard_constraint", "gap_severity"],
+              "properties": {
+                "control_id": {
+                  "type": "string",
+                  "pattern": "^C(0[1-9]|[1-3][0-9]|38)$",
+                  "description": "Unique control identifier. Range C01–C38.",
+                  "example": "C07"
+                },
+                "control_name": {
+                  "type": "string",
+                  "description": "Short descriptive name of the control.",
+                  "example": "Data Quality Management"
+                },
+                "control_description": {
+                  "type": "string",
+                  "description": "Full description of what this control assesses, including which governance behaviours are expected at each maturity level."
+                },
+                "source_frameworks": {
+                  "type": "array",
+                  "description": "The subset of the 12 synthesised governance standards from which this control was derived.",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "EU AI Act",
+                      "ISO 42001",
+                      "NIST AI RMF",
+                      "IEEE 7000",
+                      "OECD AI Principles",
+                      "Singapore AI Verify",
+                      "UK CDEI",
+                      "Canada ALTAI",
+                      "Google PAIR",
+                      "Microsoft RAI",
+                      "IBM AI Ethics",
+                      "UNESCO AI Ethics"
+                    ]
+                  },
+                  "minItems": 1,
+                  "example": ["EU AI Act", "ISO 42001", "NIST AI RMF"]
+                },
+                "maturity_score": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4,
+                  "description": "Ordinal maturity score assigned by the CSP solver. 0=Absent, 1=Initial, 2=Developing, 3=Defined, 4=Optimised.",
+                  "example": 2
+                },
+                "maturity_label": {
+                  "type": "string",
+                  "enum": ["absent", "initial", "developing", "defined", "optimised"],
+                  "description": "Human-readable label for maturity_score.",
+                  "example": "developing"
+                },
+                "maturity_descriptor": {
+                  "type": "string",
+                  "description": "Full text description of what the assigned maturity level means for this specific control. Drawn from the UAGF-GMM 5-level descriptor table."
+                },
+                "evidence_summary": {
+                  "type": "string",
+                  "description": "Condensed excerpt or paraphrase of the evidence text extracted from governance documents by the LangChain parser that supports this maturity score. AAA may include this in the Phase 5 findings table.",
+                  "example": "Policy doc Section 3.2 references data quality checks but no automated validation pipeline is documented."
+                },
+                "evidence_source_document": {
+                  "type": "string",
+                  "description": "Filename of the source document from which this evidence was extracted.",
+                  "example": "AI_Policy_v3.pdf"
+                },
+                "evidence_page_reference": {
+                  "type": ["string", "null"],
+                  "description": "Page number or section reference within the source document, if extractable.",
+                  "example": "p. 14, Section 3.2"
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0.0,
+                  "maximum": 1.0,
+                  "description": "LangChain parser confidence score for the evidence extraction. Values below 0.6 indicate low-confidence extraction; AAA should flag these as requiring human reviewer verification.",
+                  "example": 0.82
+                },
+                "eu_ai_act_articles": {
+                  "type": "array",
+                  "description": "EU AI Act articles that this control directly addresses. Used by AAA to construct the regulatory compliance matrix in the Phase 5 audit report section.",
+                  "items": { "type": "string" },
+                  "example": ["Article 10 point 2", "Article 10 point 3"]
+                },
+                "hard_constraint": {
+                  "type": "object",
+                  "description": "CSP hard constraint definition for this control under the assessed risk_tier. Encodes the minimum maturity score required for regulatory compliance.",
+                  "required": ["applicable", "threshold_score", "satisfied"],
+                  "properties": {
+                    "applicable": {
+                      "type": "boolean",
+                      "description": "Whether a hard constraint applies to this control under the assessed risk_tier. High-risk systems have more hard constraints active than minimal/limited systems.",
+                      "example": true
+                    },
+                    "threshold_score": {
+                      "type": ["integer", "null"],
+                      "minimum": 0,
+                      "maximum": 4,
+                      "description": "Minimum maturity_score required to satisfy this constraint. NULL if applicable=false.",
+                      "example": 3
+                    },
+                    "satisfied": {
+                      "type": ["boolean", "null"],
+                      "description": "Whether maturity_score >= threshold_score. NULL if applicable=false. FALSE means a hard constraint violation — this control is a blocking compliance gap.",
+                      "example": false
+                    },
+                    "eu_ai_act_obligation": {
+                      "type": ["string", "null"],
+                      "description": "The specific EU AI Act obligation that this hard constraint encodes, as cited in the regulation text.",
+                      "example": "Article 10 point 2: Training, validation and testing data shall be subject to appropriate data governance and management practices."
+                    }
+                  }
+                },
+                "gap_severity": {
+                  "type": ["string", "null"],
+                  "enum": ["critical", "high", "medium", "low", null],
+                  "description": "Gap severity classification used by CGSA to rank the remediation roadmap. NULL if control meets or exceeds threshold. Critical = hard constraint violated on a high-risk system. High = hard constraint violated on a limited-risk system, or soft gap of ≥2 levels below optimised on a high-risk system. Medium = soft gap of 1 level on a high-risk system. Low = any gap on a minimal-risk system.",
+                  "example": "critical"
+                },
+                "gap_detail": {
+                  "type": ["string", "null"],
+                  "description": "Human-readable explanation of the gap: what is missing, what is required, and the regulatory consequence. NULL if no gap. AAA uses this text directly in the Phase 5 remediation section.",
+                  "example": "No automated data validation pipeline is documented. Article 10 requires data governance practices for high-risk systems. Required maturity: 3 (Defined). Current maturity: 2 (Developing)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "eu_ai_act_compliance_matrix": {
+      "type": "object",
+      "description": "Consolidated view of EU AI Act compliance status by article. AAA inserts this matrix directly into the Phase 5 section of the audit report PDF. Only Articles 9, 10, and 13 are hard-constraint-encoded in CGSA v1.0; additional articles are informationally mapped.",
+      "required": ["article_9", "article_10", "article_13"],
+      "properties": {
+        "article_9": {
+          "$ref": "#/definitions/article_compliance",
+          "description": "Article 9 — Risk management system obligations."
+        },
+        "article_10": {
+          "$ref": "#/definitions/article_compliance",
+          "description": "Article 10 — Data and data governance obligations."
+        },
+        "article_13": {
+          "$ref": "#/definitions/article_compliance",
+          "description": "Article 13 — Transparency and provision of information to deployers."
+        },
+        "article_14": {
+          "$ref": "#/definitions/article_compliance",
+          "description": "Article 14 — Human oversight obligations. Informationally mapped; not hard-constraint-encoded in CGSA v1.0."
+        },
+        "article_17": {
+          "$ref": "#/definitions/article_compliance",
+          "description": "Article 17 — Quality management system obligations. Informationally mapped."
+        }
+      }
+    },
+
+    "hard_constraint_results": {
+      "type": "object",
+      "description": "Summary of CSP solver results. AAA uses this as the primary input for the binary compliance gate in Phase 5.",
+      "required": ["csp_satisfiable", "violated_constraints", "satisfied_constraints"],
+      "properties": {
+        "csp_satisfiable": {
+          "type": "boolean",
+          "description": "Mirrors overall_scores.csp_satisfiable. TRUE = all hard constraints satisfied = system is governance-compliant for its risk tier.",
+          "example": false
+        },
+        "total_hard_constraints": {
+          "type": "integer",
+          "description": "Total number of hard constraints active for the assessed risk_tier.",
+          "example": 18
+        },
+        "violated_constraints": {
+          "type": "array",
+          "description": "List of hard constraint violations. AAA iterates this list to populate the Phase 5 critical findings table. Each item pinpoints exactly which control, which article, and what the gap is.",
+          "items": {
+            "type": "object",
+            "required": ["control_id", "control_name", "required_score", "actual_score", "eu_ai_act_article", "violation_description"],
+            "properties": {
+              "control_id": { "type": "string", "example": "C07" },
+              "control_name": { "type": "string", "example": "Data Quality Management" },
+              "required_score": { "type": "integer", "minimum": 0, "maximum": 4, "example": 3 },
+              "actual_score": { "type": "integer", "minimum": 0, "maximum": 4, "example": 2 },
+              "score_delta": { "type": "integer", "description": "required_score minus actual_score. Positive = gap. AAA uses this to sort violations by severity.", "example": 1 },
+              "eu_ai_act_article": { "type": "string", "example": "Article 10 point 2" },
+              "violation_description": { "type": "string", "example": "Data governance practices are developing but not formally defined. A documented data validation pipeline is required for high-risk system compliance." }
+            }
+          }
+        },
+        "satisfied_constraints": {
+          "type": "array",
+          "description": "List of hard constraints that ARE satisfied. Included for completeness and for the positive findings section of the audit report.",
+          "items": {
+            "type": "object",
+            "required": ["control_id", "control_name", "required_score", "actual_score", "eu_ai_act_article"],
+            "properties": {
+              "control_id": { "type": "string" },
+              "control_name": { "type": "string" },
+              "required_score": { "type": "integer", "minimum": 0, "maximum": 4 },
+              "actual_score": { "type": "integer", "minimum": 0, "maximum": 4 },
+              "eu_ai_act_article": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "remediation_roadmap": {
+      "type": "array",
+      "description": "Ordered list of remediation actions, ranked by gap_severity (critical first) and then by score_delta. AAA extracts this list into the Phase 5 remediation section of the audit report. Items with gap_severity=critical are surfaced as Phase 5 blocking findings.",
+      "items": {
+        "type": "object",
+        "required": ["rank", "control_id", "control_name", "gap_severity", "action", "eu_ai_act_article", "effort_estimate", "priority_rationale"],
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Remediation priority rank. 1 = highest priority.",
+            "example": 1
+          },
+          "control_id": { "type": "string", "example": "C07" },
+          "control_name": { "type": "string", "example": "Data Quality Management" },
+          "gap_severity": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low"],
+            "example": "critical"
+          },
+          "current_score": { "type": "integer", "minimum": 0, "maximum": 4, "example": 2 },
+          "target_score": { "type": "integer", "minimum": 0, "maximum": 4, "example": 3 },
+          "action": {
+            "type": "string",
+            "description": "Specific, actionable remediation step the organisation must take to close this gap.",
+            "example": "Define and document a formal data validation pipeline including completeness checks, bias scanning, and version control for training datasets. Evidence should include a written Data Management Plan referenced in the AI system technical documentation."
+          },
+          "eu_ai_act_article": {
+            "type": "string",
+            "description": "The specific EU AI Act article obligation that this remediation action addresses.",
+            "example": "Article 10 point 2"
+          },
+          "effort_estimate": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "Relative effort estimate for implementing the remediation action. Low = documentation update only. Medium = process change required. High = tooling or system change required.",
+            "example": "medium"
+          },
+          "timeline_weeks": {
+            "type": ["integer", "null"],
+            "description": "Suggested implementation timeline in weeks. NULL if not estimable.",
+            "example": 4
+          },
+          "priority_rationale": {
+            "type": "string",
+            "description": "Explanation of why this item is ranked at its position. AAA may include this in the Phase 5 narrative.",
+            "example": "Hard constraint violation on a high-risk system. Non-compliance with Article 10 data governance obligations is a blocking finding that must be resolved before conformity assessment can be passed."
+          }
+        }
+      }
+    },
+
+    "aaa_phase5_handoff": {
+      "type": "object",
+      "description": "Dedicated handoff block specifically designed for AAA Phase 5 (Governance) consumption. Contains pre-computed summary fields that AAA can insert directly into the audit report without re-processing the full domain/control arrays. This is the primary integration surface between S4 and S5.",
+      "required": ["phase5_verdict", "phase5_narrative_summary", "blocking_findings_count", "blocking_findings", "positive_findings", "low_confidence_controls", "aaa_recommended_follow_up"],
+      "properties": {
+        "phase5_verdict": {
+          "type": "string",
+          "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL"],
+          "description": "Binary-ternary verdict for AAA Phase 5 (Governance). PASS = csp_satisfiable=true and eu_ai_act_coverage_pct >= 80. PASS_WITH_OBSERVATIONS = csp_satisfiable=true but coverage < 80, or soft gaps only. FAIL = csp_satisfiable=false (one or more hard constraints violated). AAA uses this to set the traffic-light status in the audit report executive summary.",
+          "example": "FAIL"
+        },
+        "phase5_narrative_summary": {
+          "type": "string",
+          "description": "Pre-written 3–5 sentence narrative summary of the governance findings, ready for AAA to insert into the Phase 5 section of the audit report with minimal editing. Written in audit report register.",
+          "example": "The governance documentation of the system under audit demonstrates developing maturity (composite score 2.7/4.0) across the 38 UAGF-GMM controls. The CGSA CSP solver identified 3 hard constraint violations, indicating non-compliance with EU AI Act Articles 9 and 10 requirements for high-risk systems. EU AI Act regulatory coverage stands at 68.4%, below the 80% threshold required for a compliant verdict. The most critical gap is in Data Quality Management (C07), where no formal data validation pipeline is documented. Remediation of the 3 critical findings is required before the system can be assessed as governance-compliant."
+        },
+        "blocking_findings_count": {
+          "type": "integer",
+          "description": "Count of critical/hard-constraint-violating findings. AAA displays this prominently in the Phase 5 header.",
+          "example": 3
+        },
+        "blocking_findings": {
+          "type": "array",
+          "description": "Condensed list of critical findings for AAA Phase 5 report table. Each item maps to a violated hard constraint.",
+          "items": {
+            "type": "object",
+            "required": ["control_id", "control_name", "finding", "eu_ai_act_article", "remediation_action"],
+            "properties": {
+              "control_id": { "type": "string", "example": "C07" },
+              "control_name": { "type": "string", "example": "Data Quality Management" },
+              "finding": { "type": "string", "description": "One-sentence finding statement in audit register.", "example": "No formal data validation pipeline is documented; data governance practices are developing but not defined." },
+              "eu_ai_act_article": { "type": "string", "example": "Article 10 point 2" },
+              "remediation_action": { "type": "string", "description": "Condensed remediation action for the audit report table.", "example": "Define and document a formal data validation pipeline including completeness checks, bias scanning, and dataset version control." }
+            }
+          }
+        },
+        "positive_findings": {
+          "type": "array",
+          "description": "Controls that meet or exceed threshold — for the positive findings section of the Phase 5 audit report.",
+          "items": {
+            "type": "object",
+            "required": ["control_id", "control_name", "maturity_score", "finding"],
+            "properties": {
+              "control_id": { "type": "string" },
+              "control_name": { "type": "string" },
+              "maturity_score": { "type": "integer", "minimum": 0, "maximum": 4 },
+              "finding": { "type": "string", "description": "One-sentence positive finding statement in audit register." }
+            }
+          }
+        },
+        "low_confidence_controls": {
+          "type": "array",
+          "description": "Controls where LangChain extraction confidence < 0.60. AAA must flag these in the Phase 5 limitations section and recommend human reviewer verification for each.",
+          "items": {
+            "type": "object",
+            "required": ["control_id", "control_name", "confidence", "flag_reason"],
+            "properties": {
+              "control_id": { "type": "string" },
+              "control_name": { "type": "string" },
+              "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+              "flag_reason": { "type": "string", "description": "Reason for low confidence — e.g., sparse documentation, ambiguous language, missing section.", "example": "Governance document contains no dedicated section on risk management; score inferred from scattered references in meeting minutes." }
+            }
+          }
+        },
+        "aaa_recommended_follow_up": {
+          "type": "array",
+          "description": "CGSA-recommended follow-up actions for AAA Phase 5 — e.g., requesting additional governance documents, scheduling interviews, or escalating to human reviewer. AAA may incorporate these into the Phase 5 recommendations section.",
+          "items": {
+            "type": "object",
+            "required": ["recommendation", "rationale"],
+            "properties": {
+              "recommendation": { "type": "string" },
+              "rationale": { "type": "string" },
+              "urgency": { "type": "string", "enum": ["required_before_report_completion", "recommended", "optional"] }
+            }
+          }
+        },
+        "cgsa_report_url": {
+          "type": ["string", "null"],
+          "format": "uri",
+          "description": "URL of the full CGSA Streamlit PDF report for this assessment, if deployed. AAA includes this as a hyperlink in the Phase 5 section ('Full governance scoring report available at...').",
+          "example": "https://cgsa.streamlit.app/reports/a3f7c2d1"
+        }
+      }
+    }
+  },
+
+  "definitions": {
+    "article_compliance": {
+      "type": "object",
+      "required": ["article_reference", "article_title", "status", "controls_mapped", "controls_satisfied", "coverage_pct"],
+      "properties": {
+        "article_reference": {
+          "type": "string",
+          "description": "EU AI Act article citation.",
+          "example": "Article 9"
+        },
+        "article_title": {
+          "type": "string",
+          "example": "Risk management system"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["satisfied", "partially_satisfied", "not_satisfied"],
+          "description": "Compliance status for this article based on the control scores and hard constraint results."
+        },
+        "controls_mapped": {
+          "type": "array",
+          "description": "Control IDs mapped to this article.",
+          "items": { "type": "string" },
+          "example": ["C01", "C02", "C03", "C04"]
+        },
+        "controls_satisfied": {
+          "type": "array",
+          "description": "Subset of controls_mapped that meet their threshold.",
+          "items": { "type": "string" },
+          "example": ["C01", "C03"]
+        },
+        "coverage_pct": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "description": "Percentage of mapped controls that satisfy their threshold for this article.",
+          "example": 50.0
+        },
+        "hard_constraints_violated": {
+          "type": "array",
+          "description": "Control IDs with hard constraint violations under this article.",
+          "items": { "type": "string" },
+          "example": ["C02", "C04"]
+        },
+        "article_summary": {
+          "type": "string",
+          "description": "One-sentence compliance summary for this article. AAA inserts this into the regulatory compliance matrix table.",
+          "example": "Article 9 is partially satisfied: risk identification processes are documented (C01, C03) but risk mitigation and residual risk assessment (C02, C04) are below the required threshold."
+        }
+      }
+    }
+  },
+
+  "example_payload": {
+    "_comment": "Minimal valid example payload illustrating the schema structure. Full example with all 38 controls is in uagf_cgsa_aaa_schema_example.json",
+    "metadata": {
+      "assessment_id": "a3f7c2d1-8b4e-4f9a-bc12-0e5d6f7a8b9c",
+      "organisation_name": "Hamburg Hub GmbH",
+      "system_under_audit": "Credit Risk Scoring Model v2.1",
+      "cgsa_version": "1.0.0",
+      "assessment_timestamp": "2026-03-16T14:30:00Z",
+      "risk_tier": "high",
+      "document_sources": ["AI_Policy_v3.pdf", "Risk_Management_Framework.docx"],
+      "uagf_gmm_version": "1.0.0"
+    },
+    "overall_scores": {
+      "composite_maturity_score": 2.7,
+      "composite_maturity_label": "developing",
+      "eu_ai_act_coverage_pct": 68.4,
+      "csp_satisfiable": false,
+      "governance_verdict": "partially_compliant",
+      "controls_assessed": 38,
+      "controls_meeting_threshold": 24,
+      "controls_below_threshold": 14
+    },
+    "aaa_phase5_handoff": {
+      "phase5_verdict": "FAIL",
+      "phase5_narrative_summary": "The governance documentation demonstrates developing maturity (2.7/4.0). Three hard constraint violations were identified under Articles 9 and 10. EU AI Act coverage is 68.4%, below the 80% compliance threshold. Remediation of three critical findings is required before the system can receive a compliant governance verdict.",
+      "blocking_findings_count": 3,
+      "blocking_findings": [
+        {
+          "control_id": "C07",
+          "control_name": "Data Quality Management",
+          "finding": "No formal data validation pipeline is documented; practices are developing but not defined.",
+          "eu_ai_act_article": "Article 10 point 2",
+          "remediation_action": "Define and document a formal data validation pipeline with completeness checks, bias scanning, and dataset version control."
+        }
+      ],
+      "positive_findings": [
+        {
+          "control_id": "C01",
+          "control_name": "Risk Identification",
+          "maturity_score": 3,
+          "finding": "Risk identification processes are formally documented and consistently applied across the AI system lifecycle."
+        }
+      ],
+      "low_confidence_controls": [
+        {
+          "control_id": "C22",
+          "control_name": "Incident Response Procedures",
+          "confidence": 0.54,
+          "flag_reason": "Governance document contains no dedicated incident response section; score inferred from scattered references in internal audit notes."
+        }
+      ],
+      "aaa_recommended_follow_up": [
+        {
+          "recommendation": "Request the organisation's Data Management Plan and dataset documentation before finalising Phase 5 findings.",
+          "rationale": "Three data governance controls (C06, C07, C08) scored below threshold with moderate confidence. Additional documentation may change the verdict on C06 and C08.",
+          "urgency": "required_before_report_completion"
+        }
+      ],
+      "cgsa_report_url": "https://cgsa.streamlit.app/reports/a3f7c2d1"
+    }
+  }
+}

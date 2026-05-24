@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T09_model_card:1.0.0",
+  "title": "T09 — Model Card",
+  "description": "Mitchell-2019 model card capturing architecture, training regime, performance metrics, and known limitations. EU AI Act Art. 13 §3, Art. 15.",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "model_identity",
+    "architecture",
+    "training_regime",
+    "performance_metrics",
+    "known_limitations",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this audit engagement."
+    },
+    "model_identity": {
+      "type": "object",
+      "required": ["model_name", "model_version", "modality"],
+      "additionalProperties": false,
+      "properties": {
+        "model_name": { "type": "string", "minLength": 1 },
+        "model_version": { "type": "string", "minLength": 1 },
+        "model_type": { "type": ["string", "null"] },
+        "modality": {
+          "type": "string",
+          "enum": ["tabular", "cv", "nlp", "time_series", "llm", "agentic", "gpai"]
+        },
+        "provider": { "type": ["string", "null"] }
+      }
+    },
+    "architecture": {
+      "type": "object",
+      "required": ["description"],
+      "additionalProperties": false,
+      "properties": {
+        "description": { "type": "string", "minLength": 5 },
+        "framework": { "type": ["string", "null"] },
+        "parameter_count": { "type": ["integer", "null"], "minimum": 0 },
+        "input_shape": { "type": ["string", "null"] },
+        "output_shape": { "type": ["string", "null"] }
+      }
+    },
+    "training_regime": {
+      "type": "object",
+      "required": ["training_data_description"],
+      "additionalProperties": false,
+      "properties": {
+        "training_data_description": { "type": "string", "minLength": 5 },
+        "optimiser": { "type": ["string", "null"] },
+        "loss_function": { "type": ["string", "null"] },
+        "epochs": { "type": ["integer", "null"], "minimum": 0 },
+        "batch_size": { "type": ["integer", "null"], "minimum": 0 },
+        "hyperparameters": {
+          "type": ["object", "null"],
+          "additionalProperties": true
+        },
+        "compute_resources": { "type": ["string", "null"] }
+      }
+    },
+    "performance_metrics": {
+      "type": "object",
+      "description": "Aggregate performance metrics from metric_suite tool.",
+      "required": ["primary_metric", "primary_metric_value", "metrics"],
+      "additionalProperties": false,
+      "properties": {
+        "primary_metric": { "type": "string" },
+        "primary_metric_value": { "type": ["number", "null"] },
+        "metrics": {
+          "type": "object",
+          "description": "Map of metric name → numeric value (e.g. {accuracy: 0.82, f1: 0.79}).",
+          "additionalProperties": { "type": ["number", "null"] }
+        },
+        "calibration_error": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "evaluation_dataset_description": { "type": ["string", "null"] },
+        "evaluation_sample_size": { "type": ["integer", "null"], "minimum": 0 },
+        "metric_suite_tool": { "type": ["string", "null"] }
+      }
+    },
+    "intended_use": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "primary_use_cases": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "out_of_scope_use_cases": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "known_limitations": {
+      "type": "array",
+      "description": "List of documented limitations and failure modes (Art. 13 §3 (b) (iii)).",
+      "items": { "type": "string" }
+    },
+    "ethical_considerations": {
+      "type": ["string", "null"],
+      "description": "Free-text discussion of ethical risks and mitigations."
+    },
+    "art13_compliance_notes": {
+      "type": ["string", "null"],
+      "description": "Notes on Art. 13 §3 transparency and Art. 15 accuracy alignment."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this artefact was generated."
+    }
+  }
+}

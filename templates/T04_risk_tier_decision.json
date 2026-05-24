@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T04_risk_tier_decision:1.0.0",
+  "title": "T04 — Risk Tier Decision (Phase 1 Scope)",
+  "description": "Phase 1 risk tier determination: verified risk tier, rationale, and Art. 6 §3 derogation. EU AI Act Art. 6, Art. 7.",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "declared_risk_tier",
+    "verified_risk_tier",
+    "risk_tier_rationale",
+    "art5_prohibited",
+    "art6_derogation_claimed",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this audit engagement."
+    },
+    "declared_risk_tier": {
+      "type": "string",
+      "enum": ["high", "limited", "minimal", "gpai"],
+      "description": "Risk tier declared by the client in Stage A."
+    },
+    "verified_risk_tier": {
+      "type": "string",
+      "enum": ["prohibited", "high", "limited", "minimal", "gpai"],
+      "description": "Risk tier as verified by Phase 1 against intake bundle evidence and Regulatory RAG."
+    },
+    "risk_tier_rationale": {
+      "type": "string",
+      "minLength": 20,
+      "description": "Phase 1 narrative explaining the risk tier determination per Art. 6 and Annex III."
+    },
+    "art5_prohibited": {
+      "type": "boolean",
+      "description": "True if Phase 1 determined any use case falls under Art. 5 prohibition. Engagement halted if true."
+    },
+    "art5_prohibition_basis": {
+      "type": ["string", "null"],
+      "description": "Specific Art. 5 paragraph(s) triggering the prohibition if art5_prohibited is true."
+    },
+    "art6_derogation_claimed": {
+      "type": "boolean",
+      "description": "Whether the provider claims an Art. 6 §3 derogation (limited-risk treatment despite Annex III listing)."
+    },
+    "art6_derogation_rationale": {
+      "type": ["string", "null"],
+      "description": "Required when art6_derogation_claimed is true. Rationale per Art. 6 §3 and Art. 7."
+    },
+    "art6_derogation_accepted": {
+      "type": ["boolean", "null"],
+      "description": "Phase 1 assessment of whether the Art. 6 §3 derogation claim is substantiated."
+    },
+    "annex_iii_sections_verified": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["1", "2", "3", "4", "5", "6", "7", "8"]
+      },
+      "uniqueItems": true,
+      "description": "Annex III sections confirmed as applicable after Phase 1 verification."
+    },
+    "regulatory_rag_citations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Article/Annex citations retrieved from RegulatoryRAG supporting this decision."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this artefact was generated."
+    }
+  }
+}
