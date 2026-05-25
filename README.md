@@ -138,6 +138,32 @@ make intake-demo                                       # offline end-to-end on U
 
 ---
 
+## 5a. Recent Improvements — Regulatory Corpus Ingestion
+
+The following improvements were made to `scripts/ingest_regulatory_corpus.py` and the supporting infrastructure after the initial implementation. All changes are backward-compatible.
+
+| Improvement | Detail |
+|---|---|
+| **ISO/IEC 42001 ingestion** | Switched PDF backend from `pdfplumber` (returned 0 pages) to `pypdfium2`, which correctly reads ISO's newline-separated object-token layout. `pypdfium2>=5.8.0` is now listed in `requirements.txt`. |
+| **Split-line clause/control headings** | ISO 42001 often places a clause or control number (e.g. `A.10.3`) on its own line with the title on the next line. Three new regexes (`_ISO_CLAUSE_NUM_RE`, `_ISO_CONTROL_NUM_RE`, `_ISO_TITLE_HEAD_RE`) handle this correctly so all 32 clauses and 56 Annex A controls are captured. |
+| **Warning on empty loader** | `load_pdf_units()` and `_load_all_units()` now emit an explicit `_warn(...)` message when a source file produces zero units, preventing silent failures. |
+| **Idempotent ingestion (skip-existing)** | Each chunk point ID is a deterministic SHA-256 of `text + regulation + ref + chunk_index`. On re-run, `_fetch_existing_ids()` scrolls the Qdrant collection and skips any chunks already present — zero extra OpenAI API calls. |
+| **Automatic `.env` loading** | The script calls `load_dotenv()` at startup via `python-dotenv`. No `source .env` shell step is required before running the script. |
+| **Import warm-up (macOS Gatekeeper)** | `numpy`, `sklearn`, `nltk`, and `qdrant_client` are imported early in `main()` so macOS Gatekeeper verifies the native `.so` extensions at the start rather than mid-run (which previously caused `SIGINT` / hanging). |
+
+### Corpus state after full ingestion
+
+| Regulation | Chunks in `regulatory_corpus` |
+|---|---|
+| EU AI Act | **339** (136 articles + 181 recitals + 22 annexes) |
+| GDPR | **288** (115 articles + 173 recitals) |
+| ISO/IEC 42001 | **88** (32 clauses §4–§10 + 56 Annex A controls) |
+| **Total** | **715** |
+
+`obligations_index` contains **15** obligation-question points derived from the compliance-checker JSON.
+
+---
+
 ## 6. Definition of Done for the S5 Thesis
 
 The thesis is considered tech-complete when, on the 50-engagement golden set:

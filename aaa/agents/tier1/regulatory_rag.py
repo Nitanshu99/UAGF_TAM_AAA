@@ -2,9 +2,13 @@
 RegulatoryRAG — Tier-1 cross-cutting agent (§3.1 #3).
 
 Runtime:
-  Production  – LlamaIndex ``VectorStoreIndex`` over the EU AI Act corpus stored
-                in Qdrant (see §10, §14.4).  Initialised lazily on first search()
-                call so the agent can be imported without Qdrant running.
+  Production  – Direct hybrid query against the Qdrant ``regulatory_corpus``
+                collection populated by ``scripts/ingest_regulatory_corpus.py``.
+                Dense vectors come from OpenAI ``text-embedding-3-large``;
+                sparse vectors from fastembed BM25 (``Qdrant/bm25``); the two
+                are fused server-side via Reciprocal Rank Fusion. Initialised
+                lazily on first search() call so the agent can be imported
+                without Qdrant or OPENAI_API_KEY.
   Offline     – When ``AAA_OFFLINE_MODE=true`` (or Qdrant unreachable) the agent
                 falls back to a small hard-coded knowledge base covering the most
                 commonly queried articles.  This keeps CI and the Streamlit demo
@@ -13,9 +17,9 @@ Runtime:
 search() return shape (one dict per chunk):
   {
     "text":    str,          # verbatim passage from the corpus
-    "source":  str,          # citation label, e.g. "EU AI Act Art. 9 §1"
+    "source":  str,          # citation label, e.g. "EU AI Act Art. 9"
     "article": str,          # canonical article ID used in compliance_matrix
-    "score":   float,        # cosine similarity [0, 1]; 1.0 for offline hits
+    "score":   float,        # fused RRF score (production) or 1.0 (offline)
   }
 """
 from __future__ import annotations
@@ -27,6 +31,15 @@ from typing import Any
 from aaa.agents.base import BaseAgent
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Hybrid-search configuration (must match scripts/ingest_regulatory_corpus.py)
+# ---------------------------------------------------------------------------
+_DENSE_MODEL = "text-embedding-3-large"
+_SPARSE_MODEL = "Qdrant/bm25"
+_DENSE_VECTOR_NAME = "dense"
+_SPARSE_VECTOR_NAME = "sparse"
+_PREFETCH_LIMIT = 32  # candidates per branch before RRF fusion
 
 # ---------------------------------------------------------------------------
 # Offline knowledge base — article → list of passage dicts
@@ -111,6 +124,30 @@ _OFFLINE_KB: dict[str, list[dict[str, Any]]] = {
     ],
 }
 
+# ---------------------------------------------------------------------------
+# Qdrant payload → search-result mapping
+# ---------------------------------------------------------------------------
+_REGULATION_LABEL: dict[str, str] = {
+    "EU_AI_Act": "EU AI Act",
+    "GDPR": "GDPR",
+    "ISO_IEC_42001": "ISO/IEC 42001",
+}
+
+
+def _point_to_hit(point: Any) -> dict[str, Any]:
+    """Project a Qdrant ScoredPoint to the public {text, source, article, score} contract."""
+    payload = getattr(point, "payload", None) or {}
+    regulation = payload.get("regulation", "")
+    ref = payload.get("ref", "") or payload.get("article", "")
+    label = _REGULATION_LABEL.get(regulation, regulation or "Regulation")
+    return {
+        "text": payload.get("text", ""),
+        "source": f"{label} {ref}".strip() if ref else label,
+        "article": ref,
+        "score": float(getattr(point, "score", 0.0) or 0.0),
+    }
+
+
 # Simple keyword → article mapping for fuzzy offline lookup
 _KEYWORD_MAP: dict[str, str] = {
     "risk management": "Art.9",
@@ -133,14 +170,18 @@ class RegulatoryRAG(BaseAgent):
     Cross-cutting regulatory search agent.
 
     Provides ``search(query, top_k)`` to all phase agents and the Orchestrator.
-    Uses LlamaIndex + Qdrant in production; offline KB when
-    ``AAA_OFFLINE_MODE=true`` or the index is unavailable.
+    Uses a direct Qdrant hybrid query (dense + sparse, fused via RRF) in
+    production; falls back to an offline KB when ``AAA_OFFLINE_MODE=true`` or
+    the Qdrant collection is unavailable.
     """
 
     def __init__(self, model: str = "claude-3-haiku-20240307"):
         super().__init__(name="Regulatory RAG", model=model)
         self.corpus_path = "data/regulatory_corpus"
-        self._index: Any = None  # lazy-loaded LlamaIndex VectorStoreIndex
+        self._qdrant: Any = None        # lazy-loaded qdrant_client.QdrantClient
+        self._openai: Any = None        # lazy-loaded openai.OpenAI
+        self._sparse_encoder: Any = None  # lazy-loaded fastembed.SparseTextEmbedding
+        self._collection: str = os.environ.get("QDRANT_COLLECTION", "regulatory_corpus")
         self._offline: bool = os.environ.get("AAA_OFFLINE_MODE", "false").lower() == "true"
 
     # ------------------------------------------------------------------
@@ -185,42 +226,61 @@ class RegulatoryRAG(BaseAgent):
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _ensure_index(self) -> None:  # pragma: no cover
-        """Lazy-initialise the LlamaIndex VectorStoreIndex backed by Qdrant."""
-        if self._index is not None:
-            return
-        try:
-            from llama_index.core import VectorStoreIndex, StorageContext
-            from llama_index.vector_stores.qdrant import QdrantVectorStore
+    def _ensure_clients(self) -> None:  # pragma: no cover
+        """Lazy-initialise Qdrant + OpenAI + fastembed BM25 clients."""
+        if self._qdrant is None:
             import qdrant_client
 
             qdrant_url = os.environ.get("QDRANT_URL", "http://localhost:6333")
-            collection = os.environ.get("QDRANT_COLLECTION", "eu_ai_act")
-            client = qdrant_client.QdrantClient(url=qdrant_url)
-            vector_store = QdrantVectorStore(client=client, collection_name=collection)
-            storage_context = StorageContext.from_defaults(vector_store=vector_store)
-            self._index = VectorStoreIndex.from_vector_store(
-                vector_store, storage_context=storage_context
-            )
-        except Exception as exc:
-            logger.warning("Could not initialise Qdrant index: %s", exc)
-            raise
+            self._qdrant = qdrant_client.QdrantClient(url=qdrant_url)
+        if self._openai is None:
+            import openai
+
+            self._openai = openai.OpenAI()  # picks up OPENAI_API_KEY
+        if self._sparse_encoder is None:
+            from fastembed import SparseTextEmbedding
+
+            self._sparse_encoder = SparseTextEmbedding(model_name=_SPARSE_MODEL)
+
+    def _embed_query(self, query: str) -> tuple[list[float], dict[str, list]]:  # pragma: no cover
+        """Return ``(dense_vector, sparse_vector)`` for *query*."""
+        dense_resp = self._openai.embeddings.create(model=_DENSE_MODEL, input=[query])
+        dense_vec = list(dense_resp.data[0].embedding)
+        sparse = next(iter(self._sparse_encoder.embed([query])))
+        sparse_vec = {
+            "indices": [int(i) for i in sparse.indices],
+            "values": [float(v) for v in sparse.values],
+        }
+        return dense_vec, sparse_vec
 
     def _vector_search(self, query: str, top_k: int) -> list[dict[str, Any]]:  # pragma: no cover
-        """Run a live vector search against the Qdrant-backed LlamaIndex."""
-        self._ensure_index()
-        retriever = self._index.as_retriever(similarity_top_k=top_k)
-        nodes = retriever.retrieve(query)
-        results = []
-        for node in nodes:
-            meta = node.metadata or {}
-            results.append({
-                "text": node.get_content(),
-                "source": meta.get("source", "EU AI Act"),
-                "article": meta.get("article", ""),
-                "score": float(node.score or 0.0),
-            })
-        return results
+        """Hybrid dense + sparse search against Qdrant with RRF fusion."""
+        self._ensure_clients()
+        from qdrant_client import models as qmodels
+
+        dense_vec, sparse_vec = self._embed_query(query)
+        response = self._qdrant.query_points(
+            collection_name=self._collection,
+            prefetch=[
+                qmodels.Prefetch(
+                    query=dense_vec,
+                    using=_DENSE_VECTOR_NAME,
+                    limit=_PREFETCH_LIMIT,
+                ),
+                qmodels.Prefetch(
+                    query=qmodels.SparseVector(
+                        indices=sparse_vec["indices"],
+                        values=sparse_vec["values"],
+                    ),
+                    using=_SPARSE_VECTOR_NAME,
+                    limit=_PREFETCH_LIMIT,
+                ),
+            ],
+            query=qmodels.FusionQuery(fusion=qmodels.Fusion.RRF),
+            limit=top_k,
+            with_payload=True,
+        )
+        return [_point_to_hit(p) for p in response.points]
 
     def _offline_search(self, query: str, top_k: int) -> list[dict[str, Any]]:
         """Return results from the hard-coded offline knowledge base."""

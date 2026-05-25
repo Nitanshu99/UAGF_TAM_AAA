@@ -274,6 +274,8 @@ All configuration is read from environment variables or a `.env` file at the
 repo root (see [`.env.example`](./.env.example) for the full annotated list).
 The pydantic-settings singleton lives at [`aaa/settings.py`](./aaa/settings.py).
 
+> **Ingestion script loads `.env` automatically.** `scripts/ingest_regulatory_corpus.py` calls `load_dotenv()` at startup via `python-dotenv`, so you can run it directly without `source .env`.
+
 Use it from code:
 
 ```python
@@ -383,6 +385,10 @@ jq '.phase_artefacts | keys' out/eng-uci-german-credit-001.json
 | Coverage gate fails at 79.x % | recent code without tests | add unit tests; rerun `pytest --cov=aaa --cov-report=term-missing` to see which lines are uncovered |
 | `make` target fails with "command not found: .venv/bin/python" | venv not created yet | run `python3.12 scripts/setup.py` once |
 | LLM call raises `401 Unauthorized` | API key missing or wrong | check `.env`; or set `AAA_OFFLINE_MODE=true` to bypass LLM calls entirely |
+| Ingestion script appears to hang (no output) on macOS | macOS Gatekeeper is verifying native `.so` extensions (qdrant_client, sklearn, nltk) on first use | Wait 10–30 s; the script pre-warms these imports at startup so the delay is front-loaded and only occurs once per new install |
+| `loaded 0 units from ISO:IEC 42001-2023.pdf` | Old `pdfplumber` backend silently returns 0 pages for ISO's token layout | Ensure `pypdfium2>=5.8.0` is installed (`pip show pypdfium2`); the script now uses it automatically |
+| Re-running ingestion embeds all chunks again and incurs OpenAI costs | Point IDs changed (e.g. chunking parameters were changed) | Run `--reset` to drop and rebuild collections, **or** keep chunking params constant — idempotent skip-existing logic uses SHA-256 IDs |
+| Script exits with `OPENAI_API_KEY not set` | `.env` not present or key missing | The script loads `.env` automatically via `python-dotenv`; create or check `.env` at the repo root |
 
 If the above does not help, capture the failing command + full traceback and
 open an issue. The runbook ([`infra/runbook.md`](./infra/runbook.md)) covers

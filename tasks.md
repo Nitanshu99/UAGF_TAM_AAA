@@ -378,3 +378,33 @@
 - **Treat `Art43Decision` as a TypedDict everywhere.** `art43_select_from_state` returns a dict; the previous `.procedure` attribute access in `IntakeValidator` was a leftover from an earlier dataclass design and was the first crash hit by the reference smoke.
 - **`uagf-tam-templates` ships only schemas + partials, not Python tooling.** This keeps the package small, lets third-party renderers depend on it without pulling in the AAA agent stack, and isolates the public-API surface (`load_schema`, `validate`, `render_partial`).
 - **CGSA fixture is curated to schema-pass, not to truly model an audit.** It exercises every required §5.4 hand-off field at maturity levels that produce a `PASS_WITH_OBSERVATIONS` verdict, so the smoke covers the full Phase 5 path without depending on a live S4 backend.
+
+---
+
+## ✅ Post-Group-11: ISO/IEC 42001 Ingestion Fix and Documentation Update — COMPLETE
+
+### What was done
+
+#### ISO/IEC 42001 ingestion (end-to-end)
+
+| Task | Status |
+|------|--------|
+| Diagnosed silent `pdfplumber` failure on ISO/IEC 42001 PDF (0 pages) | ✅ |
+| Switched to `pypdfium2>=5.8.0`; added to `requirements.txt` | ✅ |
+| Added `_ISO_CLAUSE_NUM_RE`, `_ISO_CONTROL_NUM_RE`, `_ISO_TITLE_HEAD_RE` for split-line headings | ✅ |
+| Added `_warn(...)` in `load_pdf_units()` and `_load_all_units()` for empty loader | ✅ |
+| Added `load_dotenv()` at script startup via `python-dotenv` | ✅ |
+| Added early import warm-up block (numpy, sklearn, nltk, qdrant_client) to avoid macOS Gatekeeper delays | ✅ |
+| Ran full end-to-end ingestion: 715 corpus chunks (339 EU AI Act + 288 GDPR + 88 ISO) + 15 obligation-question points | ✅ |
+| Verified idempotency: re-run skips all 715 chunks, zero OpenAI API calls | ✅ |
+
+#### Documentation update
+
+| File | What was added |
+|------|---------------|
+| `README.md` | §5a "Recent Improvements" table + corpus state table |
+| `SETUP.md` | `pypdfium2` row in knobs table; auto-.env note; macOS Gatekeeper note; ingestion-specific troubleshooting table |
+| `USER_MANUAL.md` | 4 new troubleshooting rows for ingestion; `.env` auto-load note in §7 |
+| `ARCHITECTURE.md` | §3.1a "Regulatory Corpus — Ingestion Design" (PDF backend, split-line headings, idempotency, corpus counts) |
+| `infra/runbook.md` | Warm-up step in S1 "Bring the stack up" procedure |
+| `tasks.md` | This entry |

@@ -29,6 +29,15 @@ alembic upgrade head                 # runs the initial migration
 curl -sf http://localhost:8000/healthz
 ```
 
+**macOS only — pre-warm heavy imports before running the ingestion pipeline.**
+On the first run after a fresh install, macOS Gatekeeper must verify every native `.so` extension (qdrant_client, sklearn, nltk, numpy). The ingestion script does this automatically at startup, but if you are scripting the pipeline non-interactively you can also trigger it manually to avoid any timeout issues:
+
+```bash
+.venv/bin/python -c "import numpy, sklearn, nltk, qdrant_client; print('warm-up OK')"
+```
+
+Run this once after installing dependencies; subsequent runs skip Gatekeeper verification.
+
 ### S2. Promote staging → prod
 
 ```bash

@@ -74,6 +74,15 @@ sentence-transformers>=4.1.0
 # RAG & knowledge (Knowledge)
 # ---------------------------------------------------------------------------
 llama-index>=0.12.30
+llama-index-embeddings-openai>=0.6.0
+llama-index-vector-stores-qdrant>=0.10.1
+qdrant-client>=1.18.0
+fastembed>=0.8.0
+openai>=2.38.0
+beautifulsoup4>=4.14.3
+lxml>=6.1.1
+pdfplumber>=0.11.9
+pypdfium2>=5.8.0
 
 # ---------------------------------------------------------------------------
 # Governance, reporting, schema (Teams A, B, C)

@@ -83,7 +83,7 @@ Model assignments follow a cost-vs-capability rule: **Opus** for agents that syn
 |---|-------|-------|------------------------|
 | 1 | **Orchestrator** | **Claude Opus** | Owns the audit plan, runs the python-constraint CSP, sequences phases, spawns/monitors subagents, decides parallel vs sequential dispatch. |
 | 2 | **Verifier** | **Claude Opus** | Independent critic: judges every phase artefact against a rubric (factual accuracy, completeness, evidence linkage, regulatory citation correctness) before the Orchestrator admits it to the compliance matrix. |
-| 3 | **Regulatory RAG** | **Claude Haiku** | Answers "what does Art. X §Y require?" on demand. Indexes EU AI Act, Annexes, delegated acts, harmonised standards (ISO/IEC 42001, 23894, 24029), GPAI Code of Practice. |
+| 3 | **Regulatory RAG** | **Claude Haiku** | Answers "what does Art. X §Y require?" on demand. Indexes EU AI Act, Annexes, delegated acts, harmonised standards (ISO/IEC 42001, 23894, 24029), GPAI Code of Practice. See corpus ingestion note below. |
 
 ### 3.2 Tier 2 — Phase Agents (one per engagement)
 
@@ -107,6 +107,39 @@ Tier-3 agents are required to satisfy Mökander 2023's **application-layer audit
 | 12 | **Privacy / DPO Sub-Agent** | **Claude Sonnet** | Phase 5 when GDPR overlap detected (special-category data, biometric data, Annex III §1 use case) | Art. 10 §5 lawful-basis check, DPIA cross-reference, retention & minimisation review. | EU AI Act Art. 10 §5; GDPR Art. 35 (DPIA); Mökander 2023 application-layer privacy audit |
 
 **Why these three are non-negotiable for quality.** The exposé's required deliverable is *"EU AI Act-compliant"* reports (line 82). Compliance with Articles 10 §5, 15, and the GPAI/LLM evidentiary obligations cannot be discharged by the six phase agents alone without violating the Mökander/Falco independence principle: the agent that wrote the artefact cannot also be the agent that adversarially tests it. Removing any Tier-3 agent would either (a) leave a regulatory article unaudited, or (b) collapse audit and adversarial review into the same agent. Both are documented quality regressions.
+
+### 3.1a Regulatory Corpus — Ingestion Design
+
+The Regulatory RAG agent's knowledge base is built by `scripts/ingest_regulatory_corpus.py`, which runs once as a setup step and populates two Qdrant collections.
+
+**Corpus (as of latest ingestion)**
+
+| Regulation | Source format | Chunks | Notes |
+|---|---|---|---|
+| EU AI Act (Regulation (EU) 2024/1689) | EUR-Lex HTML | **339** (136 articles, 181 recitals, 22 annexes) | BeautifulSoup HTML parser |
+| GDPR (Regulation (EU) 2016/679) | EUR-Lex HTML | **288** (115 articles, 173 recitals) | BeautifulSoup HTML parser |
+| ISO/IEC 42001:2023 | PDF | **88** (32 clauses §4–§10, 56 Annex A controls) | `pypdfium2` PDF backend (see below) |
+| **Total** | | **715** corpus chunks | |
+
+`obligations_index` additionally holds **15** obligation-question points from the compliance-checker JSON.
+
+**PDF parsing strategy for ISO/IEC 42001**
+
+ISO/IEC 42001:2023 is published using PDF Tools AG's toolchain, which emits newline-separated cross-reference tokens (e.g. `1\n0\nobj` instead of `1 0 obj`). The `pdfminer.six` / `pdfplumber` stack cannot parse this format and returns 0 pages without raising an exception. The ingestion script therefore uses **`pypdfium2`** (`>=5.8.0`) as its PDF backend, which reads the file correctly.
+
+In addition, ISO 42001 frequently places a clause or Annex A control number on its own line with the title on the next line (split-line headings, e.g. `A.10.3` then `Data minimisation`). Three regular expressions handle this:
+
+- `_ISO_CLAUSE_NUM_RE` — matches a bare clause number (e.g. `4.1`).
+- `_ISO_CONTROL_NUM_RE` — matches a bare Annex A control number (e.g. `A.6.2`).
+- `_ISO_TITLE_HEAD_RE` — matches a combined `<number> <title>` heading on one line.
+
+When a bare numeric line is detected, the parser looks ahead to consume the next non-blank line as the title.
+
+**Idempotency**
+
+Each chunk's Qdrant point ID is a deterministic **SHA-256** of `text + regulation + ref + chunk_index`. `_fetch_existing_ids()` scrolls the collection before any embedding call and filters out already-present IDs. Re-running the ingestion script produces **zero OpenAI API calls** when the corpus is unchanged.
+
+---
 
 ### 3.4 Org Chart
 
