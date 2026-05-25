@@ -21,7 +21,7 @@ import jsonschema
 from jsonschema import Draft7Validator, ValidationError
 
 # Load the JSON Schema once at import time (version-pinned).
-_SCHEMA_PATH = pathlib.Path(__file__).parents[1] / "templates" / "T01b_annex_iv_dossier.json"
+_SCHEMA_PATH = pathlib.Path(__file__).parents[2] / "templates" / "T01b_annex_iv_dossier.json"
 with _SCHEMA_PATH.open() as _f:
     _T01B_SCHEMA: dict[str, Any] = json.load(_f)
 

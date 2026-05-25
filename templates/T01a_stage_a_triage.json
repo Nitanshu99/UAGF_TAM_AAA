@@ -90,6 +90,94 @@
       "type": ["string", "null"],
       "format": "uuid",
       "description": "UUID of the upstream S4 CGSA assessment, if available."
+    },
+    "entity_type": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["provider", "deployer", "distributor", "importer", "product_manufacturer", "authorised_representative"]
+      },
+      "uniqueItems": true,
+      "description": "FLI-E1. Role(s) the audited party plays under the Act. Multiple values allowed per Recital 83 (Art. 3 §§2–8)."
+    },
+    "art25_status_change": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["name_trademark", "intended_purpose_change", "substantial_modification", "none"]
+      },
+      "uniqueItems": true,
+      "description": "FLI-E2. Modifications that flip a deployer/distributor/importer into a provider under Art. 25 §§1–2."
+    },
+    "annex_i_section_a": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["machinery", "toys", "recreational_craft", "lifts", "atex_equipment", "radio_equipment", "pressure_equipment", "cableway", "ppe", "gas_appliances", "medical_devices", "ivd_medical_devices"]
+      },
+      "uniqueItems": true,
+      "description": "FLI-HR2/HR6. Annex I Section A product categories where the AI system is a safety component. Drives Art. 43 §1(a) notified-body routing."
+    },
+    "annex_i_section_b": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["civil_aviation_security", "two_three_wheel_vehicles", "agricultural_forestry_vehicles", "marine_equipment", "rail_interoperability", "motor_vehicles", "civil_aviation"]
+      },
+      "uniqueItems": true,
+      "description": "FLI-HR1. Annex I Section B product categories. Routes to sector-specific conformity regimes."
+    },
+    "third_party_ca_legally_required": {
+      "type": "boolean",
+      "description": "FLI-HR3. Whether existing EU sectoral law requires a third-party conformity assessment for the product. Distinct from the provider's voluntary election (provider_elects_third_party)."
+    },
+    "art6_derogation_claimed": {
+      "type": "boolean",
+      "description": "FLI-HR5. Declared Art. 6 §3 derogation: provider claims the Annex III system does NOT pose a significant risk of harm."
+    },
+    "art6_derogation_rationale": {
+      "type": ["string", "null"],
+      "description": "FLI-HR5 follow-up. Rationale for the Art. 6 §3 derogation claim (required when art6_derogation_claimed is true)."
+    },
+    "territorial_scope": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["placed_on_eu_market", "gpai_placed_on_eu_market", "established_in_eu", "importer_in_eu", "output_used_in_eu", "none"]
+      },
+      "uniqueItems": true,
+      "description": "FLI-S1. Territorial nexus to the Union under Art. 2. If only 'none' is selected the system is out of scope."
+    },
+    "gpai_systemic_risk": {
+      "type": "boolean",
+      "description": "FLI-R1. GPAI model meets the systemic-risk threshold (Art. 51 §2; >10^25 FLOPs or Commission designation per Annex XIII)."
+    },
+    "art2_exclusion": {
+      "type": ["string", "null"],
+      "enum": ["military", "third_country_law_enforcement", "research_and_development", "open_source", "personal_use", "none", null],
+      "description": "FLI-R2. Art. 2 exclusion category, if any. 'military' and 'third_country_law_enforcement' fully exclude the system."
+    },
+    "art5_prohibited_practices": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["subliminal_manipulation", "exploit_vulnerabilities", "biometric_categorisation", "social_scoring", "predictive_policing", "facial_recognition_db_scraping", "emotion_recognition_workplace_education", "real_time_remote_biometrics", "none"]
+      },
+      "uniqueItems": true,
+      "description": "FLI-R3. Declared Art. 5 prohibited practices. Any non-'none' value halts the engagement at Stage A."
+    },
+    "art50_transparency_triggers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["deepfake_content", "public_interest_text", "emotion_or_biometric_categorisation", "direct_interaction_with_persons", "synthetic_content_generation", "none"]
+      },
+      "uniqueItems": true,
+      "description": "FLI-R4. Art. 50 transparency obligations triggered by the system's functions."
+    },
+    "is_public_body_or_public_service": {
+      "type": "boolean",
+      "description": "FLI-R5. Deployer is a public-law body or a private entity providing public services. Triggers Art. 27 Fundamental Rights Impact Assessment when combined with a high-risk system."
     }
   }
 }

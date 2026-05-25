@@ -22,7 +22,9 @@ from typing import Any
 import jsonschema
 from jsonschema import Draft7Validator
 
-_SCHEMA_PATH = pathlib.Path(__file__).parents[1] / "templates" / "T01a_stage_a_triage.json"
+from aaa.tools.scope_gate import scope_gate
+
+_SCHEMA_PATH = pathlib.Path(__file__).parents[2] / "templates" / "T01a_stage_a_triage.json"
 with _SCHEMA_PATH.open() as _f:
     _T01A_SCHEMA: dict[str, Any] = json.load(_f)
 
@@ -112,6 +114,7 @@ def triage_render(payload: dict[str, Any]) -> TriageRenderResult:
             or payload.get("special_category_data", False)
         ),
         "triggers_gpai_module": payload.get("gpai_general_purpose", False),
+        "scope_gate": scope_gate(payload).to_dict(),
         "schema_version": _T01A_SCHEMA.get("$id", "unknown"),
     }
 

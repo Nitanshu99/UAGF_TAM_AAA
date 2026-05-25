@@ -40,6 +40,10 @@ from aaa.platform.evidence import EvidenceStore  # noqa: E402
 from aaa.tools.intake_completeness_calculator import (  # noqa: E402
     intake_completeness_calculator,
 )
+from aaa.tools.scope_gate import scope_gate  # noqa: E402
+
+# Reference URL for FLI tooltips ("why this matters" links).
+_FLI_REF = "https://artificialintelligenceact.eu/assessment/eu-ai-act-compliance-checker/"
 
 _TEMPLATES_DIR = REPO_ROOT / "templates"
 _FIXTURE_DIR = REPO_ROOT / "scripts" / "fixtures" / "uci_german_credit"
@@ -65,20 +69,29 @@ def _load_fixture(name: str) -> dict:
 # ---------------------------------------------------------------------------
 
 def _render_stage_a(defaults: dict) -> dict:
-    """Render Stage A (T01a) form and return the payload."""
+    """Render Stage A (T01a) form and return the payload.
+
+    Field descriptions and tooltip wording are drawn from the FLI
+    "EU AI Act Compliance Checker" v1.0 and from the T01a JSON Schema.
+    """
     schema = _load_schema("T01a_stage_a_triage.json")
     props = schema.get("properties", {})
 
     st.subheader("Stage A — Triage form (T01a)")
     payload: dict[str, Any] = {}
     payload["provider_name"] = st.text_input(
-        "Provider name", value=defaults.get("provider_name", ""))
+        "Provider name", value=defaults.get("provider_name", ""),
+        help="Legal name of the AI system provider (Art. 11). FLI-E1.")
     payload["system_name"] = st.text_input(
-        "System name", value=defaults.get("system_name", ""))
+        "System name", value=defaults.get("system_name", ""),
+        help="Commercial or internal name of the AI system.")
     payload["version"] = st.text_input(
         "Version", value=defaults.get("version", "0.1.0"))
     payload["intended_purpose"] = st.text_area(
-        "Intended purpose", value=defaults.get("intended_purpose", ""))
+        "Intended purpose", value=defaults.get("intended_purpose", ""),
+        help="As described by the provider (Art. 13 §3). Material changes "
+             "to this can flip a downstream entity into a Provider under "
+             "Art. 25 §§1–2 — see FLI-E2.")
 
     payload["declared_modality"] = st.selectbox(
         "Declared modality",
@@ -91,11 +104,17 @@ def _render_stage_a(defaults: dict) -> dict:
         options=props.get("declared_risk_tier", {}).get(
             "enum", ["prohibited", "high", "limited", "minimal", "gpai"]),
         index=1,
+        help="Per Art. 6 / Annex III. FLI-HR3/HR4 decide this from the "
+             "Annex I/III categories below.",
     )
     payload["declared_annex_iii_sections"] = st.multiselect(
         "Declared Annex III sections",
         options=[str(i) for i in range(1, 9)],
         default=defaults.get("declared_annex_iii_sections", ["5"]),
+        help="Annex III high-risk categories (Art. 6 §2). Matches FLI-HR4. "
+             "1=Biometrics, 2=Critical infrastructure, 3=Education, "
+             "4=Employment, 5=Essential services, 6=Law enforcement, "
+             "7=Migration, 8=Justice & democracy.",
     )
     payload["deployment_context"] = st.selectbox(
         "Deployment context",
@@ -105,20 +124,126 @@ def _render_stage_a(defaults: dict) -> dict:
     )
     payload["provider_elects_third_party"] = st.checkbox(
         "Provider elects third-party conformity assessment",
-        value=defaults.get("provider_elects_third_party", False))
+        value=defaults.get("provider_elects_third_party", False),
+        help="Voluntary election under Art. 43 §1(b). Distinct from "
+             "third_party_ca_legally_required (FLI-HR3) in the FLI section.")
     payload["gdpr_overlap"] = st.checkbox(
-        "GDPR overlap", value=defaults.get("gdpr_overlap", False))
+        "GDPR overlap", value=defaults.get("gdpr_overlap", False),
+        help="System processes personal data subject to GDPR.")
     payload["gpai_general_purpose"] = st.checkbox(
-        "GPAI general purpose", value=defaults.get("gpai_general_purpose", False))
+        "GPAI general purpose", value=defaults.get("gpai_general_purpose", False),
+        help="General-Purpose AI model (Arts. 51–55). FLI-R1.")
     payload["special_category_data"] = st.checkbox(
-        "Special category data", value=defaults.get("special_category_data", False))
+        "Special category data", value=defaults.get("special_category_data", False),
+        help="Art. 10 §5 / GDPR Art. 9 special-category data.")
 
     # Optional fields
     payload["cgsa_assessment_id"] = st.text_input(
         "CGSA assessment id (optional)",
         value=defaults.get("cgsa_assessment_id") or "")
     payload["art43_preview"] = None
+
+    # ── FLI pre-intake scoping fields (collapsed by default) ────────────────
+    _render_fli_section(payload, defaults)
     return payload
+
+
+def _render_fli_section(payload: dict, defaults: dict) -> None:
+    """Render the optional FLI-derived scoping fields in an expander.
+
+    All fields are optional and write into the same T01a payload dict.
+    The expander label links the reviewer to the source questionnaire.
+    """
+    with st.expander(
+        "Pre-intake scope questions (FLI EU AI Act Compliance Checker)",
+        expanded=False,
+    ):
+        st.caption(
+            f"Source: [Future of Life Institute — EU AI Act Compliance Checker]({_FLI_REF}). "
+            "All fields below are optional; populate them to enable the scope-gate banner."
+        )
+        payload["entity_type"] = st.multiselect(
+            "FLI-E1 · Entity type(s) under Art. 3 §§2–8",
+            options=["provider", "deployer", "distributor", "importer",
+                     "product_manufacturer", "authorised_representative"],
+            default=defaults.get("entity_type", []),
+            help="Recital 83: multiple roles allowed. Drives Art. 16/22/23/24/26/54 routing.",
+        )
+        payload["art25_status_change"] = st.multiselect(
+            "FLI-E2 · Art. 25 §§1–2 modifications (flips you into a Provider)",
+            options=["name_trademark", "intended_purpose_change",
+                     "substantial_modification", "none"],
+            default=defaults.get("art25_status_change", []),
+        )
+        payload["annex_i_section_b"] = st.multiselect(
+            "FLI-HR1 · Annex I Section B sectoral categories",
+            options=["civil_aviation_security", "two_three_wheel_vehicles",
+                     "agricultural_forestry_vehicles", "marine_equipment",
+                     "rail_interoperability", "motor_vehicles", "civil_aviation"],
+            default=defaults.get("annex_i_section_b", []),
+        )
+        payload["annex_i_section_a"] = st.multiselect(
+            "FLI-HR2/HR6 · Annex I Section A product categories",
+            options=["machinery", "toys", "recreational_craft", "lifts",
+                     "atex_equipment", "radio_equipment", "pressure_equipment",
+                     "cableway", "ppe", "gas_appliances", "medical_devices",
+                     "ivd_medical_devices"],
+            default=defaults.get("annex_i_section_a", []),
+            help="Used when the AI system is a 'safety component' of a regulated product.",
+        )
+        payload["third_party_ca_legally_required"] = st.checkbox(
+            "FLI-HR3 · Third-party conformity assessment legally required",
+            value=defaults.get("third_party_ca_legally_required", False),
+            help="Distinct from provider_elects_third_party — this is a legal obligation.",
+        )
+        payload["art6_derogation_claimed"] = st.checkbox(
+            "FLI-HR5 · Art. 6 §3 derogation claimed (no significant risk of harm)",
+            value=defaults.get("art6_derogation_claimed", False),
+        )
+        payload["art6_derogation_rationale"] = st.text_area(
+            "FLI-HR5 · Art. 6 §3 derogation rationale (required if claimed)",
+            value=defaults.get("art6_derogation_rationale") or "",
+        ) or None
+        payload["territorial_scope"] = st.multiselect(
+            "FLI-S1 · Territorial nexus to the Union (Art. 2)",
+            options=["placed_on_eu_market", "gpai_placed_on_eu_market",
+                     "established_in_eu", "importer_in_eu",
+                     "output_used_in_eu", "none"],
+            default=defaults.get("territorial_scope", []),
+        )
+        payload["gpai_systemic_risk"] = st.checkbox(
+            "FLI-R1 · GPAI meets Art. 51 §2 systemic-risk threshold (>10^25 FLOPs)",
+            value=defaults.get("gpai_systemic_risk", False),
+        )
+        payload["art2_exclusion"] = st.selectbox(
+            "FLI-R2 · Art. 2 exclusion category (if any)",
+            options=["", "military", "third_country_law_enforcement",
+                     "research_and_development", "open_source",
+                     "personal_use", "none"],
+            index=0,
+        ) or None
+        payload["art5_prohibited_practices"] = st.multiselect(
+            "FLI-R3 · Art. 5 prohibited practices (any selection halts engagement)",
+            options=["subliminal_manipulation", "exploit_vulnerabilities",
+                     "biometric_categorisation", "social_scoring",
+                     "predictive_policing", "facial_recognition_db_scraping",
+                     "emotion_recognition_workplace_education",
+                     "real_time_remote_biometrics", "none"],
+            default=defaults.get("art5_prohibited_practices", []),
+        )
+        payload["art50_transparency_triggers"] = st.multiselect(
+            "FLI-R4 · Art. 50 transparency triggers",
+            options=["deepfake_content", "public_interest_text",
+                     "emotion_or_biometric_categorisation",
+                     "direct_interaction_with_persons",
+                     "synthetic_content_generation", "none"],
+            default=defaults.get("art50_transparency_triggers", []),
+        )
+        payload["is_public_body_or_public_service"] = st.checkbox(
+            "FLI-R5 · Public-law body or private entity providing public services",
+            value=defaults.get("is_public_body_or_public_service", False),
+            help="Combined with risk_tier=high this triggers an Art. 27 FRIA obligation.",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -211,13 +336,24 @@ def main() -> None:
 
     stage_c = _load_fixture("stage_c.json") or None
 
+    # Live scope-gate banner (FLI-derived pre-intake check)
+    gate = scope_gate(stage_a)
+    if gate.verdict == "prohibited":
+        st.error(f"⛔ Scope gate: **prohibited** — {gate.reasoning[0]}")
+    elif gate.verdict == "excluded":
+        st.warning(f"⚠ Scope gate: **excluded** — {gate.reasoning[0]}")
+    elif gate.verdict == "out_of_scope":
+        st.warning(f"⚠ Scope gate: **out of scope** — {gate.reasoning[0]}")
+    else:
+        st.info("✅ Scope gate: **in scope** — " + " | ".join(gate.reasoning))
+
     # Live KPI 0 preview
     score = _live_completeness(stage_a, stage_b)
     if score is not None:
         st.metric("Live intake_completeness_score (gate ≥ 0.80)", f"{score:.2f}")
         st.progress(min(max(score, 0.0), 1.0))
 
-    if st.button("Run full audit", type="primary"):
+    if st.button("Run full audit", type="primary", disabled=gate.halt_engagement):
         with st.spinner("Running IntakeValidator → Orchestrator …"):
             try:
                 final, store = asyncio.run(_run_pipeline(

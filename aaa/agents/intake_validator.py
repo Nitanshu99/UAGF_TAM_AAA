@@ -93,6 +93,15 @@ class IntakeValidator(BaseAgent):
                 details={"schema_errors": triage_result.schema_errors},
             )
 
+        # Halt engagement if scope gate raises a red flag (prohibited/excluded).
+        gate = triage_result.rendered.get("scope_gate", {})
+        if gate.get("halt_engagement"):
+            raise IntakeValidatorError(
+                stage="A",
+                reason=f"Scope gate halted engagement: {gate.get('verdict')}",
+                details={"reasoning": gate.get("reasoning", [])},
+            )
+
         # Compute preview Art. 43 decision from declared values.
         art43_preview = self._preview_art43(stage_a_payload)
         art43_preview_procedure = art43_preview["procedure"]
@@ -177,6 +186,7 @@ class IntakeValidator(BaseAgent):
         state: AuditState = {
             "engagement_id": engagement_id,
             "client_submission": submission,
+            "scope_gate": gate,
             "declared_modality": declared_modality,
             "declared_risk_tier": stage_a_payload["declared_risk_tier"],
             "declared_annex_iii_sections": stage_a_payload.get("declared_annex_iii_sections", []),

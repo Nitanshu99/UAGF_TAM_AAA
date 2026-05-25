@@ -310,6 +310,18 @@ def _node_compliance_matrix(state: dict) -> dict:
 
     # Build compliance_matrix from admitted artefact citations
     admitted_articles: set[str] = set()
+
+    # Add articles derived from pre-intake scope gate flags
+    gate = state.get("scope_gate", {})
+    if gate.get("become_provider_under_art25"):
+        admitted_articles.add("Art.25")
+    if gate.get("triggers_fria"):
+        admitted_articles.add("Art.27")
+    if gate.get("triggers_art50_transparency"):
+        admitted_articles.add("Art.50")
+    if gate.get("is_gpai_systemic"):
+        admitted_articles.add("Arts.51-55")
+
     for tid, critique in state["verifier_critiques"].items():
         if critique.get("verdict") in {"accept", "accept_with_notes"}:
             for art in critique.get("article_citations", []):
