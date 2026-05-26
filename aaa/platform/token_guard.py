@@ -91,13 +91,17 @@ def compute_budget(
 
 
 def ensure_within_budget(
-    text: str,
     model: str,
+    text: str | None = None,
     *,
+    messages: Sequence[dict[str, Any]] | None = None,
     threshold: float = DEFAULT_THRESHOLD,
     reserve_for_output: int = DEFAULT_RESERVE_OUTPUT,
 ) -> int:
-    """Assert that *text* fits inside the budget for *model*.
+    """Assert that *text* or *messages* fits inside the budget for *model*.
+
+    Pass either ``text`` (plain string) or ``messages`` (chat payload list);
+    the token count is computed with :func:`count_tokens` in both cases.
 
     Returns the measured token count on success; raises
     :class:`BudgetExceededError` otherwise.  Call **immediately before**
@@ -107,7 +111,7 @@ def ensure_within_budget(
     budget = compute_budget(
         model, threshold=threshold, reserve_for_output=reserve_for_output
     )
-    n = count_tokens(model, text=text)
+    n = count_tokens(model, text=text, messages=messages)
     if n > budget:
         raise BudgetExceededError(prompt_tokens=n, budget=budget, model=model)
     return n

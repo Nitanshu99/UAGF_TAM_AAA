@@ -136,13 +136,21 @@ you need to relax/tighten the gate.
 
 ### 2.4 Prompts (Stage: Verifier, ScopeAgent, etc.)
 
-System prompts are written as f-strings inside the agent files:
+The Verifier uses a **system + user message split** so that the static rubric is
+byte-identical across every call (enabling server-side prefix caching) and
+untrusted artefact content is isolated in a separate user message wrapped in
+XML data tags.
 
-- `aaa/agents/tier1/verifier.py` — function `_build_critique_prompt`
-- `aaa/agents/tier2/scope_agent.py` — inline prompt
-- `aaa/tools/prompt_injection_suite.py` — `_DANGEROUS_PATTERNS` list
+| Symbol | File | Purpose |
+|---|---|---|
+| `_SYSTEM_PROMPT` | `aaa/agents/tier1/verifier.py` | Static rubric, chain-of-thought instruction, security policy, and JSON output contract — never changes per call |
+| `_build_critique_messages()` | `aaa/agents/tier1/verifier.py` | Builds the `[system, user]` message list; wraps artefact body in `<artefact>` tags and evidence URIs in `<evidence_uris>` tags |
+| inline prompt | `aaa/agents/tier2/scope_agent.py` | Scope classification instructions |
+| `_DANGEROUS_PATTERNS` | `aaa/tools/prompt_injection_suite.py` | Adversarial probe patterns for prompt-injection testing |
 
-Edit the strings if you want different audit instructions.
+To change the audit wording, edit `_SYSTEM_PROMPT` in `verifier.py` **and** update
+the corresponding snapshot in `tests/unit/test_prompt_snapshots.py` in the same
+commit so the snapshot tests remain in sync.
 
 ### 2.5 Model registry & Flex Processing
 

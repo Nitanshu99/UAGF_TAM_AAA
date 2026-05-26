@@ -105,7 +105,16 @@ def test_compute_budget_is_never_below_one():
 # ---------------------------------------------------------------------------
 
 def test_ensure_within_budget_pass_returns_token_count():
-    n = ensure_within_budget("a short prompt", "claude-opus-4-5")
+    n = ensure_within_budget("claude-opus-4-5", "a short prompt")
+    assert isinstance(n, int)
+    assert n >= 1
+
+
+def test_ensure_within_budget_pass_with_messages():
+    n = ensure_within_budget(
+        "claude-opus-4-5",
+        messages=[{"role": "user", "content": "hello world"}],
+    )
     assert isinstance(n, int)
     assert n >= 1
 
@@ -115,8 +124,21 @@ def test_ensure_within_budget_raises_when_over():
     # Any non-trivial text will have > 1 token and must raise.
     with pytest.raises(BudgetExceededError) as exc:
         ensure_within_budget(
-            "x " * 50,
             "claude-opus-4-5",
+            "x " * 50,
+            threshold=0.000001,
+            reserve_for_output=0,
+        )
+    assert exc.value.model == "claude-opus-4-5"
+    assert exc.value.prompt_tokens > exc.value.budget
+
+
+def test_ensure_within_budget_raises_when_over_messages():
+    """messages= form also enforces the budget."""
+    with pytest.raises(BudgetExceededError) as exc:
+        ensure_within_budget(
+            "claude-opus-4-5",
+            messages=[{"role": "user", "content": "x " * 50}],
             threshold=0.000001,
             reserve_for_output=0,
         )
