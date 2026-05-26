@@ -61,9 +61,15 @@ class GovernanceAgent(BaseAgent):
     def __init__(
         self,
         evidence_store: EvidenceStore,
-        model: str = "claude-opus-4-5",
+        model: str | None = None,
+        service_tier: str | None = None,
     ):
-        super().__init__(name="GovernanceAgent", model=model)
+        from aaa.platform.model_registry import resolve_model, resolve_service_tier
+        super().__init__(
+            name="GovernanceAgent",
+            model=resolve_model("GovernanceAgent", model),
+            service_tier=resolve_service_tier("GovernanceAgent", service_tier),
+        )
         self.store = evidence_store
 
     # ------------------------------------------------------------------

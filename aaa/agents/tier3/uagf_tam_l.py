@@ -43,9 +43,15 @@ class UagfTamLBranch(BaseAgent):
     def __init__(
         self,
         evidence_store: EvidenceStore,
-        model: str = "claude-opus-4-5",
+        model: str | None = None,
+        service_tier: str | None = None,
     ):
-        super().__init__(name="UAGF-TAM-L", model=model)
+        from aaa.platform.model_registry import resolve_model, resolve_service_tier
+        super().__init__(
+            name="UAGF-TAM-L",
+            model=resolve_model("UAGF-TAM-L", model),
+            service_tier=resolve_service_tier("UAGF-TAM-L", service_tier),
+        )
         self.store = evidence_store
 
     async def process(self, message: Dispatch) -> Report:  # type: ignore[override]

@@ -175,8 +175,13 @@ class RegulatoryRAG(BaseAgent):
     the Qdrant collection is unavailable.
     """
 
-    def __init__(self, model: str = "claude-3-haiku-20240307"):
-        super().__init__(name="Regulatory RAG", model=model)
+    def __init__(self, model: str | None = None, service_tier: str | None = None):
+        from aaa.platform.model_registry import resolve_model, resolve_service_tier
+        super().__init__(
+            name="Regulatory RAG",
+            model=resolve_model("Regulatory RAG", model),
+            service_tier=resolve_service_tier("Regulatory RAG", service_tier),
+        )
         self.corpus_path = "data/regulatory_corpus"
         self._qdrant: Any = None        # lazy-loaded qdrant_client.QdrantClient
         self._openai: Any = None        # lazy-loaded openai.OpenAI

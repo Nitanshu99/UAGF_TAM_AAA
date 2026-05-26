@@ -80,9 +80,15 @@ class ScopeAgent(BaseAgent):
         self,
         evidence_store: EvidenceStore,
         regulatory_rag: Any | None = None,
-        model: str = "claude-sonnet-4-5",
+        model: str | None = None,
+        service_tier: str | None = None,
     ):
-        super().__init__(name="ScopeAgent", model=model)
+        from aaa.platform.model_registry import resolve_model, resolve_service_tier
+        super().__init__(
+            name="ScopeAgent",
+            model=resolve_model("ScopeAgent", model),
+            service_tier=resolve_service_tier("ScopeAgent", service_tier),
+        )
         self.store = evidence_store
         self.rag = regulatory_rag  # RegulatoryRAG instance or None
 

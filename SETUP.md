@@ -144,6 +144,78 @@ System prompts are written as f-strings inside the agent files:
 
 Edit the strings if you want different audit instructions.
 
+### 2.5 Model registry & Flex Processing
+
+All 12 agents pull their default LLM model and OpenAI **service tier** from a
+single source of truth at [`aaa/platform/model_registry.py`](./aaa/platform/model_registry.py).
+
+#### Redistributed model assignment
+
+| # | Agent | Model | Service tier |
+|---|-------|-------|--------------|
+| 1 | Orchestrator | `gpt-5.5` | standard |
+| 2 | Verifier | `gpt-5.5` | **flex** |
+| 3 | Regulatory RAG | `gpt-5.4-nano` | standard |
+| 4 | ScopeAgent | `gpt-5.4` | standard |
+| 5 | DataAuditor | `gpt-5.4` | standard |
+| 6 | ModelValidator | `gpt-5.5` | **flex** |
+| 7 | OutputFairnessTester | `gpt-5.4-mini` | standard |
+| 8 | GovernanceAgent | `gpt-5.5` | **flex** |
+| 9 | ReportArchitect | `gpt-5.4` | **flex** |
+| 10 | UAGF-TAM-L | `gpt-5.5` | **flex** |
+| 11 | CyberSecurityAgent | `gpt-5.4` | standard |
+| 12 | PrivacyDPOAgent | `gpt-5.4` | standard |
+
+#### What is Flex Processing?
+
+OpenAI Flex (`service_tier="flex"`) routes requests to spare capacity and
+charges **~50 % less** than the standard rate.  The trade-off is that the API
+may respond with `429 Resource Unavailable` during peak load and that latency
+can be higher.
+
+The five **non-interactive** agents (Verifier, ModelValidator, GovernanceAgent,
+ReportArchitect, UAGF-TAM-L) run on Flex because:
+
+* They are invoked asynchronously, off the critical user-facing path.
+* Their prompts are long (full artefact + evidence), making the discount
+  financially significant.
+* A delayed response is acceptable; a blocked audit head is not.
+
+Interactive / critical-path agents (Orchestrator, ScopeAgent, etc.) stay on
+the standard tier to guarantee low latency.
+
+#### Retry and fallback behaviour
+
+[`aaa/platform/flex_retry.py`](./aaa/platform/flex_retry.py) wraps every
+`litellm.acompletion` call made through `BaseAgent.acompletion()`:
+
+| Setting | Value | Purpose |
+|---------|-------|---------|
+| Flex timeout | **600 s** (10 min) | Flex may queue before processing |
+| Standard timeout | **120 s** | Normal calls |
+| Max Flex retries | **3** | Retry on `429 / RateLimitError` |
+| Backoff | **2ˢ s** (2 → 4 → 8 s) | Exponential back-off |
+| Fallback | **standard tier × 1** | Used after all Flex retries fail |
+
+If all Flex retries and the standard-tier fallback also fail, a `RuntimeError`
+is raised and the Verifier's existing exception handler falls back to the
+deterministic offline critique — so the audit always produces a result.
+
+#### How to override defaults
+
+Every agent constructor accepts explicit `model=` and `service_tier=` keyword
+arguments that take precedence over the registry:
+
+```python
+from aaa.agents.tier1.verifier import Verifier
+
+# Force a different model for testing:
+v = Verifier(model="gpt-4o", service_tier="default")
+```
+
+To change the roster-wide default for an agent, edit the `AGENT_MODELS` dict
+in `aaa/platform/model_registry.py`.
+
 ---
 
 ## 3. Installation (one command)

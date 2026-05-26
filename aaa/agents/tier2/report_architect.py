@@ -58,8 +58,18 @@ def _kpi_band(value: float | None, pct: bool = False) -> str | None:
 class ReportArchitect(BaseAgent):
     """Phase 6 — Report Architect."""
 
-    def __init__(self, evidence_store: EvidenceStore, model: str = "claude-sonnet-4-5"):
-        super().__init__(name="ReportArchitect", model=model)
+    def __init__(
+        self,
+        evidence_store: EvidenceStore,
+        model: str | None = None,
+        service_tier: str | None = None,
+    ):
+        from aaa.platform.model_registry import resolve_model, resolve_service_tier
+        super().__init__(
+            name="ReportArchitect",
+            model=resolve_model("ReportArchitect", model),
+            service_tier=resolve_service_tier("ReportArchitect", service_tier),
+        )
         self.store = evidence_store
 
     # ------------------------------------------------------------------

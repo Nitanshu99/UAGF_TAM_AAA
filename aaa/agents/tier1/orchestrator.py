@@ -23,6 +23,7 @@ from typing import Any
 
 from aaa.agents.base import BaseAgent, Dispatch
 from aaa.agents.tier1.verifier import Verifier
+from aaa.platform.model_registry import resolve_model, resolve_service_tier
 from aaa.tools.csp_solver import solve_phase_plan
 from aaa.tools.completeness_score import compute_completeness_score
 from aaa.tools.regulatory_coverage import compute_regulatory_coverage_pct
@@ -442,11 +443,16 @@ class Orchestrator(BaseAgent):
 
     def __init__(
         self,
-        model: str = "claude-sonnet-4-5",
+        model: str | None = None,
         evidence_store: Any = None,
         regulatory_rag: Any = None,
+        service_tier: str | None = None,
     ):
-        super().__init__(name="Orchestrator", model=model)
+        super().__init__(
+            name="Orchestrator",
+            model=resolve_model("Orchestrator", model),
+            service_tier=resolve_service_tier("Orchestrator", service_tier),
+        )
         self._verifier = Verifier()
         self._checkpointer = _make_checkpointer()
         self._evidence_store = evidence_store

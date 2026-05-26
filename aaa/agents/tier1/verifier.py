@@ -27,6 +27,13 @@ import os
 from typing import Any, Literal
 
 from aaa.agents.base import BaseAgent
+from aaa.platform.model_registry import resolve_model, resolve_service_tier
+from aaa.platform.token_guard import (
+    BudgetExceededError,
+    compute_budget,
+    ensure_within_budget,
+)
+from aaa.tools.evidence_truncate import truncate_payload
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +57,12 @@ class Verifier(BaseAgent):
         Claude Opus for maximum critique rigour.
     """
 
-    def __init__(self, model: str = "claude-opus-4-5"):
-        super().__init__(name="Verifier", model=model)
+    def __init__(self, model: str | None = None, service_tier: str | None = None):
+        super().__init__(
+            name="Verifier",
+            model=resolve_model("Verifier", model),
+            service_tier=resolve_service_tier("Verifier", service_tier),
+        )
         self._offline: bool = (
             os.environ.get("AAA_OFFLINE_MODE", "false").lower() == "true"
         )
@@ -149,8 +160,6 @@ class Verifier(BaseAgent):
     ) -> dict[str, Any]:  # pragma: no cover
         """Call the LLM for a structured four-dimension critique."""
         try:
-            import litellm  # type: ignore
-
             content_str = (
                 json.dumps(content, indent=2)
                 if isinstance(content, dict)
@@ -159,8 +168,18 @@ class Verifier(BaseAgent):
             prompt = _build_critique_prompt(
                 phase_id, template_id, content_str, evidence_uris
             )
-            resp = await litellm.acompletion(
-                model=self.model,
+            try:
+                ensure_within_budget(prompt, self.model)
+            except BudgetExceededError as exc:
+                logger.warning(
+                    "Prompt for %s/%s exceeds budget (%d > %d); truncating evidence.",
+                    phase_id, template_id, exc.prompt_tokens, exc.budget,
+                )
+                content_str, prompt = self._truncate_for_budget(
+                    phase_id, template_id, content, evidence_uris
+                )
+                ensure_within_budget(prompt, self.model)
+            resp = await self.acompletion(
                 messages=[{"role": "user", "content": prompt}],
                 response_format={"type": "json_object"},
             )
@@ -184,6 +203,41 @@ class Verifier(BaseAgent):
             "article_citations": article_citations,
             "rerun_required": verdict == "rerun",
         }
+
+    # ------------------------------------------------------------------
+    # Evidence truncation (oversized-prompt recovery)
+    # ------------------------------------------------------------------
+
+    def _truncate_for_budget(
+        self,
+        phase_id: str,
+        template_id: str,
+        content: Any,
+        evidence_uris: list[str],
+    ) -> tuple[str, str]:
+        """Compress *content* with :func:`truncate_payload` and rebuild prompt."""
+        if not isinstance(content, dict):
+            content_str = str(content)
+            return content_str, _build_critique_prompt(
+                phase_id, template_id, content_str, evidence_uris
+            )
+        budget = compute_budget(self.model)
+        prompt_overhead = len(_build_critique_prompt(
+            phase_id, template_id, "", evidence_uris
+        ))
+        payload_budget = max(1, budget - prompt_overhead)
+        result = truncate_payload(
+            content,
+            query=f"{phase_id} {template_id}",
+            model=self.model,
+            max_tokens=payload_budget,
+            preserve_keys=("engagement_id", "generated_at"),
+        )
+        content_str = json.dumps(result.to_dict(), indent=2)
+        prompt = _build_critique_prompt(
+            phase_id, template_id, content_str, evidence_uris
+        )
+        return content_str, prompt
 
     # ------------------------------------------------------------------
     # Verdict logic

@@ -63,9 +63,15 @@ class ModelValidator(BaseAgent):
     def __init__(
         self,
         evidence_store: EvidenceStore,
-        model: str = "claude-opus-4-5",
+        model: str | None = None,
+        service_tier: str | None = None,
     ):
-        super().__init__(name="ModelValidator", model=model)
+        from aaa.platform.model_registry import resolve_model, resolve_service_tier
+        super().__init__(
+            name="ModelValidator",
+            model=resolve_model("ModelValidator", model),
+            service_tier=resolve_service_tier("ModelValidator", service_tier),
+        )
         self.store = evidence_store
 
     # ------------------------------------------------------------------
