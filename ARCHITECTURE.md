@@ -75,26 +75,26 @@ The chosen composite is therefore: **Orchestrator-Worker (Subagents) as the prim
 
 The roster is partitioned into three tiers. Tier-1 agents are always active; Tier-2 agents run once per engagement; Tier-3 agents are spawned on demand.
 
-Model assignments follow a cost-vs-capability rule: **Opus** for agents that synthesise heterogeneous evidence or render binding judgements; **Sonnet** for agents that interpret structured tool output against a regulatory rubric; **Haiku** for retrieval and small-context lookups.
+Model assignments follow a cost-vs-capability rule, implemented in `aaa/platform/model_registry.py` as the single source of truth: **gpt-5.5** for agents that synthesise heterogeneous evidence or render binding judgements; **gpt-5.4** for agents that interpret structured tool output against a regulatory rubric; **gpt-5.4-mini** for bounded interpretation tasks; **gpt-5.4-nano** for retrieval and small-context lookups. Long-running, non-interactive critique / synthesis agents (Verifier, ModelValidator, GovernanceAgent, ReportArchitect, UAGF-TAM-L) additionally opt into OpenAI's **Flex** processing tier for the 50 % discount; interactive / critical-path agents stay on the default tier so a `429 Resource Unavailable` cannot stall the audit head. LiteLLM keeps any of these swappable for an Anthropic Claude, DeepSeek, Mistral, or local Ollama equivalent via the `LITELLM_MODEL_*` overrides in `aaa/settings.py`.
 
 ### 3.1 Tier 1 — Cross-Cutting Services (always-on)
 
 | # | Agent | Model | Primary responsibility |
 |---|-------|-------|------------------------|
-| 1 | **Orchestrator** | **Claude Opus** | Owns the audit plan, runs the python-constraint CSP, sequences phases, spawns/monitors subagents, decides parallel vs sequential dispatch. |
-| 2 | **Verifier** | **Claude Opus** | Independent critic: judges every phase artefact against a rubric (factual accuracy, completeness, evidence linkage, regulatory citation correctness) before the Orchestrator admits it to the compliance matrix. |
-| 3 | **Regulatory RAG** | **Claude Haiku** | Answers "what does Art. X §Y require?" on demand. Indexes EU AI Act, Annexes, delegated acts, harmonised standards (ISO/IEC 42001, 23894, 24029), GPAI Code of Practice. See corpus ingestion note below. |
+| 1 | **Orchestrator** | **gpt-5.5** | Owns the audit plan, runs the python-constraint CSP, sequences phases, spawns/monitors subagents, decides parallel vs sequential dispatch. |
+| 2 | **Verifier** | **gpt-5.5** (Flex) | Independent critic: judges every phase artefact against a rubric (factual accuracy, completeness, evidence linkage, regulatory citation correctness) before the Orchestrator admits it to the compliance matrix. |
+| 3 | **Regulatory RAG** | **gpt-5.4-nano** | Answers "what does Art. X §Y require?" on demand. Indexes EU AI Act, Annexes, delegated acts, harmonised standards (ISO/IEC 42001, 23894, 24029), GPAI Code of Practice. See corpus ingestion note below. |
 
 ### 3.2 Tier 2 — Phase Agents (one per engagement)
 
 | # | Agent | Model | UAGF-TAM phase | Primary responsibility |
 |---|-------|-------|----------------|------------------------|
-| 4 | **Phase 1 — Scope (Declaration Verifier)** | **Claude Sonnet** | P1 | **Verifies** the Stage-A triage declaration (modality, risk tier, Annex III sections, deployment context) collected at intake (§6 Stage 0); enforces the Art. 5 prohibition gate; performs GPAI screening; emits the `declaration_verification` map (match / mismatch / corrected). The `is_llm_or_agentic` flag is taken from the client declaration and only overridden if Phase 1 detects a verified mismatch (which raises HITL per §8.4). |
-| 5 | **Phase 2 — Data Governance Auditor** | **Claude Sonnet** | P2 | Data quality, completeness, special-category-data scan, datasheet validation (Art. 10). |
-| 6 | **Phase 3 — Model Validation Agent** | **Claude Opus** | P3 | Performance metrics, explainability (SHAP/Grad-CAM tool calls), robustness (Art. 13, 15). |
-| 7 | **Phase 4 — Output Fairness Tester** | **Claude Sonnet** | P4 | Output sampling, demographic-parity / equal-opportunity / disparate-impact metrics, subgroup analysis. |
-| 8 | **Phase 5 — Governance Agent** | **Claude Opus** | P5 | **Ingests `uagf_cgsa_aaa_schema.json`** from the upstream S4 CGSA, validates schema, lifts `aaa_phase5_handoff.blocking_findings` and `remediation_roadmap` into the compliance matrix. |
-| 9 | **Phase 6 — Report Architect** | **Claude Sonnet** | P6 | Composes the conformity-assessment report (reportlab), executive summary, regulatory matrix, remediation roadmap aligned to Annex IV. |
+| 4 | **Phase 1 — Scope (Declaration Verifier)** | **gpt-5.4** | P1 | **Verifies** the Stage-A triage declaration (modality, risk tier, Annex III sections, deployment context) collected at intake (§6 Stage 0); enforces the Art. 5 prohibition gate; performs GPAI screening; emits the `declaration_verification` map (match / mismatch / corrected). The `is_llm_or_agentic` flag is taken from the client declaration and only overridden if Phase 1 detects a verified mismatch (which raises HITL per §8.4). |
+| 5 | **Phase 2 — Data Governance Auditor** | **gpt-5.4** | P2 | Data quality, completeness, special-category-data scan, datasheet validation (Art. 10). |
+| 6 | **Phase 3 — Model Validation Agent** | **gpt-5.5** (Flex) | P3 | Performance metrics, explainability (SHAP/Grad-CAM tool calls), robustness (Art. 13, 15). |
+| 7 | **Phase 4 — Output Fairness Tester** | **gpt-5.4-mini** | P4 | Output sampling, demographic-parity / equal-opportunity / disparate-impact metrics, subgroup analysis. |
+| 8 | **Phase 5 — Governance Agent** | **gpt-5.5** (Flex) | P5 | **Ingests `uagf_cgsa_aaa_schema.json`** from the upstream S4 CGSA, validates schema, lifts `aaa_phase5_handoff.blocking_findings` and `remediation_roadmap` into the compliance matrix. |
+| 9 | **Phase 6 — Report Architect** | **gpt-5.4** (Flex) | P6 | Composes the conformity-assessment report (reportlab), executive summary, regulatory matrix, remediation roadmap aligned to Annex IV. |
 
 ### 3.3 Tier 3 — Specialist Sub-Agents (on-demand)
 
@@ -102,9 +102,9 @@ Tier-3 agents are required to satisfy Mökander 2023's **application-layer audit
 
 | # | Agent | Model | Triggered by | Primary responsibility | Academic justification |
 |---|-------|-------|--------------|------------------------|------------------------|
-| 10 | **UAGF-TAM-L Branch Agent** | **Claude Opus** | Phase 1 sets `is_llm_or_agentic = true` | Replaces Phases 2–4 with golden-set evaluation, faithfulness/grounding tests, prompt-injection & jailbreak suites, tool-call trajectory audit for agentic systems. | Mökander 2023 §4 (LLM-specific audit layer); exposé §2 Phase 1 UAGF-TAM-L requirement |
-| 11 | **Cybersecurity Sub-Agent** | **Claude Sonnet** | Phase 5 when Art. 15 evidence is missing **or** risk tier = high **or** Cyber red-flag in any phase artefact | Adversarial robustness (FGSM/PGD on CV, injection on LLM), sandbox-escape probes for agentic systems. | EU AI Act Art. 15 (accuracy, robustness, cybersecurity); Falco 2021 (independent security audit) |
-| 12 | **Privacy / DPO Sub-Agent** | **Claude Sonnet** | Phase 5 when GDPR overlap detected (special-category data, biometric data, Annex III §1 use case) | Art. 10 §5 lawful-basis check, DPIA cross-reference, retention & minimisation review. | EU AI Act Art. 10 §5; GDPR Art. 35 (DPIA); Mökander 2023 application-layer privacy audit |
+| 10 | **UAGF-TAM-L Branch Agent** | **gpt-5.5** (Flex) | Phase 1 sets `is_llm_or_agentic = true` | Replaces Phases 2–4 with golden-set evaluation, faithfulness/grounding tests, prompt-injection & jailbreak suites, tool-call trajectory audit for agentic systems. | Mökander 2023 §4 (LLM-specific audit layer); exposé §2 Phase 1 UAGF-TAM-L requirement |
+| 11 | **Cybersecurity Sub-Agent** | **gpt-5.4** | Phase 5 when Art. 15 evidence is missing **or** risk tier = high **or** Cyber red-flag in any phase artefact | Adversarial robustness (FGSM/PGD on CV, injection on LLM), sandbox-escape probes for agentic systems. | EU AI Act Art. 15 (accuracy, robustness, cybersecurity); Falco 2021 (independent security audit) |
+| 12 | **Privacy / DPO Sub-Agent** | **gpt-5.4** | Phase 5 when GDPR overlap detected (special-category data, biometric data, Annex III §1 use case) | Art. 10 §5 lawful-basis check, DPIA cross-reference, retention & minimisation review. | EU AI Act Art. 10 §5; GDPR Art. 35 (DPIA); Mökander 2023 application-layer privacy audit |
 
 **Why these three are non-negotiable for quality.** The exposé's required deliverable is *"EU AI Act-compliant"* reports (line 82). Compliance with Articles 10 §5, 15, and the GPAI/LLM evidentiary obligations cannot be discharged by the six phase agents alone without violating the Mökander/Falco independence principle: the agent that wrote the artefact cannot also be the agent that adversarially tests it. Removing any Tier-3 agent would either (a) leave a regulatory article unaudited, or (b) collapse audit and adversarial review into the same agent. Both are documented quality regressions.
 
@@ -145,29 +145,29 @@ Each chunk's Qdrant point ID is a deterministic **SHA-256** of `text + regulatio
 
 ```mermaid
 flowchart TD
-    classDef opus fill:#5b6cff,stroke:#2a3aad,color:#ffffff,stroke-width:1px
-    classDef sonnet fill:#7fb069,stroke:#3f6a32,color:#0b1f08,stroke-width:1px
-    classDef haiku fill:#f4c95d,stroke:#8a6a14,color:#2a1f06,stroke-width:1px
+    classDef high fill:#5b6cff,stroke:#2a3aad,color:#ffffff,stroke-width:1px
+    classDef mid fill:#7fb069,stroke:#3f6a32,color:#0b1f08,stroke-width:1px
+    classDef low fill:#f4c95d,stroke:#8a6a14,color:#2a1f06,stroke-width:1px
     classDef tier fill:#eef0f5,stroke:#6b7280,color:#111827,stroke-width:1px,stroke-dasharray:4 3
 
     T1[Tier 1 · Cross-Cutting]:::tier
     T2[Tier 2 · Phase Agents]:::tier
     T3[Tier 3 · Specialists]:::tier
 
-    A1["1 · Orchestrator<br/>Opus"]:::opus
-    A2["2 · Verifier<br/>Opus"]:::opus
-    A3["3 · Regulatory RAG<br/>Haiku"]:::haiku
+    A1["1 · Orchestrator<br/>gpt-5.5"]:::high
+    A2["2 · Verifier<br/>gpt-5.5 · Flex"]:::high
+    A3["3 · Regulatory RAG<br/>gpt-5.4-nano"]:::low
 
-    A4["4 · Phase 1 · Scope / Risk Classifier<br/>Sonnet"]:::sonnet
-    A5["5 · Phase 2 · Data Governance Auditor<br/>Sonnet"]:::sonnet
-    A6["6 · Phase 3 · Model Validation<br/>Opus"]:::opus
-    A7["7 · Phase 4 · Output Fairness Tester<br/>Sonnet"]:::sonnet
-    A8["8 · Phase 5 · Governance Agent<br/>Opus"]:::opus
-    A9["9 · Phase 6 · Report Architect<br/>Sonnet"]:::sonnet
+    A4["4 · Phase 1 · Scope / Risk Classifier<br/>gpt-5.4"]:::mid
+    A5["5 · Phase 2 · Data Governance Auditor<br/>gpt-5.4"]:::mid
+    A6["6 · Phase 3 · Model Validation<br/>gpt-5.5 · Flex"]:::high
+    A7["7 · Phase 4 · Output Fairness Tester<br/>gpt-5.4-mini"]:::low
+    A8["8 · Phase 5 · Governance Agent<br/>gpt-5.5 · Flex"]:::high
+    A9["9 · Phase 6 · Report Architect<br/>gpt-5.4 · Flex"]:::mid
 
-    A10["10 · UAGF-TAM-L Branch<br/>Opus"]:::opus
-    A11["11 · Cybersecurity Sub-Agent<br/>Sonnet"]:::sonnet
-    A12["12 · Privacy / DPO Sub-Agent<br/>Sonnet"]:::sonnet
+    A10["10 · UAGF-TAM-L Branch<br/>gpt-5.5 · Flex"]:::high
+    A11["11 · Cybersecurity Sub-Agent<br/>gpt-5.4"]:::mid
+    A12["12 · Privacy / DPO Sub-Agent<br/>gpt-5.4"]:::mid
 
     T1 --- A1 & A2 & A3
     A1 --> T2
@@ -703,24 +703,24 @@ flowchart TD
     SB[/"0B · Stage B · Annex IV Dossier<br/>§1–§9 upload · annex_iv_validator<br/>→ T01b · T01c (intake_completeness_score)"/]:::intake
     SC[/"0C · Stage C · Scoped Access<br/>read-only API creds → OpenBao vault<br/>(optional; absent = not_verifiable)"/]:::intake
     S1["1 · Plan<br/>Orchestrator + csp_solver<br/>(preview plan from declared values)"]:::orch
-    S2["2 · Phase 1 · Scope<br/>Declaration Verifier · Sonnet<br/>declaration_diff → declaration_verification"]:::phase
+    S2["2 · Phase 1 · Scope<br/>Declaration Verifier · gpt-5.4<br/>declaration_diff → declaration_verification"]:::phase
     GATEDECL{"declaration<br/>mismatch?"}:::gate
     GATE5{"Art. 5<br/>prohibition?"}:::gate
     ROUTER{"Router<br/>is_llm_or_agentic?"}:::orch
 
-    P2["4a · Phase 2 · Data<br/>Auditor · Sonnet"]:::phase
-    P3["4b · Phase 3 · Model<br/>Validator · Opus"]:::phase
-    P4["4c · Phase 4 · Output<br/>Fairness · Sonnet"]:::phase
-    PL["4L · UAGF-TAM-L<br/>Branch · Opus"]:::branch
+    P2["4a · Phase 2 · Data<br/>Auditor · gpt-5.4"]:::phase
+    P3["4b · Phase 3 · Model<br/>Validator · gpt-5.5 · Flex"]:::phase
+    P4["4c · Phase 4 · Output<br/>Fairness · gpt-5.4-mini"]:::phase
+    PL["4L · UAGF-TAM-L<br/>Branch · gpt-5.5 · Flex"]:::branch
 
-    VER{{"Verifier · Opus<br/>(per-phase critic)"}}:::orch
+    VER{{"Verifier · gpt-5.5 · Flex<br/>(per-phase critic)"}}:::orch
 
-    P5["5 · Phase 5 · Governance · Opus<br/>cgsa_ingest(uagf_cgsa_aaa_schema.json)"]:::phase
-    SPEC["Spawn Tier-3<br/>Cyber · Sonnet / Privacy · Sonnet"]:::branch
+    P5["5 · Phase 5 · Governance · gpt-5.5 · Flex<br/>cgsa_ingest(uagf_cgsa_aaa_schema.json)"]:::phase
+    SPEC["Spawn Tier-3<br/>Cyber · gpt-5.4 / Privacy · gpt-5.4"]:::branch
 
-    MATRIX["6 · Compliance Matrix<br/>Orchestrator · Opus<br/>art43_select (final) · intake_completeness_score"]:::orch
+    MATRIX["6 · Compliance Matrix<br/>Orchestrator · gpt-5.5<br/>art43_select (final) · intake_completeness_score"]:::orch
     HITL{"7 · HITL<br/>checkpoint?"}:::gate
-    REPORT["8 · Phase 6 · Report Architect · Sonnet<br/>Annex IV PDF + JSON"]:::report
+    REPORT["8 · Phase 6 · Report Architect · gpt-5.4 · Flex<br/>Annex IV PDF + JSON"]:::report
 
     HALT[/"HALT · escalate to HITL"/]:::gate
     EVID[("Evidence Store<br/>MinIO + Postgres")]:::store
@@ -1300,10 +1300,14 @@ AAA_ENV=dev                              # dev | staging | prod
 AAA_LOG_LEVEL=INFO
 
 # --- model routing (LiteLLM) ---
-ANTHROPIC_API_KEY=                       # required for Opus / Sonnet / Haiku
-OPENAI_API_KEY=                          # fallback
+OPENAI_API_KEY=                          # required for gpt-5.5 / gpt-5.4 / gpt-5.4-mini / gpt-5.4-nano
+ANTHROPIC_API_KEY=                       # optional fallback (Claude family via LiteLLM)
 DEEPSEEK_API_KEY=                        # cost-saver fallback
-LITELLM_FALLBACKS="claude-opus-4>claude-sonnet-4>gpt-4o-mini"
+# Per-tier overrides consumed by aaa/settings.py (see aaa/platform/model_registry.py for per-agent defaults)
+LITELLM_MODEL_TIER1=gpt-5.5              # Orchestrator, Verifier, Phase 3/5, UAGF-TAM-L
+LITELLM_MODEL_TIER2=gpt-5.4              # Phase 1/2/6, Cyber, Privacy
+LITELLM_MODEL_TIER3=gpt-5.4-mini         # Phase 4 (bounded interpretation)
+LITELLM_FALLBACKS="gpt-5.5>gpt-5.4>gpt-5.4-mini"
 
 # --- storage ---
 POSTGRES_DSN=postgresql://aaa:aaa@localhost:5432/aaa
