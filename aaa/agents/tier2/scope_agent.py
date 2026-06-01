@@ -38,11 +38,13 @@ from aaa.platform.evidence import EvidenceStore
 from aaa.platform.state import AnnexIIIEntry, AuditState
 from aaa.tools.annex_iii_classify import annex_iii_classify
 from aaa.tools.art43_select import art43_select_from_state
+from aaa.tools.client_doc_ingest import client_doc_search
 from aaa.tools.declaration_diff import declaration_diff, diff_annex_iii_sections
 
 logger = logging.getLogger(__name__)
 
 _OFFLINE = os.environ.get("AAA_OFFLINE_MODE", "false").lower() == "true"
+_PROMPT_NAME = "phase1_scope"
 
 # ---------------------------------------------------------------------------
 # Art. 5 prohibited practice markers (simplified; full list in Annex to Act)
@@ -208,6 +210,42 @@ class ScopeAgent(BaseAgent):
 
         # ── 10. Write artefacts ───────────────────────────────────────────────
         now = datetime.now(timezone.utc).isoformat()
+        client_doc_hits: list[dict[str, Any]] = []
+        if decl.get("client_doc_collection"):
+            client_doc_hits = client_doc_search(
+                engagement_id,
+                "declared modality risk tier Annex III intended purpose Art 5",
+                top_k=3,
+            )
+        llm_payload: dict[str, Any] = {}
+        llm_fallback_mode = _OFFLINE
+        if not _OFFLINE:
+            try:
+                llm_payload = await self.acompletion_json(
+                    _PROMPT_NAME,
+                    {
+                        "task": message.get("task_brief")
+                        or "Execute Phase 1 declaration verification per the Phase 1 Protocol.",
+                        "evidence_uris": message.get("evidence_uris", []),
+                        "declaration_summary": decl,
+                        "client_doc_hits": client_doc_hits,
+                        "rerun_context": None,
+                        "computed_evidence": {
+                            "system_description": system_desc,
+                            "annex_iii_mapping": [dict(e) for e in annex_entries],
+                            "verification_map": verification_map,
+                            "verified_modality": verified_modality,
+                            "verified_risk_tier": verified_risk_tier,
+                            "art43_decision": art43,
+                            "gpai_result": gpai_result,
+                        },
+                    },
+                )
+                llm_fallback_mode = False
+            except Exception as exc:
+                logger.warning("ScopeAgent prompt runtime failed (%s); using deterministic fallback.", exc)
+        prompt_note = self.prompt_note(_PROMPT_NAME, llm_fallback_mode)
+        llm_summary = llm_payload.get("summary") or llm_payload.get("rationale_summary")
 
         t02 = self._build_t02(engagement_id, t01a, verified_modality, is_llm_or_agentic,
                                verification_map, gpai_result, art5_prohibited, now)
@@ -217,6 +255,10 @@ class ScopeAgent(BaseAgent):
                                verified_risk_tier, art5_prohibited, verified_sections, now)
         t05 = self._build_t05(engagement_id, art43, preview_procedure, delta,
                                pseudo_state, now)
+        t02["phase1_summary"] = f"{llm_summary or t02['phase1_summary']} {prompt_note}".strip()
+        t03["classification_narrative"] = f"{t03['classification_narrative']} {prompt_note}".strip()
+        t04["risk_tier_rationale"] = f"{t04['risk_tier_rationale']} {prompt_note}".strip()
+        t05["binding_statement"] = f"{t05['binding_statement']} {prompt_note}".strip()
 
         t02_uri = self.store.store_artefact(engagement_id, "phase_1", "T02_system_card", t02, self.name)
         t03_uri = self.store.store_artefact(engagement_id, "phase_1", "T03_annex_iii_mapping", t03, self.name)
@@ -231,6 +273,8 @@ class ScopeAgent(BaseAgent):
             phase_id="P1",
             artefact_uri=t02_uri,
             summary=(
+                llm_summary
+                or
                 f"Phase 1 complete. verified_risk_tier={verified_risk_tier}, "
                 f"verified_modality={verified_modality}, "
                 f"art43_procedure={art43['procedure']}, "
@@ -241,6 +285,8 @@ class ScopeAgent(BaseAgent):
                 {"tool": "annex_iii_classify", "result": f"{len(annex_entries)} entries"},
                 {"tool": "declaration_diff", "result": verification_map},
                 {"tool": "art43_select", "result": art43["procedure"]},
+                {"tool": "client_doc_search", "result": f"hits={len(client_doc_hits)}"},
+                {"tool": "prompt_runtime", "result": prompt_note},
             ],
             declaration_verification_delta={
                 "declaration_verification": verification_map,

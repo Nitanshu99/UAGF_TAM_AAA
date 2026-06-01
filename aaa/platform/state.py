@@ -86,6 +86,12 @@ class ClientSubmission(TypedDict):
     stage_c: StageCAccess | None
     intake_completeness_score: float
 
+Materiality = Literal[
+    "material",
+    "possibly_material",
+    "not_material",
+]
+
 class AnnexIIIEntry(TypedDict):
     annex_iii_section: Literal["1", "2", "3", "4", "5", "6", "7", "8"]
     section_title: str
@@ -133,13 +139,18 @@ class FollowUpItem(TypedDict):
     urgency: Literal["required_before_report_completion", "recommended", "optional"]
     assigned_to: Optional[str]
 
-class RemediationItem(TypedDict):
+class RemediationItem(TypedDict, total=False):
     rank: int
     control_id: str
     gap_detail: str
     gap_severity: str
     recommended_action: str
     target_date: Optional[str]
+    materiality: Materiality
+    materiality_rationale: str
+    assigned_owner: Optional[str]
+    deadline_weeks: Optional[int]
+    priority_label: Literal["immediate", "short_term", "medium_term", "long_term"] | None
 
 class CGSAMetadata(TypedDict):
     assessment_id: str
@@ -188,12 +199,15 @@ class CGSAPayload(TypedDict):
 Article = str   # e.g. "Art.9", "Art.43", "Annex_III"
 Verdict = Literal["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_APPLICABLE", "PENDING"]
 
-class Finding(TypedDict):
+class Finding(TypedDict, total=False):
     finding_id: str
     phase: str
+    phase_id: str
     article: str
     description: str
     severity: Literal["critical", "major", "minor", "observation"]
+    materiality: Materiality
+    materiality_rationale: str
     evidence_uri: Optional[str]
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -203,6 +217,7 @@ class Finding(TypedDict):
 class AuditState(TypedDict):
     # --- engagement identity ---
     engagement_id: str
+    client_doc_collection: Optional[str]  # Qdrant collection for per-engagement client docs.
     client_submission: ClientSubmission
     scope_gate: NotRequired[dict[str, Any]]  # Pre-intake gate result (ScopeGateResult fields)
 
@@ -234,6 +249,7 @@ class AuditState(TypedDict):
     cgsa_schema_version: Optional[str]
     cgsa_composite_maturity_score: Optional[float]
     cgsa_composite_maturity_label: Optional[str]
+    cgsa_domain_scores: Optional[dict]
     cgsa_eu_ai_act_coverage_pct: Optional[float]
     cgsa_csp_satisfiable: Optional[bool]
     cgsa_governance_verdict: Optional[Literal["compliant", "partially_compliant", "non_compliant"]]
@@ -251,6 +267,8 @@ class AuditState(TypedDict):
     blocking_findings: list[Finding]
     positive_findings: list[Finding]
     remediation_roadmap: list[RemediationItem]
+    material_findings_count: Optional[int]
+    possibly_material_findings_count: Optional[int]
 
     # --- verification & verdict ---
     verifier_critiques: dict[str, dict[str, Any]]
@@ -258,3 +276,4 @@ class AuditState(TypedDict):
     completeness_score: Optional[float]
     regulatory_coverage_pct: Optional[float]
     final_verdict: Optional[Literal["PASS", "PASS_WITH_OBSERVATIONS", "FAIL"]]
+    auditor_opinion: Optional[dict]

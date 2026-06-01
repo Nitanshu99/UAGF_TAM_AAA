@@ -1,3 +1,4 @@
+import json
 from typing import TypedDict, Any, Literal, Optional
 from abc import ABC, abstractmethod
 
@@ -57,6 +58,52 @@ class BaseAgent(ABC):
         from aaa.platform.flex_retry import flex_acompletion
         call_kwargs = {**self._litellm_kwargs(), **kwargs}
         return await flex_acompletion(**call_kwargs)
+
+    async def acompletion_json(self, prompt_name: str, user_payload: Any, **kwargs) -> dict[str, Any]:
+        """Run a prompt-registry-backed completion and parse a JSON response."""
+        from aaa.platform.prompt_registry import load_prompt
+
+        messages = [
+            {"role": "system", "content": load_prompt(prompt_name)},
+            {
+                "role": "user",
+                "content": json.dumps(user_payload, indent=2, default=str),
+            },
+        ]
+        response_format = kwargs.pop("response_format", {"type": "json_object"})
+        response = await self.acompletion(
+            messages=messages,
+            response_format=response_format,
+            **kwargs,
+        )
+        content = getattr(response.choices[0].message, "content", None) or "{}"
+        return json.loads(content)
+
+    def prompt_metadata(
+        self,
+        prompt_name: str,
+        llm_fallback_mode: bool | None = None,
+    ) -> dict[str, Any]:
+        from aaa.platform.prompt_registry import prompt_version_hash
+
+        metadata: dict[str, Any] = {
+            "prompt_source": "PROMPT.md",
+            "prompt_version_hash": prompt_version_hash(),
+            "agent_prompt": prompt_name,
+        }
+        if llm_fallback_mode is not None:
+            metadata["llm_fallback_mode"] = llm_fallback_mode
+        return metadata
+
+    def prompt_note(self, prompt_name: str, llm_fallback_mode: bool) -> str:
+        metadata = self.prompt_metadata(prompt_name, llm_fallback_mode)
+        return (
+            "Prompt metadata: "
+            f"source={metadata['prompt_source']}, "
+            f"agent_prompt={metadata['agent_prompt']}, "
+            f"prompt_version_hash={metadata['prompt_version_hash']}, "
+            f"llm_fallback_mode={str(llm_fallback_mode).lower()}."
+        )
 
     @abstractmethod
     async def process(self, message: Any) -> Any:

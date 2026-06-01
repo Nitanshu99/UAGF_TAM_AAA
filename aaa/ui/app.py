@@ -250,20 +250,104 @@ def _render_fli_section(payload: dict, defaults: dict) -> None:
 # Stage B form (URIs only — full schema editing is out of scope for the demo)
 # ---------------------------------------------------------------------------
 
-def _render_stage_b(defaults: dict) -> dict:
-    """Render minimal Stage B (T01b) form for the demo."""
-    st.subheader("Stage B — Annex IV dossier (T01b, summary view)")
-    st.caption("Demo loads a fixture; editing dossier sections is out of scope.")
-    raw = st.text_area(
-        "Annex IV dossier JSON",
-        value=json.dumps(defaults or _load_fixture("stage_b.json"), indent=2),
-        height=300,
+_DOC_UPLOAD_FIELDS = {
+    "risk_management_file_uri": "Risk-management file",
+    "eu_doc_uri": "EU declaration of conformity",
+    "post_market_plan_uri": "Post-market monitoring plan",
+    "system_prompt_uri": "System prompt",
+    "rag_manifest_uri": "RAG manifest",
+    "guardrail_config_uri": "Guardrail configuration",
+    "golden_set_uri": "Golden-set evaluation file",
+}
+
+_OPTIONAL_UPLOAD_FIELDS = {
+    "training_dataset_uri": ("Training dataset", ["csv", "parquet", "json"]),
+    "evaluation_dataset_uri": ("Evaluation dataset", ["csv", "parquet", "json"]),
+    "model_artifact_uri": ("Model artefact", ["pkl", "joblib", "onnx", "pt", "safetensors", "zip"]),
+    "model_metadata_uri": ("Model metadata", ["json", "md", "txt"]),
+}
+
+
+def _store_uploaded_file(
+    store: EvidenceStore,
+    engagement_id: str,
+    role: str,
+    uploaded: Any,
+) -> str | None:
+    """Persist an uploaded Streamlit file and return its EvidenceStore URI."""
+    if uploaded is None:
+        return None
+    data = uploaded.getvalue()
+    return store.store_file(
+        engagement_id=engagement_id,
+        phase="customer_uploads",
+        artefact_type=role,
+        filename=uploaded.name,
+        content_type=getattr(uploaded, "type", None) or "application/octet-stream",
+        data=data,
+        agent_name="streamlit",
     )
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError as exc:
-        st.error(f"Stage B JSON parse error: {exc}")
-        return defaults or {}
+
+
+def _render_stage_b(defaults: dict, engagement_id: str, store: EvidenceStore) -> dict:
+    """Render guided Stage B controls plus an advanced JSON editor."""
+    st.subheader("Stage B — Annex IV dossier (T01b)")
+    payload = dict(defaults or _load_fixture("stage_b.json"))
+
+    for field in _load_schema("T01b_annex_iv_dossier.json").get("required", []):
+        if field == "accuracy_metrics":
+            raw_metrics = st.text_area(
+                "Accuracy metrics JSON",
+                value=json.dumps(payload.get(field, {"accuracy": 0.8}), indent=2),
+                height=90,
+            )
+            try:
+                payload[field] = json.loads(raw_metrics)
+            except json.JSONDecodeError:
+                st.error("Accuracy metrics must be valid JSON.")
+        elif field == "lifecycle_change_log":
+            text = st.text_area(
+                "Lifecycle change log (one item per line)",
+                value="\n".join(payload.get(field, []) or []),
+                height=80,
+            )
+            payload[field] = [line for line in text.splitlines() if line.strip()]
+        elif field in {"harmonised_standards", "other_standards"}:
+            payload[field] = st.text_input(
+                field.replace("_", " ").title(),
+                value=", ".join(payload.get(field, []) or []),
+            ).split(",")
+            payload[field] = [item.strip() for item in payload[field] if item.strip()]
+        else:
+            payload[field] = st.text_area(
+                field.replace("_", " ").title(),
+                value=str(payload.get(field, "")),
+                height=90,
+            )
+
+    st.markdown("#### Supporting documents")
+    for key, label in _DOC_UPLOAD_FIELDS.items():
+        uploaded = st.file_uploader(label, key=f"upload_{key}")
+        uri = _store_uploaded_file(store, engagement_id, key, uploaded)
+        if uri:
+            payload[key] = uri
+
+    st.markdown("#### Optional model/data artefacts")
+    for key, (label, file_types) in _OPTIONAL_UPLOAD_FIELDS.items():
+        uploaded = st.file_uploader(label, type=file_types, key=f"upload_{key}")
+        uri = _store_uploaded_file(store, engagement_id, key, uploaded)
+        if uri:
+            payload[key] = uri
+
+    uploaded_keys = [key for key in [*_DOC_UPLOAD_FIELDS, *_OPTIONAL_UPLOAD_FIELDS] if payload.get(key)]
+    st.caption(f"Uploaded/populated URI fields: {len(uploaded_keys)} / {len(_DOC_UPLOAD_FIELDS) + len(_OPTIONAL_UPLOAD_FIELDS)}")
+    with st.expander("Advanced JSON editor", expanded=False):
+        raw = st.text_area("Annex IV dossier JSON", value=json.dumps(payload, indent=2), height=260)
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            st.error(f"Stage B JSON parse error: {exc}")
+    return payload
 
 
 # ---------------------------------------------------------------------------
@@ -275,8 +359,9 @@ async def _run_pipeline(
     stage_a: dict,
     stage_b: dict,
     stage_c: dict | None,
+    store: EvidenceStore | None = None,
 ) -> tuple[dict, EvidenceStore]:
-    store = EvidenceStore()
+    store = store or EvidenceStore()
     stage_a_uri = store.store_artefact(
         engagement_id, "stage_a_raw", "stage_a_raw", stage_a, "streamlit")
     stage_b_uri = store.store_artefact(
@@ -324,6 +409,9 @@ def _live_completeness(stage_a: dict, stage_b: dict) -> float | None:
 def main() -> None:
     st.set_page_config(page_title="AAA Demo", layout="wide")
     st.title("AAA — Autonomous AI Auditor (Demo)")
+    if "aaa_evidence_store" not in st.session_state:
+        st.session_state["aaa_evidence_store"] = EvidenceStore()
+    store: EvidenceStore = st.session_state["aaa_evidence_store"]
 
     engagement_id = st.text_input(
         "Engagement ID", value="eng-uci-german-credit-001")
@@ -332,7 +420,7 @@ def main() -> None:
     with col_a:
         stage_a = _render_stage_a(_load_fixture("stage_a.json"))
     with col_b:
-        stage_b = _render_stage_b(_load_fixture("stage_b.json"))
+        stage_b = _render_stage_b(_load_fixture("stage_b.json"), engagement_id, store)
 
     stage_c = _load_fixture("stage_c.json") or None
 
@@ -357,7 +445,7 @@ def main() -> None:
         with st.spinner("Running IntakeValidator → Orchestrator …"):
             try:
                 final, store = asyncio.run(_run_pipeline(
-                    engagement_id, stage_a, stage_b, stage_c))
+                    engagement_id, stage_a, stage_b, stage_c, store))
             except IntakeValidatorError as exc:
                 st.error(f"IntakeValidator failed at stage {exc.stage}: {exc.reason}")
                 return
@@ -378,27 +466,37 @@ def main() -> None:
         st.json({tid: ref.get("uri") if isinstance(ref, dict) else None
                  for tid, ref in (final.get("phase_artefacts") or {}).items()})
 
-        # Downloads
-        summary_bytes = json.dumps(final, indent=2, default=str).encode()
-        st.download_button("⬇ Download final AuditState (JSON)",
-                           data=summary_bytes,
-                           file_name=f"{engagement_id}_audit_state.json",
-                           mime="application/json")
-
         t17 = store.get_artefact(
             (final.get("phase_artefacts") or {})
             .get("T17_compliance_matrix", {}).get("uri", "")) or {}
         t18 = store.get_artefact(
             (final.get("phase_artefacts") or {})
             .get("T18_audit_report", {}).get("uri", "")) or {}
+        rendered = t18.get("rendered_report", {}) or {}
+        pdf_payload = store.get_artefact(rendered.get("pdf_uri", "")) or {}
+        if pdf_payload.get("encoding") == "latin-1":
+            st.download_button(
+                "⬇ Download audit report (PDF)",
+                data=str(pdf_payload.get("body", "")).encode("latin-1"),
+                file_name=f"{engagement_id}_audit_report.pdf",
+                mime="application/pdf",
+            )
+        json_payload = store.get_artefact(rendered.get("json_uri", "")) or t18
+        st.download_button("⬇ Download T18 audit report (JSON)",
+                           data=json.dumps(json_payload, indent=2, default=str).encode(),
+                           file_name=f"{engagement_id}_T18.json",
+                           mime="application/json")
+
         st.download_button("⬇ Download T17 compliance matrix (JSON)",
                            data=json.dumps(t17, indent=2, default=str).encode(),
                            file_name=f"{engagement_id}_T17.json",
                            mime="application/json")
-        st.download_button("⬇ Download T18 audit report (JSON)",
-                           data=json.dumps(t18, indent=2, default=str).encode(),
-                           file_name=f"{engagement_id}_T18.json",
-                           mime="application/json")
+        with st.expander("Advanced/debug downloads", expanded=False):
+            summary_bytes = json.dumps(final, indent=2, default=str).encode()
+            st.download_button("⬇ Download final AuditState (JSON)",
+                               data=summary_bytes,
+                               file_name=f"{engagement_id}_audit_state.json",
+                               mime="application/json")
 
 
 if __name__ == "__main__":

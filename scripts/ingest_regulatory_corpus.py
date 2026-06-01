@@ -72,7 +72,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # ── Defaults ────────────────────────────────────────────────────────────────
 DEFAULT_CORPUS_DIR = REPO_ROOT / "data" / "regulatory_corpus"
-DEFAULT_CHECKER_PATH = REPO_ROOT / "data" / "files" / "eu_ai_act_compliance_checker.json"
+DEFAULT_CHECKER_PATH = REPO_ROOT / "data" / "eu_ai_act_compliance_checker.json"
 DEFAULT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "regulatory_corpus")
 DEFAULT_OBLIGATIONS_COLLECTION = "obligations_index"
 
@@ -300,6 +300,22 @@ _REGULATION_BY_STEM = {
     "GDPR": "GDPR",
 }
 
+_PDF_REGULATION_BY_NAME = {
+    "ISO:IEC 42001-2023.pdf": "ISO_IEC_42001",
+    "isae_3000.pdf": "ISAE 3000",
+    "iso_19011.pdf": "ISO 19011",
+}
+
+_REQUIRED_STANDARD_PDFS = {
+    "isae_3000.pdf": "ISAE 3000 (Revised)",
+    "iso_19011.pdf": "ISO 19011:2018",
+}
+
+COVERAGE_PROBE_QUERIES = [
+    "ISAE 3000 assurance engagement objectives reasonable assurance",
+    "ISO 19011 audit programme planning audit criteria",
+]
+
 # EUR-Lex HTML uses these classes/ids consistently across regulations
 _EURLEX_ARTICLE_DIV = "eli-subdivision"
 _EURLEX_ARTICLE_TITLE = "oj-ti-art"      # e.g. "Article 9"
@@ -382,6 +398,33 @@ _ISO_CLAUSE_NUM_RE = re.compile(r"^\s*(\d+(?:\.\d+){0,3})\s*$")
 _ISO_CONTROL_NUM_RE = re.compile(r"^\s*(A\.\d+(?:\.\d+){0,2})\s*$")
 _ISO_TITLE_HEAD_RE = re.compile(r"^[A-Za-z][A-Za-z0-9 ,\-:/&()]+$")
 _ISO_PAGE_NOISE_RE = re.compile(r"^(ISO/IEC\s+42001[:\d\s()E\-]*|\(E\)|\d{1,4})$", re.IGNORECASE)
+
+_ISAE_PARAGRAPH_RE = re.compile(r"^(A?\d+)\.\s+(.*)$")
+_ISAE_PAGE_NOISE_RE = re.compile(
+    r"^(\d{1,3}|ASSURANCE ENGAGEMENTS OTHER THAN AUDITS OR|"
+    r"REVIEWS OF HISTORICAL FINANCIAL INFORMATION|ISAE 3000 \(REVISED\))$",
+    re.IGNORECASE,
+)
+
+
+def _pdf_lines_by_page(path: Path) -> list[tuple[int, list[str]]]:
+    """Extract non-empty text lines from *path* using the pypdfium2 backend."""
+    pdfium = _require("pypdfium2")
+    pages: list[tuple[int, list[str]]] = []
+    doc = pdfium.PdfDocument(str(path))
+    try:
+        for page_no, page in enumerate(doc, start=1):
+            tp = page.get_textpage()
+            try:
+                text = tp.get_text_bounded() or ""
+            finally:
+                tp.close()
+                page.close()
+            lines = [raw.strip() for raw in text.splitlines() if raw.strip()]
+            pages.append((page_no, lines))
+    finally:
+        doc.close()
+    return pages
 
 
 def load_pdf_units(path: Path, regulation: str = "ISO_IEC_42001") -> list[Unit]:
@@ -475,14 +518,105 @@ def load_pdf_units(path: Path, regulation: str = "ISO_IEC_42001") -> list[Unit]:
     return units
 
 
+def _is_isae_heading(line: str) -> bool:
+    """Return True for ISAE section headings such as Objectives or Obtaining Evidence."""
+    if _ISAE_PAGE_NOISE_RE.match(line) or _ISAE_PARAGRAPH_RE.match(line):
+        return False
+    if len(line) > 100 or line.endswith(".") or "........" in line:
+        return False
+    words = line.split()
+    if not 1 <= len(words) <= 10:
+        return False
+    return line[:1].isupper() and any(ch.isalpha() for ch in line)
+
+
+def load_isae_3000_units(path: Path, regulation: str = "ISAE 3000") -> list[Unit]:
+    """Parse ISAE 3000 into paragraph/application-material Units.
+
+    Parser investigation (2026-06-01): the ISO/IEC 42001 clause parser extracted
+    only 10 oversized, mislabelled units from ``isae_3000.pdf``. ISAE 3000 is
+    paragraph-numbered, so this loader segments on ``1.`` / ``A1.`` paragraph
+    markers and carries the nearest section heading as the unit title.
+    """
+    source_file = path.name
+    units: list[Unit] = []
+    current_ref = ""
+    current_title = ""
+    current_kind = "paragraph"
+    start_page = 0
+    buf: list[str] = []
+
+    def _flush() -> None:
+        if not current_ref or not buf:
+            return
+        text = _normalise_text(" ".join(buf))
+        if len(text) < 40:
+            return
+        units.append(Unit(
+            regulation=regulation,
+            kind=current_kind,
+            ref=current_ref,
+            title=current_title,
+            text=text,
+            source_file=source_file,
+            extra={"page": start_page},
+        ))
+
+    for page_no, lines in _pdf_lines_by_page(path):
+        for line in lines:
+            if _ISAE_PAGE_NOISE_RE.match(line):
+                continue
+            match = _ISAE_PARAGRAPH_RE.match(line)
+            if match:
+                _flush()
+                current_ref = match.group(1)
+                current_kind = "application" if current_ref.startswith("A") else "paragraph"
+                start_page = page_no
+                buf = [match.group(2)]
+                continue
+            if _is_isae_heading(line):
+                current_title = line
+                continue
+            if current_ref:
+                buf.append(line)
+    _flush()
+    return units
+
+
+def load_units_for_path(path: Path, regulation: str | None = None) -> list[Unit]:
+    """Dispatch a corpus source file to the correct structural-unit loader."""
+    regulation = regulation or _PDF_REGULATION_BY_NAME.get(
+        path.name, _REGULATION_BY_STEM.get(path.stem.replace(" ", "_"), path.stem)
+    )
+    suffix = path.suffix.lower()
+    if suffix == ".html":
+        return load_html_units(path, regulation)
+    if suffix == ".pdf" and regulation == "ISAE 3000":
+        return load_isae_3000_units(path, regulation)
+    if suffix == ".pdf":
+        return load_pdf_units(path, regulation)
+    if suffix in {".txt", ".md"}:
+        text = _normalise_text(path.read_text(encoding="utf-8"))
+        return [Unit(regulation=regulation, kind="standard", ref="Document", title="", text=text,
+                     source_file=path.name)] if text else []
+    return []
+
+
 def discover_corpus(corpus_dir: Path) -> Iterator[tuple[Path, str, str]]:
     """Yield (path, regulation, loader_kind) for every file in *corpus_dir*."""
+    missing = [name for name in _REQUIRED_STANDARD_PDFS if not (corpus_dir / name).exists()]
+    allow_stub = os.environ.get("AAA_ALLOW_ISO19011_STUB", "false").lower() == "true"
+    if missing and not allow_stub:
+        labels = ", ".join(f"{name} ({_REQUIRED_STANDARD_PDFS[name]})" for name in missing)
+        raise SystemExit(f"missing required standards PDF(s) in {corpus_dir}: {labels}")
     for p in sorted(corpus_dir.iterdir()):
         if p.suffix.lower() == ".html":
             stem = p.stem.replace(" ", "_")
             yield p, _REGULATION_BY_STEM.get(stem, stem), "html"
         elif p.suffix.lower() == ".pdf":
-            yield p, "ISO_IEC_42001", "pdf"
+            regulation = _PDF_REGULATION_BY_NAME.get(p.name)
+            if regulation:
+                yield p, regulation, "pdf"
 
 
 # ── Chunker (Step 2) ────────────────────────────────────────────────────────
@@ -730,10 +864,7 @@ def _load_all_units(corpus_dir: Path) -> list[Unit]:
     """Discover the corpus directory and dispatch to the right loader."""
     units: list[Unit] = []
     for path, regulation, kind in discover_corpus(corpus_dir):
-        if kind == "html":
-            loaded = load_html_units(path, regulation)
-        else:
-            loaded = load_pdf_units(path, regulation)
+        loaded = load_units_for_path(path, regulation)
         if loaded:
             _ok(f"loaded {len(loaded):4d} units from {path.name} ({regulation})")
         else:
@@ -851,6 +982,38 @@ def _ingest_obligations(args: Any, client: Any, checker: "CheckerLookup") -> Non
     _ok(f"upserted {n_q} obligation-question points into '{args.obligations_collection}'")
 
 
+def _run_coverage_probes(client: Any, collection: str) -> None:
+    """Warn when the newly-added standards cannot be retrieved from Qdrant."""
+    from qdrant_client import models as qmodels
+
+    dense_vectors = dense_embed(COVERAGE_PROBE_QUERIES)
+    sparse_vectors = sparse_embed(COVERAGE_PROBE_QUERIES)
+    for query, dense_vec, sparse_vec in zip(
+        COVERAGE_PROBE_QUERIES, dense_vectors, sparse_vectors, strict=True,
+    ):
+        try:
+            response = client.query_points(
+                collection_name=collection,
+                prefetch=[
+                    qmodels.Prefetch(query=dense_vec, using="dense", limit=16),
+                    qmodels.Prefetch(
+                        query=qmodels.SparseVector(
+                            indices=sparse_vec["indices"], values=sparse_vec["values"],
+                        ),
+                        using="sparse",
+                        limit=16,
+                    ),
+                ],
+                query=qmodels.FusionQuery(fusion=qmodels.Fusion.RRF),
+                limit=3,
+                with_payload=True,
+            )
+            if not response.points:
+                logger.warning("coverage probe returned zero results: %s", query)
+        except Exception as exc:  # pragma: no cover - operational warning only
+            logger.warning("coverage probe failed for %r: %s", query, exc)
+
+
 def main(argv: list[str] | None = None) -> int:
     """End-to-end ingestion: load → chunk → embed → upsert."""
     args = _parse_args(argv)
@@ -917,6 +1080,7 @@ def main(argv: list[str] | None = None) -> int:
 
     _step(6, total_steps, "Upserting obligations_index from compliance-checker")
     _ingest_obligations(args, client, checker)
+    _run_coverage_probes(client, args.collection)
 
     return 0
 

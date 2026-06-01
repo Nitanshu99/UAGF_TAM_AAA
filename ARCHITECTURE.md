@@ -18,6 +18,15 @@
 > 9. LangChain — *Choosing the Right Multi-Agent Architecture* (Jan 2026)
 > 10. Anthropic — *How we built our multi-agent research system* (Jun 2025)
 
+> **Implementation status (current repo snapshot)**
+>
+> The repository now implements the thesis MVP end-to-end: prompt runtime sourced
+> from `PROMPT.md`, client-document ingestion/search via per-engagement Qdrant
+> collections, materiality-aware findings and remediation fields, management-
+> response shells, risk heat-map + maturity radar generation, formal auditor
+> opinion generation, and a minimal customer upload → run → report workflow
+> across CLI, FastAPI, and Streamlit.
+
 ---
 
 ## 1. Design Philosophy
@@ -83,7 +92,7 @@ Model assignments follow a cost-vs-capability rule, implemented in `aaa/platform
 |---|-------|-------|------------------------|
 | 1 | **Orchestrator** | **gpt-5.5** | Owns the audit plan, runs the python-constraint CSP, sequences phases, spawns/monitors subagents, decides parallel vs sequential dispatch. |
 | 2 | **Verifier** | **gpt-5.5** (Flex) | Independent critic: judges every phase artefact against a rubric (factual accuracy, completeness, evidence linkage, regulatory citation correctness) before the Orchestrator admits it to the compliance matrix. |
-| 3 | **Regulatory RAG** | **gpt-5.4-nano** | Answers "what does Art. X §Y require?" on demand. Indexes EU AI Act, Annexes, delegated acts, harmonised standards (ISO/IEC 42001, 23894, 24029), GPAI Code of Practice. See corpus ingestion note below. |
+| 3 | **Regulatory RAG** | **gpt-5.4-nano** | Answers "what does Art. X §Y require?" on demand. Indexes the EU AI Act, GDPR, ISO/IEC 42001, ISAE 3000, and ISO 19011 corpus; phase agents also combine this with per-engagement client-document search where available. |
 
 ### 3.2 Tier 2 — Phase Agents (one per engagement)
 
@@ -94,7 +103,7 @@ Model assignments follow a cost-vs-capability rule, implemented in `aaa/platform
 | 6 | **Phase 3 — Model Validation Agent** | **gpt-5.5** (Flex) | P3 | Performance metrics, explainability (SHAP/Grad-CAM tool calls), robustness (Art. 13, 15). |
 | 7 | **Phase 4 — Output Fairness Tester** | **gpt-5.4-mini** | P4 | Output sampling, demographic-parity / equal-opportunity / disparate-impact metrics, subgroup analysis. |
 | 8 | **Phase 5 — Governance Agent** | **gpt-5.5** (Flex) | P5 | **Ingests `uagf_cgsa_aaa_schema.json`** from the upstream S4 CGSA, validates schema, lifts `aaa_phase5_handoff.blocking_findings` and `remediation_roadmap` into the compliance matrix. |
-| 9 | **Phase 6 — Report Architect** | **gpt-5.4** (Flex) | P6 | Composes the conformity-assessment report (reportlab), executive summary, regulatory matrix, remediation roadmap aligned to Annex IV. |
+| 9 | **Phase 6 — Report Architect** | **gpt-5.4** (Flex) | P6 | Composes T17/T18, synthesises the executive summary, builds the formal auditor opinion, emits management-response shells, renders risk heat-map + maturity radar assets, and persists the final PDF/JSON report outputs. |
 
 ### 3.3 Tier 3 — Specialist Sub-Agents (on-demand)
 
@@ -119,7 +128,9 @@ The Regulatory RAG agent's knowledge base is built by `scripts/ingest_regulatory
 | EU AI Act (Regulation (EU) 2024/1689) | EUR-Lex HTML | **339** (136 articles, 181 recitals, 22 annexes) | BeautifulSoup HTML parser |
 | GDPR (Regulation (EU) 2016/679) | EUR-Lex HTML | **288** (115 articles, 173 recitals) | BeautifulSoup HTML parser |
 | ISO/IEC 42001:2023 | PDF | **88** (32 clauses §4–§10, 56 Annex A controls) | `pypdfium2` PDF backend (see below) |
-| **Total** | | **715** corpus chunks | |
+| ISAE 3000 (Revised) | PDF (IAASB) | **411** (251 numbered paragraphs, 160 application-material paragraphs) | `pypdfium2` PDF backend + paragraph segmentation |
+| ISO 19011:2018 | PDF | **74** (56 clauses, 18 Annex A controls) | `pypdfium2` PDF backend |
+| **Total** | | **1200** corpus chunks | |
 
 `obligations_index` additionally holds **15** obligation-question points from the compliance-checker JSON.
 
@@ -307,9 +318,13 @@ Following the n8n/LangChain rule that *tools are not agents*, the AAA exposes a 
 | `cgsa_ingest` | custom (parses + validates the pulled CGSA payload) | Phase 5 |
 | `annex_iii_classify` | custom (LlamaIndex over Annex III text + rule table §3.6) | Phase 1 |
 | `art43_select` | custom (deterministic rule §3.5) | Orchestrator |
-| `regulatory_search` | LlamaIndex over EU AI Act corpus | Regulatory RAG |
+| `regulatory_search` | LlamaIndex/Qdrant over the regulatory corpus | Regulatory RAG |
+| `client_doc_ingest` | custom (chunk + embed + Qdrant upsert) | Intake Validator |
+| `client_doc_search` | custom (per-engagement dense retrieval) | Phase 1 / 2 / 3 / 5 |
 | `template_render` | jinja2 over 20 artefact templates (§4A) | All phase agents |
-| `report_render` | reportlab, jinja2 | Phase 6 |
+| `report_render` | reportlab + plain-text fallback | Phase 6 |
+| `risk_heatmap_render` | matplotlib | Phase 6 |
+| `maturity_radar_render` | matplotlib | Phase 6 |
 | `completeness_score` | custom (rubric checker, §9.1) | Verifier |
 | `regulatory_coverage` | custom (article checklist, §9.1) | Verifier |
 | `annex_iv_validator` | jsonschema (validates Stage B dossier against the Annex IV §1–§9 JSON Schema bundle) | Intake / Orchestrator |
@@ -330,7 +345,7 @@ The intake artefacts (T01a / T01b / T01c) replace the previous single `T01_intak
 | # | Template ID | Phase | Owning agent | Purpose | EU AI Act linkage |
 |---|---|---|---|---|---|
 | 1a | `T01a_stage_a_triage` | Intake (Stage A) | Orchestrator (Intake Validator) | ~20-question triage form: provider/deployer identity, intended purpose, declared modality, declared risk tier, declared Annex III sections, deployment context, `provider_elects_third_party`, GDPR-overlap declarations, CGSA `assessment_id`. Carries the preview Art. 43 decision. | Art. 11; Annex IV §1 |
-| 1b | `T01b_annex_iv_dossier` | Intake (Stage B) | Orchestrator (Intake Validator) | Structured upload of the Annex IV §1–§9 technical documentation: (1) general description, (2) elements & dev process, (3) monitoring & control, (4) performance metrics, (5) risk-management file (Art. 9), (6) lifecycle changes, (7) standards applied, (8) EU declaration of conformity, (9) post-market monitoring plan. Conditional fields per modality (L-branch adds system prompt, RAG manifest, tool inventory, guardrail config, golden set). | **Art. 11 + Annex IV §1–§9** |
+| 1b | `T01b_annex_iv_dossier` | Intake (Stage B) | Orchestrator (Intake Validator) | Structured upload of the Annex IV §1–§9 technical documentation: required text fields plus URI-backed file uploads for risk-management, declaration-of-conformity, post-market, and L-branch artefacts. Also carries optional training/evaluation dataset URIs and model artefact / metadata URIs for downstream data/model review. | **Art. 11 + Annex IV §1–§9** |
 | 1c | `T01c_intake_completeness_report` | Intake (post-Stage B) | Intake Validator | Per-section Annex IV completeness scoring, list of missing/incomplete fields, the `intake_completeness_score` KPI (§9.1), and any preview-vs-final Art. 43 delta. Required ≥ 0.80 to unlock Phase 1. | Art. 11 |
 | 2 | `T02_system_card` | P1 Scope | Scope | Provider, deployer, intended purpose, modality, deployment context — **populated by verifying** the corresponding T01a/T01b fields; carries the Phase-1 `declaration_verification` map. | Art. 13 §3 |
 | 3 | `T03_annex_iii_mapping` | P1 Scope | Scope | List of `AnnexIIIEntry` (§3.6) | Annex III |
@@ -348,7 +363,7 @@ The intake artefacts (T01a / T01b / T01c) replace the previous single `T01_intak
 | 15 | `T15_monitoring_logging_review` | P5 Gov/Ops | Governance | Review of uploaded monitoring/logging docs (exposé's original Ops scope) | Art. 12, Art. 17, Art. 72 |
 | 16 | `T16_uagf_tam_l_evidence` | P2L–P4L | UAGF-TAM-L Branch | Golden-set, RAGAs, groundedness, prompt-injection, trajectory results | Art. 15; GPAI Arts. 51–55 |
 | 17 | `T17_compliance_matrix` | P6 Report | Report Architect | Article × verdict × evidence-URI table (Arts. 9, 10, 13, 14, 15, 17, 43; Annex III; GPAI 51–55) | All in-scope articles |
-| 18 | `T18_audit_report` | P6 Report | Report Architect | Final Annex-IV-aligned PDF + machine-readable JSON; embeds T01a–T17 | Art. 11, Annex IV |
+| 18 | `T18_audit_report` | P6 Report | Report Architect | Final Annex-IV-aligned report payload plus rendered outputs; embeds T01a–T17 and includes auditor opinion, management-response shell, remediation roadmap, heat-map/radar URIs, and rendered PDF/JSON metadata. | Art. 11, Annex IV |
 
 **Template lifecycle.** (1) Phase agent (or Intake Validator) calls `template_render(template_id, payload)`; (2) `template_render` validates `payload` against the template's JSON Schema; (3) on success, the rendered HTML/JSON fragment is written to MinIO; the SHA-256, URI, and `template_version` are appended to the `evidence` Postgres table; (4) the Verifier reads the JSON payload (not the rendering) for its rubric check; (5) Phase 6 composes T18 by stitching all admitted T01a–T17 instances through a master Jinja2 layout.
 
@@ -508,9 +523,9 @@ class AuditState(TypedDict):
 
 Following Anthropic's pattern of writing intermediate work to the filesystem to avoid context-window blow-up:
 
-- **Object store**: MinIO (S3-wire-compatible, AGPL-v3) — same binary in dev and prod, with SOC-2 controls applied at the deployment layer.
-- **Index**: Postgres table `evidence(engagement_id, phase, artefact_type, uri, sha256, created_at, created_by_agent)`.
-- **Access**: Agents receive *URIs and summaries*, not blobs. Only the Verifier and Phase 6 Report Architect pull full artefacts.
+- **Object store**: MinIO (S3-wire-compatible, AGPL-v3) in the target architecture; the thesis/demo implementation uses the same URI model over an in-memory `EvidenceStore`.
+- **Index**: Postgres table `evidence(engagement_id, phase, artefact_type, uri, sha256, created_at, created_by_agent)` in the target architecture; demo mode mirrors this with an in-memory metadata index.
+- **Access**: Agents exchange URIs, not large blobs. `store_file(...)` supports binary-safe customer uploads, while IntakeValidator / ReportArchitect selectively pull full artefacts when ingesting client docs or rendering the final report.
 
 ### 5.3 Inter-Agent Messaging
 
@@ -584,7 +599,8 @@ The canonical execution graph, expressed as a LangGraph-style state machine, has
 │  0. STAGE 0 — INTAKE (three mandatory sub-stages before any agent runs)      │
 │                                                                              │
 │  0A · Stage A — Triage                                                       │
-│       Client fills ~20-question form in Next.js wizard / Streamlit demo.     │
+│       Client fills the triage payload via CLI fixture, FastAPI intake, or    │
+│       the Streamlit demo UI.                                                 │
 │       Declares: modality, risk tier, Annex III sections, deployment context, │
 │       provider_elects_third_party, GDPR overlap, GPAI flag, CGSA ID.        │
 │       art43_preview computed from declared values → written to T01a.         │
@@ -592,12 +608,14 @@ The canonical execution graph, expressed as a LangGraph-style state machine, has
 │                                                                              │
 │  0B · Stage B — Annex IV Dossier Upload                                      │
 │       Client uploads Annex IV §1–§9 technical documentation (structured      │
-│       form + file attachments). L-branch clients additionally upload:        │
-│       system prompt, RAG manifest, tool inventory, guardrail config,         │
-│       golden set (Q&A pairs for RAGAs eval).                                 │
+│       form + file attachments). L-branch uploads may include system prompt,  │
+│       RAG manifest, guardrail config, and golden set; optional dataset/model │
+│       artefacts are also captured here for downstream phase agents.          │
 │       annex_iv_validator runs JSON-Schema check on submission.               │
 │       intake_completeness_calculator writes T01c with intake_completeness_  │
 │       score. Gate: intake_completeness_score ≥ 0.80 required to proceed.    │
+│       Uploaded document URIs are ingested into client_docs_{engagement_id}   │
+│       for later phase-agent retrieval when online services are available.    │
 │       If score < 0.80 → wizard returns error list; client must remediate.    │
 │                                                                              │
 │  0C · Stage C — Scoped Live-System Access (optional, async)                  │
@@ -681,8 +699,9 @@ The canonical execution graph, expressed as a LangGraph-style state machine, has
                                   ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  8. PHASE 6 — REPORT (Report Architect Agent)                                │
-│     report_render() → Annex IV-aligned PDF + machine-readable JSON           │
-│     Delivered to client portal; signed with engagement key.                  │
+│     Builds T17 + T18, auditor opinion, management-response shell, risk       │
+│     heat-map, maturity radar, and rendered PDF + machine-readable JSON.      │
+│     Delivered through CLI/API/UI download surfaces.                          │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -720,7 +739,7 @@ flowchart TD
 
     MATRIX["6 · Compliance Matrix<br/>Orchestrator · gpt-5.5<br/>art43_select (final) · intake_completeness_score"]:::orch
     HITL{"7 · HITL<br/>checkpoint?"}:::gate
-    REPORT["8 · Phase 6 · Report Architect · gpt-5.4 · Flex<br/>Annex IV PDF + JSON"]:::report
+    REPORT["8 · Phase 6 · Report Architect · gpt-5.4 · Flex<br/>T17/T18 + PDF/JSON + opinion/charts"]:::report
 
     HALT[/"HALT · escalate to HITL"/]:::gate
     EVID[("Evidence Store<br/>MinIO + Postgres")]:::store
@@ -1017,8 +1036,8 @@ A `PASS` final verdict requires all three KPIs in their PASS or PASS_WITH_OBSERV
 | Object store | **MinIO** (AGPL-v3, S3-wire-compatible) | Evidence Store; identical API in dev and prod |
 | Relational store | **PostgreSQL** | `AuditState` checkpoints, `evidence` index, engagement metadata |
 | Queue | **Valkey Streams** (BSD-3, Linux-Foundation Redis fork) | Inter-stage dispatch on parallel branches |
-| Front-end | **Next.js** (MIT) client portal, self-hosted in a Node container | Self-serve intake, status, report download |
-| API | **FastAPI** (MIT) | Engagement CRUD; outbound HTTP client calling the **S4 FastAPI** `cgsa_pull` endpoint (§10.2) |
+| Front-end | **Streamlit** (implemented demo) + optional future portal | Self-serve intake, uploads, run trigger, and report download in the thesis MVP |
+| API | **FastAPI** (MIT) | Health, engagement CRUD, customer file uploads, intake submission, run trigger, report metadata, and PDF retrieval; online governance integration remains via `cgsa_pull` (§10.2) |
 | Observability | **Langfuse** (Apache-2.0, self-hosted) + **Grafana** + **Loki** + **OpenTelemetry** | Traces, dashboards, log aggregation |
 | Secrets | **OpenBao** (MPL-2.0, Linux-Foundation Vault fork) | Per-engagement scoped credentials to client model APIs |
 
@@ -1058,7 +1077,7 @@ The response body is the `uagf_cgsa_aaa_schema.json` payload (schema version `1.
 
 **Schema-drift CI gate.** A nightly GitHub Actions job (`s4_contract.yml`) pulls the live `uagf_cgsa_aaa_schema.json` from the S4 repo and runs `jsonschema_diff` against the vendored copy. Any breaking change opens an issue and fails the build until either AAA updates its pinned version or S4 reverts.
 
-**Offline / demo mode.** For the Streamlit demo (§14) and unit tests, `cgsa_pull` is monkey-patched to read `tests/fixtures/cgsa/{scenario}.json`. The fixtures include: `compliant_high.json`, `partially_compliant_high.json`, `non_compliant_high.json`, `limited_tier.json`, `gpai.json`, `low_confidence_extraction.json`, `schema_v090_drift.json` (negative case).
+**Offline / demo mode.** For the Streamlit demo (§14), CLI smoke runs, and unit tests, `cgsa_pull` reads local fixtures from `scripts/fixtures/cgsa/` (or the path supplied by `CGSA_FIXTURE_DIR`).
 
 ---
 
@@ -1128,19 +1147,19 @@ UAGF_TAM_AAA/
 ├── requirements.txt                     # runtime dependencies (pip-managed)
 ├── requirements-dev.txt                 # dev/test dependencies (-r requirements.txt + lint/test tools)
 ├── Makefile                             # one-line targets per milestone
-├── docker-compose.yml                   # local dev: Postgres, Qdrant, MinIO, Valkey, Langfuse, OpenBao  [planned]
-├── docker-compose.prod.yml              # production overlay  [planned]
-├── .env.example                         # 12-factor env template  [planned]
+├── docker-compose.yml                   # local dev: Postgres, Qdrant, MinIO, Valkey, Langfuse, OpenBao
+├── docker-compose.prod.yml              # production overlay
+├── .env.example                         # 12-factor env template
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                       # lint + pytest + coverage gate  [planned]
-│       ├── s4_contract.yml              # nightly schema-drift check (§10.2)  [planned]
+│       ├── ci.yml                       # lint + pytest + coverage gate
+│       ├── s4_contract.yml              # nightly schema-drift check (§10.2)
 │       ├── templates_release.yml        # publishes uagf-tam-templates to PyPI  [planned]
 │       └── streamlit_deploy.yml         # demo deployment to Streamlit Cloud  [planned]
 ├── aaa/
 │   ├── __init__.py
 │   ├── cli.py                           # CLI entry point: python -m aaa.cli run ...
-│   ├── settings.py                      # pydantic-settings; reads env vars  [planned]
+│   ├── settings.py                      # pydantic-settings; reads env vars
 │   ├── agents/
 │   │   ├── base.py                      # BaseAgent ABC + message TypedDicts
 │   │   ├── intake_validator.py          # IntakeValidator (Stage 0 A/B/C)
@@ -1174,11 +1193,14 @@ UAGF_TAM_AAA/
 │   │   ├── demographic_parity.py / equal_opportunity.py / disparate_impact.py / subgroup_metrics.py / toxicity_classifier.py
 │   │   ├── cgsa_pull.py / cgsa_ingest.py  # §10.2 S4 pull client + schema validator
 │   │   ├── ragas_eval.py / groundedness_check.py / prompt_injection_suite.py / trajectory_audit.py
+│   │   ├── client_doc_ingest.py         # per-engagement client-doc RAG
+│   │   ├── risk_heatmap_render.py / maturity_radar_render.py
 │   │   └── template_render.py / report_render.py  # T01–T18 rendering
 │   ├── platform/
+│   │   ├── prompt_registry.py           # prompt runtime sourced from PROMPT.md
 │   │   ├── state.py                     # AuditState TypedDict + all nested types (§5.1)
 │   │   └── evidence.py                  # EvidenceStore — in-memory / MinIO-compatible (§5.2)
-│   ├── api/                             # FastAPI engagement CRUD  [planned]
+│   ├── api/                             # FastAPI engagement + upload-to-report workflow
 │   │   └── main.py
 │   └── ui/
 │       └── app.py                       # Streamlit demo (§14.7): streamlit run aaa/ui/app.py
@@ -1196,24 +1218,24 @@ UAGF_TAM_AAA/
 │   │   ├── uci_german_credit/           # stage_a.json / stage_b.json / stage_c.json
 │   │   └── cgsa/                        # uci-german-credit-001.json + smoke fixtures
 │   └── smoke_group{6,7,8,9,11}.py       # ad-hoc end-to-end smoke tests
-├── tests/                               # pytest test suite  [planned]
+├── tests/                               # pytest test suite
 │   ├── unit/                            # per-agent + per-tool
 │   ├── contract/                        # CGSA pull + schema drift
 │   ├── golden/                          # frozen end-to-end traces
 │   └── e2e/                             # German Credit, M5, Hamburg, LLM cases
 ├── infra/
-│   ├── tofu/                            # OpenTofu modules (Hetzner / Scaleway)  [planned]
-│   └── runbook.md                       # ops playbook (§14.9)  [planned]
+│   ├── tofu/                            # OpenTofu modules (Hetzner / Scaleway)
+│   └── runbook.md                       # ops playbook (§14.9)
 ├── data/
 │   ├── Updated_Expose_S5_UAGF_TAM_AAA_Updated.txt  # exposé document
 │   └── files/                           # schema explorer JSX + supplementary files
 └── out/                                 # generated audit outputs (gitignored in production)
 ```
 
-> **Note:** Items marked `[planned]` are declared in this architecture but not yet present in the
-> repository. They are required before the thesis demo deployment (§14.10). The thesis Streamlit demo
-> (`make demo`) and the full offline pipeline (`make m4-full`) work today without them; the
-> `[planned]` items are needed only for production deployment and CI gating.
+> **Note:** This section mixes the implemented thesis MVP with the broader target deployment.
+> Where a future-state component is mentioned (for example, a hardened production portal or
+> full cloud deployment pipeline), it should be read as an architectural extension rather than
+> a claim that the current repository already ships that production surface.
 
 ### 14.2 Dependency Manifest (`requirements.txt` / `requirements-dev.txt`)
 
@@ -1429,15 +1451,15 @@ intake-demo:    ; AAA_OFFLINE_MODE=true CGSA_FIXTURE_DIR=scripts/fixtures/cgsa $
                 # Full offline demo: IntakeValidator → Orchestrator → final verdict (no LLM calls)
 
 # --- exposé milestones ---
-m3-linear:    ; $(PYTHON) -m aaa.cli run --case german_credit --pipeline linear   # M3 (Week 7)
-m4-full:      ; $(PYTHON) -m aaa.cli run --case german_credit --pipeline full     # M4 (Week 11)
-m5-case1:     ; $(PYTHON) -m aaa.cli run --case german_credit --emit-pdf          # M5 Finance
-m5-case2:     ; $(PYTHON) -m aaa.cli run --case m5_forecasting --emit-pdf         # M5 Retail
-m6-case3:     ; $(PYTHON) -m aaa.cli run --case hamburg_hub --emit-pdf            # M6 live
-m6-case4:     ; $(PYTHON) -m aaa.cli run --case llm_open --emit-pdf --branch l    # M6 UAGF-TAM-L
+m3-linear:    ; $(PYTHON) -m aaa.cli run --engagement-id eng-m3-001 --intake-dir scripts/fixtures/uci_german_credit --offline
+m4-full:      ; AAA_OFFLINE_MODE=true CGSA_FIXTURE_DIR=scripts/fixtures/cgsa $(PYTHON) -m aaa.cli run --engagement-id eng-m4-001 --intake-dir scripts/fixtures/uci_german_credit --cgsa-fixture-dir scripts/fixtures/cgsa --offline
+m5-case1:     ; AAA_OFFLINE_MODE=true CGSA_FIXTURE_DIR=scripts/fixtures/cgsa $(PYTHON) -m aaa.cli run --engagement-id eng-m5-case1 --intake-dir scripts/fixtures/uci_german_credit --cgsa-fixture-dir scripts/fixtures/cgsa --offline
+m5-case2:     ; AAA_OFFLINE_MODE=true CGSA_FIXTURE_DIR=scripts/fixtures/cgsa $(PYTHON) -m aaa.cli run --engagement-id eng-m5-case2 --intake-dir scripts/fixtures/uci_german_credit --cgsa-fixture-dir scripts/fixtures/cgsa --offline
+m6-case3:     ; AAA_OFFLINE_MODE=true CGSA_FIXTURE_DIR=scripts/fixtures/cgsa $(PYTHON) -m aaa.cli run --engagement-id eng-m6-case3 --intake-dir scripts/fixtures/uci_german_credit --cgsa-fixture-dir scripts/fixtures/cgsa --offline
+m6-case4:     ; AAA_OFFLINE_MODE=true CGSA_FIXTURE_DIR=scripts/fixtures/cgsa $(PYTHON) -m aaa.cli run --engagement-id eng-m6-case4 --intake-dir scripts/fixtures/uci_german_credit --cgsa-fixture-dir scripts/fixtures/cgsa --offline
 
 # --- demo + deploy ---
-report-german:; $(PYTHON) -m aaa.cli run --case german_credit --emit-pdf --open
+report-german:; AAA_OFFLINE_MODE=true CGSA_FIXTURE_DIR=scripts/fixtures/cgsa $(PYTHON) -m aaa.cli run --engagement-id eng-uci-german-credit-001 --intake-dir scripts/fixtures/uci_german_credit --cgsa-fixture-dir scripts/fixtures/cgsa --output-file out/eng-uci-german-credit-001.json --offline
 demo:         ; AAA_OFFLINE_MODE=true .venv/bin/streamlit run aaa/ui/app.py
 deploy-staging:; tofu -chdir=infra/tofu workspace select staging && tofu -chdir=infra/tofu apply -auto-approve
 deploy-prod:  ; tofu -chdir=infra/tofu workspace select prod    && tofu -chdir=infra/tofu apply
@@ -1469,30 +1491,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
+        with: { python-version: "3.12" }
       - run: python -m venv .venv
       - run: .venv/bin/pip install --upgrade pip
       - run: .venv/bin/pip install -r requirements-dev.txt && .venv/bin/pip install -e .
       - run: .venv/bin/ruff check .
       - run: .venv/bin/mypy aaa/
       - run: .venv/bin/pytest --cov=aaa --cov-fail-under=80
-      - run: .venv/bin/python -m aaa.cli run --case german_credit --pipeline full --offline   # golden smoke
+      - run: .venv/bin/python -m aaa.cli run --engagement-id eng-ci-smoke-001 --intake-dir scripts/fixtures/uci_german_credit --cgsa-fixture-dir scripts/fixtures/cgsa --offline
 ```
 
 ### 14.7 Streamlit Demo (`aaa/ui/app.py`)
 
-The thesis Deliverable 1 (line 82) is *"Deployed on Streamlit Cloud (demo version with sample AI system)"*. The demo runs the full LangGraph pipeline in `AAA_OFFLINE_MODE=true`, with CGSA payload sourced from `scripts/fixtures/cgsa/`.
+The implemented Streamlit demo is the primary thesis UI. It runs the same intake → orchestrator → report path as the CLI/API and is designed to work fully in `AAA_OFFLINE_MODE=true` using fixtures from `scripts/fixtures/uci_german_credit/` and `scripts/fixtures/cgsa/`.
 
-Pages:
+Current behavior:
 
-1. **Stage A — Triage** — The demo pre-fills all ~20 Stage A fields from `scripts/fixtures/uci_german_credit/stage_a.json` when the user clicks "Load German Credit example". The `art43_preview` result is displayed immediately so the user sees the expected conformity-assessment procedure before uploading any artefact. In the production Next.js portal, this is a two-step wizard (form → preview confirmation).
-2. **Stage B — Annex IV Dossier** — Upload Annex IV §1–§9 documentation. In the demo, all fields are pre-filled from `scripts/fixtures/uci_german_credit/stage_b.json`. The `annex_iv_validator` runs on submission and the `intake_completeness_score` is displayed with a per-section breakdown. Fields below the 0.80 gate are highlighted in red with a remediation hint. *(Note: the "Load German Credit example" button is a shortcut that bypasses the completeness gate for demo purposes — `intake_completeness_score` is forced to 1.0 in offline mode.)*
-3. **Stage C — Scoped Access** (skipped in offline demo) — In offline mode this step shows a read-only summary of what would be collected (endpoint URL, access scope, expiry). In the production portal a secure vault form is rendered by the Next.js frontend; no credentials flow through Streamlit.
-4. **Live audit** — Streams Langfuse trace events from the running engagement, one row per phase. Each row shows: phase id, agent, status (`pending`/`running`/`accept`/`rerun`/`escalated`), token/time spent, link to artefact in MinIO.
-5. **Report** — When `final_verdict` is set, renders T18 PDF inline (PDF.js component) with a download button. Side panel shows all three KPIs (`intake_completeness_score`, `completeness_score`, `regulatory_coverage_pct`) against the case-study human-expert benchmark.
-6. **Trace explorer** — Embedded Langfuse UI for replay/time-travel debugging.
+1. **Stage A** — editable triage form seeded from fixture JSON.
+2. **Stage B** — required Annex IV text fields plus uploaders for risk-management, declaration-of-conformity, post-market, LLM artefacts, and optional dataset/model files. Uploaded artefacts are stored through `EvidenceStore.store_file(...)` and written back into the Stage B payload as URIs.
+3. **Live scope/completeness preview** — the UI shows the scope gate result and `intake_completeness_score` before the run starts.
+4. **Run full audit** — executes `IntakeValidator → Orchestrator` using the same EvidenceStore instance as the upload widgets so uploaded files and intake payloads are available to the downstream phases.
+5. **Downloads** — after completion, the UI exposes the rendered audit-report PDF when available, the T18 JSON payload, the T17 compliance matrix JSON, and the full AuditState JSON behind an advanced/debug expander.
 
-Streamlit Cloud deployment: connect the GitHub repo; set `AAA_OFFLINE_MODE=true`, `ANTHROPIC_API_KEY` (sandbox key) as secrets; `streamlit_deploy.yml` redeploys on every push to `main`.
+The current UI does **not** embed Langfuse trace replay or an inline PDF viewer; those remain future UX extensions rather than part of the implemented thesis MVP.
 
 ### 14.8 Production Topology (`infra/tofu/`)
 

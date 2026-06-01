@@ -1,56 +1,33 @@
 # AAA — Developer User Manual
 
-> Step-by-step guide for a **new contributor** to clone, run, test, and extend the
-> Autonomous AI Auditor (AAA). Pair this manual with:
->
-> - [`README.md`](./README.md) — repo orientation
-> - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — authoritative design (§1–§14)
-> - [`infra/runbook.md`](./infra/runbook.md) — production on-call procedures
+This manual is the practical companion to:
 
----
-
-## Table of Contents
-
-1. [Prerequisites](#1-prerequisites)
-2. [One-shot setup](#2-one-shot-setup)
-3. [Manual setup (what the script does)](#3-manual-setup-what-the-script-does)
-4. [Repository tour](#4-repository-tour)
-5. [Running the system](#5-running-the-system)
-6. [Working with tests](#6-working-with-tests)
-7. [Configuration & environment variables](#7-configuration--environment-variables)
-8. [Common developer workflows](#8-common-developer-workflows)
-9. [Troubleshooting](#9-troubleshooting)
-10. [Glossary](#10-glossary)
+- [`README.md`](./README.md) — quick orientation
+- [`SETUP.md`](./SETUP.md) — plain-English first-run guide
+- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — system design and contracts
+- [`PROMPT.md`](./PROMPT.md) — canonical prompt specification
 
 ---
 
 ## 1. Prerequisites
 
-| Tool | Version | Why |
-|------|---------|-----|
-| **Python** | **3.12** (exact) | `pyproject.toml`, type hints, asyncio idioms |
-| **git** | any | clone the repo |
-| **Docker Desktop** | latest | local Postgres / MinIO / Valkey / Langfuse stack (optional in offline mode) |
-| **GNU Make** | any | one-line `make <target>` shortcuts (optional) |
+| Tool | Version | Notes |
+|------|---------|-------|
+| Python | **3.12** | required |
+| git | any | required |
+| Docker | recent | optional; useful for online/local services |
 
-> **Offline mode.** Every component is designed to run with `AAA_OFFLINE_MODE=true`,
-> which means **no network, no LLM API key, no Docker is strictly required** to
-> develop or run the test suite. Set this flag whenever you don't need real LLMs.
-
-Check your Python version:
+For most development and testing, use:
 
 ```bash
-python3.12 --version          # must print "Python 3.12.x"
+export AAA_OFFLINE_MODE=true
 ```
 
-If `python3.12` is not on your PATH, install it via [pyenv](https://github.com/pyenv/pyenv), `brew install python@3.12`, or your distro's package manager.
+That keeps the repo runnable without live LLM/API dependencies.
 
 ---
 
 ## 2. One-shot setup
-
-The repository ships with [`scripts/setup.py`](./scripts/setup.py) — a single
-idempotent Python script that bootstraps everything:
 
 ```bash
 git clone <repo-url> UAGF_TAM_AAA
@@ -58,148 +35,166 @@ cd UAGF_TAM_AAA
 python3.12 scripts/setup.py
 ```
 
-What this does (each step is skipped if already done):
-
-| Step | Action |
-|------|--------|
-| 1 | Verify Python ≥ 3.12 |
-| 2 | Create `.venv/` |
-| 3 | Upgrade pip; install `requirements-dev.txt` |
-| 4 | Copy `.env.example` → `.env` (if missing) |
-| 5 | Start `docker compose` stack (skipped if Docker is missing) |
-| 6 | Apply Alembic migrations (warns and continues on failure) |
-| 7 | Run the offline pytest smoke suite (`-m "not e2e"`) |
-
 Useful flags:
 
 ```bash
-python3.12 scripts/setup.py --no-docker --no-migrate    # purely Python install
-python3.12 scripts/setup.py --no-tests                   # skip smoke run
-python3.12 scripts/setup.py --with-prod-deps             # heavy ML stack (SHAP, torch, ...)
+python3.12 scripts/setup.py --no-docker --no-migrate
+python3.12 scripts/setup.py --no-tests
+python3.12 scripts/setup.py --with-prod-deps
 ```
 
-Re-run it any time — completed steps will report "already present" and skip.
+Then activate the venv:
+
+```bash
+source .venv/bin/activate
+```
 
 ---
 
-## 3. Manual setup (what the script does)
-
-If you prefer running each step yourself:
+## 3. Manual setup
 
 ```bash
-# 3.1 — Virtualenv
 python3.12 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-
-# 3.2 — Dependencies
+source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements-dev.txt
-# (optional) full ML stack — only needed for Tier-2/3 tools that import shap, torch, ...
-pip install -r requirements.txt
-
-# 3.3 — Environment file
 cp .env.example .env
-# Edit .env — fill in LLM API keys ONLY if you intend to run online.
+AAA_OFFLINE_MODE=true pytest -m "not e2e"
+```
 
-# 3.4 — (optional) Local services
+Optional local services:
+
+```bash
 docker compose up -d
 python -m alembic upgrade head
-
-# 3.5 — Smoke test
-AAA_OFFLINE_MODE=true pytest -m "not e2e"
 ```
 
 ---
 
 ## 4. Repository tour
 
+```text
+aaa/
+├── agents/
+│   ├── intake_validator.py          # Stage 0 A/B/C validation + T01a/T01b/T01c
+│   ├── tier1/                       # Orchestrator, Verifier, RegulatoryRAG
+│   ├── tier2/                       # Scope/Data/Model/Output/Governance/ReportArchitect
+│   └── tier3/                       # UAGF-TAM-L, Cyber, Privacy
+├── api/main.py                      # FastAPI upload-to-report flow
+├── cli.py                           # offline/fixture-driven runner
+├── platform/
+│   ├── evidence.py                  # EvidenceStore + store_file()
+│   ├── prompt_registry.py           # loads prompts from PROMPT.md
+│   └── state.py                     # AuditState, Finding, RemediationItem
+├── tools/
+│   ├── client_doc_ingest.py         # client_doc_ingest/client_doc_search
+│   ├── regulatory_coverage.py
+│   ├── report_render.py
+│   ├── risk_heatmap_render.py
+│   └── maturity_radar_render.py
+└── ui/app.py                        # Streamlit demo UI
 ```
-UAGF_TAM_AAA/
-├── aaa/                            # main Python package
-│   ├── agents/
-│   │   ├── intake_validator.py     # Stage 0 A/B/C dispatch
-│   │   ├── tier1/                  # Orchestrator, Verifier, RegulatoryRAG
-│   │   ├── tier2/                  # ScopeAgent, DataAuditor, ModelValidator,
-│   │   │                           # OutputFairness, GovernanceAgent, ReportArchitect
-│   │   └── tier3/                  # UagfTamLBranch, CyberAgent, PrivacyAgent
-│   ├── tools/                      # ~30 deterministic MCP tools (SHAP, LIME, RAGAs, ...)
-│   ├── platform/
-│   │   ├── state.py                # AuditState TypedDict — the system's contract
-│   │   └── evidence.py             # EvidenceStore (in-memory; swappable for MinIO)
-│   ├── api/main.py                 # FastAPI app
-│   ├── ui/app.py                   # Streamlit demo
-│   ├── cli.py                      # CLI entrypoint
-│   └── settings.py                 # pydantic-settings singleton
-│
-├── schemas/cgsa/v1.0.0/            # Canonical S4 CGSA JSON schema (vendored)
-├── templates/T01a_*.json ... T18_*.json
-│                                   # Audit-evidence template schemas
-├── packages/uagf_tam_templates/    # PyPI-ready template loader package
-│
-├── scripts/
-│   ├── setup.py                    # one-shot bootstrap (see §2)
-│   └── fixtures/                   # reference engagement payloads
-│       ├── uci_german_credit/      #   stage_a.json + stage_b.json + stage_c.json
-│       └── cgsa/                   #   CGSA payloads used in offline mode
-│
-├── tests/
-│   ├── unit/                       # pure function tests (no network, no Docker)
-│   ├── contract/                   # CGSA fixture schema-conformance tests
-│   ├── golden/                     # regression tests against out/ reference JSON
-│   └── e2e/                        # full-stack tests (skipped offline)
-│
-├── alembic/                        # DB migrations
-├── docker-compose.yml              # local dev stack
-├── infra/tofu/                     # OpenTofu IaC stub (production)
-└── .github/workflows/              # CI / schema-drift / release pipelines
-```
+
+Other important paths:
+
+- `templates/` — T01a–T18 schema files
+- `scripts/fixtures/uci_german_credit/` — sample intake bundle
+- `scripts/fixtures/cgsa/` — offline CGSA payloads
+- `tests/unit/` — focused regressions for recent thesis tasks
 
 ---
 
 ## 5. Running the system
 
-All commands below assume your venv is active (`source .venv/bin/activate`).
+All commands assume the venv is active.
 
-### 5.1 CLI — run a full audit (offline)
+### 5.1 CLI
 
 ```bash
 python -m aaa.cli run \
-  --engagement-id eng-demo-001 \
+  --engagement-id eng-uci-german-credit-001 \
   --intake-dir scripts/fixtures/uci_german_credit \
   --cgsa-fixture-dir scripts/fixtures/cgsa \
   --offline
 ```
 
-Equivalent Makefile target:
+Useful options:
 
-```bash
-make intake-demo
-```
+- `--output-file out/<name>.json`
+- `--annex-iv-schema-version 1.0.0`
+- `--log-level INFO`
 
-What you get on stdout: a JSON summary with `final_verdict`, `intake_completeness_score`,
-`completeness_score`, `regulatory_coverage_pct`, `art43_decision`, the `phase_artefacts`
-URI map, and the compliance matrix. Exit code `0` = success, `2` = intake gate failure,
-`3` = pipeline error.
+Expected output includes:
 
-### 5.2 FastAPI — engagement CRUD + health
+- `final_verdict`
+- `art43_decision`
+- KPI summary
+- phase artefact URIs
+- compliance matrix
+
+### 5.2 FastAPI
 
 ```bash
 uvicorn aaa.api.main:app --reload --port 8000
 ```
 
-Then in another terminal:
+Core utility endpoints:
 
 ```bash
 curl http://localhost:8000/healthz
 curl http://localhost:8000/api/v1/schema-version
-curl -X POST http://localhost:8000/api/v1/engagements \
-     -H "Content-Type: application/json" \
-     -d '{"provider_name":"Acme","system_name":"CreditAI","declared_risk_tier":"high"}'
+curl http://localhost:8000/api/v1/engagements
 ```
 
-OpenAPI / Swagger UI is auto-served at `http://localhost:8000/docs`.
+### 5.3 FastAPI customer workflow example
 
-### 5.3 Streamlit demo
+Create engagement:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/engagements \
+  -H "Content-Type: application/json" \
+  -d '{
+    "engagement_id": "eng-api-demo",
+    "provider_name": "Demo Provider",
+    "system_name": "Demo System",
+    "declared_risk_tier": "high"
+  }'
+```
+
+Upload a file:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/engagements/eng-api-demo/files \
+  -F role=risk_management_file_uri \
+  -F file=@./some-risk-doc.txt
+```
+
+Submit intake:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/engagements/eng-api-demo/intake \
+  -H "Content-Type: application/json" \
+  -d @/tmp/intake.json
+```
+
+> Build `/tmp/intake.json` by combining valid Stage A / Stage B / optional Stage C payloads, then replace Stage B file-URI fields with the values returned by the `/files` endpoint.
+
+Run:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/engagements/eng-api-demo/run
+```
+
+Fetch report metadata / PDF:
+
+```bash
+curl http://localhost:8000/api/v1/engagements/eng-api-demo/report
+curl http://localhost:8000/api/v1/engagements/eng-api-demo/report.pdf --output report.pdf
+```
+
+> Note: the intake payload must contain valid Stage A/B/C structures. In practice, copy the fixture JSON and replace file URI fields with values returned by `/files`.
+
+### 5.4 Streamlit
 
 ```bash
 AAA_OFFLINE_MODE=true \
@@ -207,167 +202,143 @@ CGSA_FIXTURE_DIR=scripts/fixtures/cgsa \
 streamlit run aaa/ui/app.py
 ```
 
-Opens a browser at `http://localhost:8501` with the Stage A/B/C wizard, live
-intake-completeness preview, and a "Run full audit" button that triggers the
-same pipeline as the CLI.
+The UI currently provides:
 
-### 5.4 Make targets cheat-sheet
-
-| Target | Effect |
-|--------|--------|
-| `make install` | venv + dev deps + pre-commit |
-| `make up` / `make down` | docker compose up/down + alembic upgrade |
-| `make lint` | ruff + mypy |
-| `make test` | full pytest (offline-friendly) |
-| `make coverage` | pytest with `--cov-fail-under=80` |
-| `make intake-validate` | run only the IntakeValidator (Stage 0) on the fixture |
-| `make intake-demo` | full offline pipeline on UCI German Credit |
-| `make m3-linear` / `m4-full` | exposé milestones M3 / M4 |
-| `make demo` | Streamlit demo in offline mode |
+- Stage A editing
+- Stage B required text areas
+- Stage B uploaders for risk docs, post-market docs, LLM artefacts, and optional model/data artefacts
+- live intake completeness preview
+- final verdict display
+- PDF/T18/T17 downloads
+- AuditState JSON behind an advanced debug expander
 
 ---
 
 ## 6. Working with tests
 
-The test suite is organised into four buckets:
+### Test buckets
 
-| Bucket | Path | Marker | Runs in CI? |
-|--------|------|--------|-------------|
-| Unit | `tests/unit/` | (none) | ✅ |
-| Contract | `tests/contract/` | `@pytest.mark.contract` | ✅ |
-| Golden | `tests/golden/` | `@pytest.mark.golden` | ✅ |
-| End-to-end | `tests/e2e/` | `@pytest.mark.e2e` | ❌ (skipped offline) |
+| Bucket | Path |
+|--------|------|
+| Unit | `tests/unit/` |
+| Contract | `tests/contract/` |
+| Golden | `tests/golden/` |
+| E2E | `tests/e2e/` |
 
-### Run them
+### Common commands
 
 ```bash
-pytest                                       # everything (e2e auto-skipped offline)
-pytest tests/unit/ -v                        # one bucket
-pytest -m "contract"                         # by marker
+pytest
+pytest tests/unit/ -q
 pytest -m "not e2e" --cov=aaa --cov-fail-under=80
-pytest tests/unit/test_cgsa_ingest.py::test_cgsa_ingest_happy_path  # single test
 ```
 
-### Coverage gate
+### High-signal regression commands for the current feature set
 
-CI runs `pytest --cov=aaa --cov-fail-under=80`. A PR that drops coverage below
-80 % fails the `ci.yml` workflow.
-
-### Adding a new test
-
-- **Unit**: drop a file under `tests/unit/`. No new file naming rules beyond
-  `test_*.py`.
-- **Contract**: if you add a new CGSA fixture under `scripts/fixtures/cgsa/`,
-  the parametrised tests in `tests/contract/test_cgsa_fixture_contract.py`
-  pick it up automatically.
-- **Golden**: regenerate the reference JSON in `out/` with
-  `make m4-full --output-file out/<id>.json`, then add assertions in
-  `tests/golden/test_golden_output.py`.
-- **E2E**: add to `tests/e2e/test_e2e_placeholder.py` and gate with
-  `@pytest.mark.e2e`. Will only run when `AAA_OFFLINE_MODE` is unset.
+```bash
+python -m pytest tests/unit/test_prompt_registry.py -q
+python -m pytest tests/unit/test_client_doc_ingest.py -q
+python -m pytest tests/unit/test_regulatory_standards_ingest.py -q
+python -m pytest tests/unit/test_materiality_state.py -q
+python -m pytest tests/unit/test_remediation_assignment.py -q
+python -m pytest tests/unit/test_report_architect_management_response.py -q
+python -m pytest tests/unit/test_risk_heatmap_render.py -q
+python -m pytest tests/unit/test_maturity_radar_render.py -q
+python -m pytest tests/unit/test_auditor_opinion.py -q
+python -m pytest tests/unit/test_regulatory_coverage_expanded.py -q
+python -m pytest tests/unit/test_evidence_store_file_upload.py -q
+python -m pytest tests/unit/test_ui_upload_helpers.py -q
+python -m pytest tests/unit/test_api_customer_workflow.py -q
+```
 
 ---
 
-## 7. Configuration & environment variables
+## 7. Configuration and environment
 
-All configuration is read from environment variables or a `.env` file at the
-repo root (see [`.env.example`](./.env.example) for the full annotated list).
-The pydantic-settings singleton lives at [`aaa/settings.py`](./aaa/settings.py).
+Configuration is read from environment variables / `.env` via `aaa/settings.py`.
 
-> **Ingestion script loads `.env` automatically.** `scripts/ingest_regulatory_corpus.py` calls `load_dotenv()` at startup via `python-dotenv`, so you can run it directly without `source .env`.
+Most relevant settings:
 
-Use it from code:
+| Variable | Purpose |
+|----------|---------|
+| `AAA_OFFLINE_MODE` | disables external LLM/API reliance for local/dev use |
+| `AAA_LOG_LEVEL` | logging level |
+| `CGSA_FIXTURE_DIR` | offline CGSA source |
+| `S4_CGSA_BASE_URL` | live S4 URL |
+| `QDRANT_URL` | vector store URL |
+| `OPENAI_API_KEY` | online embeddings / model calls |
 
-```python
-from aaa.settings import settings
+### Prompt runtime
 
-if settings.is_offline():
-    # don't make HTTP / LLM calls
-    ...
-```
+Prompts are now sourced from:
 
-The most important flags for day-to-day development:
+- `PROMPT.md` — human-readable source of truth
+- `aaa/platform/prompt_registry.py` — runtime loader / version hash
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `AAA_OFFLINE_MODE` | `false` | Set `true` to disable all HTTP / LLM calls — required for CI and the Streamlit demo. |
-| `AAA_LOG_LEVEL` | `WARNING` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
-| `CGSA_FIXTURE_DIR` | `scripts/fixtures/cgsa` | Where the offline CGSA payloads live. |
-| `S4_CGSA_BASE_URL` | `http://localhost:8001` | Upstream S4 FastAPI URL (online mode). |
-| `DATABASE_URL` | `postgresql://aaa:changeme@localhost:5432/aaa` | Postgres connection string for Alembic + Platform. |
-| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | — | Only needed when **not** in offline mode. |
-
-> **Never commit `.env`**. The file is in `.gitignore`. Use the `OpenBao`
-> instance (started by `docker compose`) for real secrets in production.
+If you update prompt wording, update the source in `PROMPT.md` and then run the prompt tests.
 
 ---
 
 ## 8. Common developer workflows
 
-### 8.1 "I want to add a new MCP tool"
+### 8.1 Update prompts
 
-1. Create `aaa/tools/my_tool.py` exporting a single pure function.
-2. Add a unit test under `tests/unit/test_my_tool.py`.
-3. Wire it into the agent that needs it (most agents live under `aaa/agents/tierN/`).
-4. Run `pytest tests/unit/test_my_tool.py -v` until green.
-5. Run `pytest --cov=aaa --cov-fail-under=80` to confirm the gate still holds.
-
-### 8.2 "I want to add a new audit-evidence template"
-
-1. Drop a JSON Schema at `templates/T<NN>_<name>.json` (draft-07).
-2. Mirror it into the packaged copy at
-   `packages/uagf_tam_templates/src/uagf_tam_templates/schemas/T<NN>_<name>.json`.
-3. Add a contract assertion in `packages/uagf_tam_templates/tests/test_loader.py`.
-4. Reference the new T-ID from the appropriate agent (`ReportArchitect` for T17/T18,
-   tier-2 agents for T02–T15, tier-3 agents for T16).
-
-### 8.3 "I want to change a CGSA schema field"
-
-The CGSA schema is the contract with the upstream **S4** system. Changing it
-will trip the nightly `s4_contract.yml` GitHub Action.
-
-1. Update `schemas/cgsa/v1.0.0/uagf_cgsa_aaa_schema.json`.
-2. Bump the version directory if it is a breaking change (e.g. `v1.1.0/`)
-   and update `CGSA_SCHEMA_VERSION` in `.env.example` and `aaa/settings.py`.
-3. Regenerate every fixture under `scripts/fixtures/cgsa/`.
-4. Re-run `pytest tests/contract/ -v` until all fixtures pass.
-5. Coordinate the change with the S4 owners (see [`infra/runbook.md`](./infra/runbook.md)
-   "Schema drift" row).
-
-### 8.4 "I want to run only Stage 0 (Intake) on a fixture"
+1. Edit `PROMPT.md`
+2. Verify the affected prompt loads via `aaa/platform/prompt_registry.py`
+3. Run:
 
 ```bash
-make intake-validate
-# equivalent to:
-python -m aaa.cli run \
-    --engagement-id eng-validate-001 \
-    --intake-dir scripts/fixtures/uci_german_credit \
-    --offline
+pytest tests/unit/test_prompt_registry.py -q
+pytest tests/unit/test_prompt_snapshots.py -q
 ```
 
-### 8.5 "I want to inspect what the orchestrator produced"
+### 8.2 Work on client-document RAG
 
-The full audit summary is written to `out/eng-<id>.json` when you pass
-`--output-file`. The golden test suite (`tests/golden/`) reads from
-`out/eng-uci-german-credit-001.json` as the reference.
+Relevant files:
+
+- `aaa/tools/client_doc_ingest.py`
+- `aaa/agents/intake_validator.py`
+- phase agents that call `client_doc_search`
+
+Key behavior:
+
+- uploaded documents are ingested into `client_docs_{engagement_id}`
+- embeddings use `text-embedding-3-large`
+- offline mode returns safe no-op / empty results
+
+### 8.3 Add or change a report field
+
+Usually touches:
+
+- `aaa/platform/state.py`
+- `templates/T18_audit_report.json`
+- `aaa/agents/tier2/report_architect.py`
+- `aaa/tools/report_render.py`
+- corresponding unit tests
+
+### 8.4 Add a new template
+
+1. add schema in `templates/`
+2. mirror packaged copy in `packages/uagf_tam_templates/`
+3. wire the template into the owning agent
+4. add tests
+
+### 8.5 Inspect generated outputs
 
 ```bash
 python -m aaa.cli run \
-    --engagement-id eng-uci-german-credit-001 \
-    --intake-dir scripts/fixtures/uci_german_credit \
-    --cgsa-fixture-dir scripts/fixtures/cgsa \
-    --output-file out/eng-uci-german-credit-001.json \
-    --offline
-jq '.phase_artefacts | keys' out/eng-uci-german-credit-001.json
+  --engagement-id eng-uci-german-credit-001 \
+  --intake-dir scripts/fixtures/uci_german_credit \
+  --cgsa-fixture-dir scripts/fixtures/cgsa \
+  --output-file out/eng-uci-german-credit-001.json \
+  --offline
 ```
 
-### 8.6 "I want to publish a PR"
+Then inspect:
 
-1. Branch from `main`: `git switch -c feat/<topic>`.
-2. Make changes, add/update tests.
-3. `make lint && make coverage` locally — both must pass.
-4. Push and open a PR. The `ci.yml` workflow will repeat lint + coverage.
-5. If you touched `schemas/cgsa/**`, label the PR `contract-change`.
+- `out/eng-uci-german-credit-001.json`
+- `phase_artefacts.T17_compliance_matrix`
+- `phase_artefacts.T18_audit_report`
 
 ---
 
@@ -375,24 +346,14 @@ jq '.phase_artefacts | keys' out/eng-uci-german-credit-001.json
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| `ModuleNotFoundError: aaa` | venv not active, or repo root not on PATH | `source .venv/bin/activate`; run from repo root |
-| `python3.12: command not found` | Python 3.12 not installed | `brew install python@3.12` (macOS) or `pyenv install 3.12` |
-| Tests fail with `CGSAIngestError: schema_validation_failed` | hand-crafted payload missing required field | use `scripts/fixtures/cgsa/uci-german-credit-001.json` as the base, mutate copies |
-| `streamlit run aaa/ui/app.py` shows `ModuleNotFoundError: streamlit` | dev deps not installed | `pip install -r requirements-dev.txt` |
-| `docker compose up` hangs on Postgres `pg_isready` | port 5432 already in use locally | `lsof -i :5432` to find the conflict; stop the other postgres or change the port in `docker-compose.yml` |
-| `alembic upgrade head` → `connection refused` | Postgres container not up | `docker compose up -d postgres` first, wait 5 s, retry |
-| pytest skips all e2e tests | `AAA_OFFLINE_MODE=true` (the default in CI) | unset the variable, **and** make sure `docker compose` is up before running e2e |
-| Coverage gate fails at 79.x % | recent code without tests | add unit tests; rerun `pytest --cov=aaa --cov-report=term-missing` to see which lines are uncovered |
-| `make` target fails with "command not found: .venv/bin/python" | venv not created yet | run `python3.12 scripts/setup.py` once |
-| LLM call raises `401 Unauthorized` | API key missing or wrong | check `.env`; or set `AAA_OFFLINE_MODE=true` to bypass LLM calls entirely |
-| Ingestion script appears to hang (no output) on macOS | macOS Gatekeeper is verifying native `.so` extensions (qdrant_client, sklearn, nltk) on first use | Wait 10–30 s; the script pre-warms these imports at startup so the delay is front-loaded and only occurs once per new install |
-| `loaded 0 units from ISO:IEC 42001-2023.pdf` | Old `pdfplumber` backend silently returns 0 pages for ISO's token layout | Ensure `pypdfium2>=5.8.0` is installed (`pip show pypdfium2`); the script now uses it automatically |
-| Re-running ingestion embeds all chunks again and incurs OpenAI costs | Point IDs changed (e.g. chunking parameters were changed) | Run `--reset` to drop and rebuild collections, **or** keep chunking params constant — idempotent skip-existing logic uses SHA-256 IDs |
-| Script exits with `OPENAI_API_KEY not set` | `.env` not present or key missing | The script loads `.env` automatically via `python-dotenv`; create or check `.env` at the repo root |
-
-If the above does not help, capture the failing command + full traceback and
-open an issue. The runbook ([`infra/runbook.md`](./infra/runbook.md)) covers
-production-class incidents.
+| `ModuleNotFoundError: aaa` | wrong cwd or inactive venv | activate `.venv`, run from repo root |
+| `python3.12: command not found` | Python missing | install Python 3.12 |
+| Streamlit import errors | dev deps missing | `pip install -r requirements-dev.txt` |
+| `OPENAI_API_KEY not set` during corpus ingest | missing `.env` / key | add key or use offline mode |
+| `report.pdf` returns 404 | PDF renderer unavailable for that run | use `/report` JSON metadata; JSON report is always produced |
+| client doc search returns empty results | offline mode or collection absent | disable offline mode and ingest docs, or confirm uploads reached IntakeValidator |
+| ingestion appears to hang on macOS | native library verification | wait 10–30 seconds on first run |
+| ISO PDF loads zero units | wrong PDF backend | ensure `pypdfium2>=5.8.0` is installed |
 
 ---
 
@@ -400,20 +361,13 @@ production-class incidents.
 
 | Term | Meaning |
 |------|---------|
-| **AAA** | Autonomous AI Auditor — this repository. |
-| **S4** | Upstream system that emits the CGSA payload consumed at Phase 5. |
-| **CGSA** | Compliance, Governance, Security & Assurance — the JSON schema vendored under `schemas/cgsa/v1.0.0/`. |
-| **AuditState** | The single TypedDict (`aaa/platform/state.py`) all agents read from and write to. |
-| **Evidence Store** | Content-addressed artefact store; in-memory in offline mode, MinIO in production. |
-| **IntakeValidator** | Stage 0 agent: ingests T01a/T01b/T01c, runs the completeness gate (≥ 0.80). |
-| **Orchestrator** | LangGraph state machine running Phases 0–6 (`aaa/agents/tier1/orchestrator.py`). |
-| **Tier 1 / 2 / 3** | Agent tiering by responsibility — Tier 1 = control plane, Tier 2 = phase workers, Tier 3 = on-demand specialists. |
-| **T01a … T18** | Audit evidence templates — 20 JSON Schemas under `templates/`. |
-| **L-branch** | LLM/agentic execution path (`is_llm_or_agentic=true`); replaces Phases 2–4 with `UagfTamLBranch`. |
-| **HITL** | Human-In-The-Loop — review trigger when the system detects ambiguity. |
-| **KPI 0 / 1 / 2** | Intake completeness / phase completeness / regulatory coverage (see `aaa/tools/intake_completeness_calculator.py`, `aaa/tools/completeness_score.py`, `aaa/tools/regulatory_coverage.py`). |
-| **CSP** | Constraint Satisfaction Problem — solved with `python-constraint` to verify hard regulatory constraints (§6.2). |
-
----
-
-*Last updated alongside the test-suite landing (42 unit/contract/golden tests passing, 4 e2e skipped offline).*
+| AAA | Autonomous AI Auditor |
+| AuditState | shared engagement state threaded through the graph |
+| EvidenceStore | artefact storage abstraction; supports `store_artefact()` and `store_file()` |
+| IntakeValidator | Stage 0 validator for T01a/T01b/T01c and document ingestion |
+| ReportArchitect | Phase 6 agent that assembles T17/T18 and rendered report outputs |
+| T17 | final compliance matrix |
+| T18 | final audit report |
+| HITL | human-in-the-loop escalation |
+| L-branch | LLM / agentic execution path |
+| CGSA | governance payload consumed in Phase 5 |

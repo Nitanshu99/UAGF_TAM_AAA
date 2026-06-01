@@ -79,6 +79,7 @@ def _initial_state(engagement_id: str, client_submission: dict) -> dict:
     stage_a = client_submission.get("stage_a", {})
     return {
         "engagement_id": engagement_id,
+        "client_doc_collection": client_submission.get("client_doc_collection"),
         "client_submission": client_submission,
         "declared_modality": stage_a.get("declared_modality", "tabular"),
         "declared_risk_tier": stage_a.get("declared_risk_tier", "minimal"),
@@ -100,6 +101,7 @@ def _initial_state(engagement_id: str, client_submission: dict) -> dict:
         "cgsa_schema_version": None,
         "cgsa_composite_maturity_score": None,
         "cgsa_composite_maturity_label": None,
+        "cgsa_domain_scores": None,
         "cgsa_eu_ai_act_coverage_pct": None,
         "cgsa_csp_satisfiable": None,
         "cgsa_governance_verdict": None,
@@ -115,11 +117,14 @@ def _initial_state(engagement_id: str, client_submission: dict) -> dict:
         "blocking_findings": [],
         "positive_findings": [],
         "remediation_roadmap": [],
+        "material_findings_count": None,
+        "possibly_material_findings_count": None,
         "verifier_critiques": {},
         "intake_completeness_score": client_submission.get("intake_completeness_score"),
         "completeness_score": None,
         "regulatory_coverage_pct": None,
         "final_verdict": None,
+        "auditor_opinion": None,
         "hitl_required": False,
         "hitl_reason": None,
     }
@@ -329,18 +334,28 @@ def _node_compliance_matrix(state: dict) -> dict:
                 admitted_articles.add(art)
             # Map template IDs to articles
             _TEMPLATE_ARTICLES = {
-                "T02_system_card": "Art.13",
-                "T04_risk_tier_decision": "Art.6",
-                "T05_art43_decision": "Art.43",
-                "T06_datasheet_for_datasets": "Art.10",
-                "T09_model_card": "Art.13",
-                "T11_robustness_report": "Art.15",
-                "T12_output_fairness_report": "Art.15",
-                "T14_governance_findings": "Art.9",
-                "T17_compliance_matrix": "Art.17",
+                "T01b_annex_iv_dossier": ["Art.11", "Annex_IV"],
+                "T01c_intake_completeness_report": ["Annex_IV"],
+                "T02_system_card": ["Art.5", "Art.13"],
+                "T03_annex_iii_mapping": ["Art.6", "Annex_III"],
+                "T04_risk_tier_decision": ["Art.5", "Art.6"],
+                "T05_art43_decision": ["Art.43"],
+                "T06_datasheet_for_datasets": ["Art.10"],
+                "T09_model_card": ["Art.13"],
+                "T11_robustness_report": ["Art.15"],
+                "T12_output_fairness_report": ["Art.15", "Art.50"],
+                "T13_output_sampling_log": ["Art.50"],
+                "T14_governance_findings": ["Art.9", "Art.17"],
+                "T15_monitoring_logging_review": ["Art.12", "Art.72"],
+                "T17_compliance_matrix": ["Art.17"],
             }
             if tid in _TEMPLATE_ARTICLES:
-                admitted_articles.add(_TEMPLATE_ARTICLES[tid])
+                admitted_articles.update(_TEMPLATE_ARTICLES[tid])
+
+    if "T01b_annex_iv_dossier" in state.get("phase_artefacts", {}):
+        admitted_articles.update({"Art.11", "Annex_IV"})
+    if "T01c_intake_completeness_report" in state.get("phase_artefacts", {}):
+        admitted_articles.add("Annex_IV")
 
     for article in admitted_articles:
         if state["compliance_matrix"].get(article) in (None, "PENDING"):
@@ -365,6 +380,14 @@ def _node_compliance_matrix(state: dict) -> dict:
         verdict = "FAIL"
 
     state["final_verdict"] = verdict
+    state["material_findings_count"] = sum(
+        1 for finding in state.get("blocking_findings", [])
+        if finding.get("materiality") == "material"
+    )
+    state["possibly_material_findings_count"] = sum(
+        1 for finding in state.get("blocking_findings", [])
+        if finding.get("materiality") == "possibly_material"
+    )
     logger.info("Engagement %s final_verdict=%s (cs=%.2f rc=%.1f)", state["engagement_id"], verdict, cs, rc)
     return state
 
@@ -551,6 +574,7 @@ class Orchestrator(BaseAgent):
             output_contract="T02_system_card",
             declaration_summary={
                 "engagement_id": eng,
+                "client_doc_collection": state.get("client_doc_collection"),
                 "declared_modality": state.get("declared_modality", ""),
                 "declared_risk_tier": state.get("declared_risk_tier", ""),
                 "declared_annex_iii_sections": state.get("declared_annex_iii_sections", []),
@@ -707,6 +731,7 @@ class Orchestrator(BaseAgent):
             output_contract="T06_datasheet_for_datasets",
             declaration_summary={
                 "engagement_id": eng,
+                "client_doc_collection": state.get("client_doc_collection"),
                 "modality": state.get("modality", ""),
                 "risk_tier": state.get("risk_tier", ""),
                 "special_category_data": (
@@ -789,6 +814,7 @@ class Orchestrator(BaseAgent):
             output_contract="T09_model_card",
             declaration_summary={
                 "engagement_id": eng,
+                "client_doc_collection": state.get("client_doc_collection"),
                 "modality": state.get("modality", ""),
                 "risk_tier": state.get("risk_tier", ""),
                 "task": "classification",
@@ -1051,9 +1077,11 @@ class Orchestrator(BaseAgent):
             output_contract="T14_governance_findings",
             declaration_summary={
                 "engagement_id": eng,
+                "client_doc_collection": state.get("client_doc_collection"),
                 "risk_tier": state.get("risk_tier", ""),
                 "cgsa_assessment_id": stage_a.get("cgsa_assessment_id"),
                 "cgsa_payload": state.get("cgsa_payload"),
+                "organisation_contacts": stage_a.get("organisation_contacts", {}) or {},
                 "gdpr_overlap": stage_a.get("gdpr_overlap", False),
                 "special_category_data": stage_a.get("special_category_data", False),
                 "annex_iii_sections": [
@@ -1279,6 +1307,11 @@ class Orchestrator(BaseAgent):
                 "completeness_score": state.get("completeness_score"),
                 "regulatory_coverage_pct": state.get("regulatory_coverage_pct"),
                 "final_verdict": state.get("final_verdict"),
+                "material_findings_count": state.get("material_findings_count", 0) or 0,
+                "possibly_material_findings_count": (
+                    state.get("possibly_material_findings_count", 0) or 0
+                ),
+                "cgsa_domain_scores": state.get("cgsa_domain_scores", {}) or {},
                 "cgsa_report_url": state.get("cgsa_report_url"),
                 "hitl_required": state.get("hitl_required", False),
                 "hitl_reason": state.get("hitl_reason"),
@@ -1305,6 +1338,8 @@ class Orchestrator(BaseAgent):
         state["phase_artefacts"].update(delta.get("phase_artefacts", {}))
         if delta.get("final_verdict"):
             state["final_verdict"] = delta["final_verdict"]
+        if delta.get("auditor_opinion"):
+            state["auditor_opinion"] = delta["auditor_opinion"]
 
         confidence = report.get("confidence", 0.95)
         for tid in ["T17_compliance_matrix", "T18_audit_report"]:
@@ -1398,6 +1433,10 @@ class Orchestrator(BaseAgent):
         final: dict = {}
         async for chunk in self._graph.astream(state, config=config):
             final = chunk
+        if len(final) == 1:
+            maybe_state = next(iter(final.values()))
+            if isinstance(maybe_state, dict) and "engagement_id" in maybe_state:
+                return maybe_state
         return final
 
     def _run_sequential(self, state: dict) -> dict:

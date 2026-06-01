@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import Any, Optional
 
 from aaa.platform.evidence import EvidenceStore
@@ -37,6 +38,29 @@ def _build_text_body(t18: dict[str, Any]) -> str:
         f"Deployment       : {md.get('deployment_context', '')}",
         f"Annex III §§     : {', '.join(md.get('annex_iii_sections', []) or []) or '—'}",
         "",
+    ]
+
+    opinion = t18.get("auditor_opinion") or {}
+    if opinion:
+        lines += [
+            "Independent Assurance Conclusion",
+            "-" * 70,
+            f"Opinion type : {opinion.get('opinion_type', '')}",
+            opinion.get("opinion_paragraph", "") or "",
+        ]
+        if opinion.get("opinion_type") in {"qualified", "adverse"}:
+            lines += [
+                "Basis for Conclusion",
+                "-" * 70,
+                opinion.get("basis_paragraph", "") or "",
+            ]
+        lines += [
+            opinion.get("methodology_basis", "") or "",
+            opinion.get("scope_paragraph", "") or "",
+            "",
+        ]
+
+    lines += [
         "Executive summary",
         "-" * 70,
         t18.get("executive_summary", "") or "",
@@ -96,7 +120,34 @@ def _build_text_body(t18: dict[str, Any]) -> str:
         for item in roadmap:
             lines.append(
                 f"  #{item.get('rank', 0):02d} {item.get('control_id', ''):8s} "
-                f"[{item.get('gap_severity', '')}] {item.get('action', item.get('recommended_action', ''))}"
+                f"[{item.get('gap_severity', '')}] "
+                f"owner={item.get('assigned_owner', 'To be assigned')} · "
+                f"priority={item.get('priority_label', '')} · "
+                f"deadline={item.get('deadline_weeks', '')}w · "
+                f"{item.get('action', item.get('recommended_action', ''))}"
+            )
+        lines.append("")
+
+    management = t18.get("management_response", []) or []
+    if management:
+        lines += [
+            "9. Management Response",
+            "-" * 70,
+            "The following table presents the audit findings requiring management attention, "
+            "together with placeholder fields for management responses. The client organisation "
+            "is requested to complete the 'Management Response', 'Action Plan', 'Target "
+            "Completion Date', and 'Responsible Owner' columns and return the completed table "
+            "to the audit team within 10 business days of receiving this draft report.",
+            "",
+            "Finding ID | Finding | Materiality | Recommendation | Management Response | "
+            "Action Plan | Target Date | Owner",
+        ]
+        for row in management:
+            lines.append(
+                f"{row.get('finding_id', '')} | {row.get('finding_summary', '')} | "
+                f"{row.get('materiality', '')} | {row.get('auditor_recommendation', '')} | "
+                f"{row.get('management_response', '')} | {row.get('action_plan', '')} | "
+                f"{row.get('target_completion_date', '')} | {row.get('responsible_owner', '')}"
             )
         lines.append("")
 
@@ -112,10 +163,15 @@ def _build_text_body(t18: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _try_reportlab(text_body: str) -> Optional[bytes]:
+def _try_reportlab(
+    text_body: str,
+    risk_heatmap_uri: str | None = None,
+    maturity_radar_uri: str | None = None,
+) -> Optional[bytes]:
     """Render the text body into a simple A4 PDF via reportlab. Returns None on failure."""
     try:
         from reportlab.lib.pagesizes import A4  # type: ignore
+        from reportlab.lib.units import cm  # type: ignore
         from reportlab.pdfgen import canvas  # type: ignore
         from io import BytesIO
     except ImportError:
@@ -128,6 +184,8 @@ def _try_reportlab(text_body: str) -> Optional[bytes]:
         line_height = 11
         y = height - margin
         c.setFont("Helvetica", 9)
+        heatmap_drawn = False
+        radar_drawn = False
         for raw_line in text_body.splitlines():
             if y < margin:
                 c.showPage()
@@ -135,6 +193,54 @@ def _try_reportlab(text_body: str) -> Optional[bytes]:
                 y = height - margin
             c.drawString(margin, y, raw_line[:120])
             y -= line_height
+            if (
+                not heatmap_drawn
+                and raw_line.startswith("Final verdict")
+                and risk_heatmap_uri
+                and os.path.exists(risk_heatmap_uri)
+            ):
+                img_width, img_height = 14 * cm, 10 * cm
+                if y - img_height < margin:
+                    c.showPage()
+                    c.setFont("Helvetica", 9)
+                    y = height - margin
+                c.drawImage(
+                    risk_heatmap_uri,
+                    margin,
+                    y - img_height,
+                    width=img_width,
+                    height=img_height,
+                    preserveAspectRatio=True,
+                    mask="auto",
+                )
+                y -= img_height + line_height
+                c.drawString(margin, y, "Figure 1: Risk Assessment Matrix")
+                y -= line_height * 2
+                heatmap_drawn = True
+            if (
+                not radar_drawn
+                and raw_line.startswith("Compliance matrix")
+                and maturity_radar_uri
+                and os.path.exists(maturity_radar_uri)
+            ):
+                img_width, img_height = 12 * cm, 10 * cm
+                if y - img_height < margin:
+                    c.showPage()
+                    c.setFont("Helvetica", 9)
+                    y = height - margin
+                c.drawImage(
+                    maturity_radar_uri,
+                    margin,
+                    y - img_height,
+                    width=img_width,
+                    height=img_height,
+                    preserveAspectRatio=True,
+                    mask="auto",
+                )
+                y -= img_height + line_height
+                c.drawString(margin, y, "Figure 2: AI Governance Maturity by Domain")
+                y -= line_height * 2
+                radar_drawn = True
         c.save()
         return buf.getvalue()
     except Exception as exc:  # pragma: no cover
@@ -151,7 +257,11 @@ def report_render(
 ) -> dict[str, Any]:
     """Render T18 to PDF + JSON, persist both, return rendering metadata."""
     text_body = _build_text_body(t18_payload)
-    pdf_bytes = _try_reportlab(text_body)
+    pdf_bytes = _try_reportlab(
+        text_body,
+        t18_payload.get("risk_heatmap_uri"),
+        t18_payload.get("maturity_radar_uri"),
+    )
 
     json_uri = store.store_artefact(
         engagement_id=engagement_id,

@@ -33,10 +33,12 @@ from aaa.agents.base import BaseAgent, Dispatch, Report
 from aaa.platform.evidence import EvidenceStore
 from aaa.tools.cgsa_ingest import CGSAIngestError, IngestResult, cgsa_ingest
 from aaa.tools.cgsa_pull import CGSAPullError, cgsa_pull
+from aaa.tools.client_doc_ingest import client_doc_search
 
 logger = logging.getLogger(__name__)
 
 _OFFLINE = os.environ.get("AAA_OFFLINE_MODE", "false").lower() == "true"
+_PROMPT_NAME = "phase5_governance"
 
 
 class GovernanceAgentError(Exception):
@@ -129,6 +131,17 @@ class GovernanceAgent(BaseAgent):
                 details={"errors": result.schema_errors[:5]},
             )
 
+        source_remediation = (
+            payload.get("remediation_roadmap", [])
+            if isinstance(payload, dict) else []
+        )
+        result.state_delta["remediation_roadmap"] = self._enrich_remediation_roadmap(
+            result.state_delta.get("remediation_roadmap", []),
+            decl.get("organisation_contacts", {}) or {},
+            source_remediation,
+        )
+        result.state_delta["cgsa_domain_scores"] = self._domain_scores_for_chart(payload)
+
         # ── 3. Risk-tier cross-check ─────────────────────────────────────────
         risk_tier_mismatch = result.state_delta.get("cgsa_risk_tier_match") is False
 
@@ -138,8 +151,40 @@ class GovernanceAgent(BaseAgent):
         # ── 5/6. Build T14 + T15 ─────────────────────────────────────────────
         t01a, t01b = self._load_intake(message.get("evidence_uris", []))
         now = datetime.now(timezone.utc).isoformat()
+        client_doc_hits: list[dict[str, Any]] = []
+        if decl.get("client_doc_collection"):
+            client_doc_hits = client_doc_search(
+                engagement_id,
+                "monitoring logging post-market QMS risk management governance controls",
+                top_k=3,
+            )
+        llm_payload: dict[str, Any] = {}
+        llm_fallback_mode = _OFFLINE
+        if not _OFFLINE:
+            try:
+                llm_payload = await self.acompletion_json(
+                    _PROMPT_NAME,
+                    {
+                        "task": message.get("task_brief")
+                        or "Execute Phase 5 governance review per the Phase 5 Protocol.",
+                        "evidence_uris": message.get("evidence_uris", []),
+                        "declaration_summary": decl,
+                        "client_doc_hits": client_doc_hits,
+                        "rerun_context": None,
+                        "cgsa_payload": payload,
+                        "ingest_state_delta": result.state_delta,
+                        "spawn_recommendations": spawn,
+                    },
+                )
+                llm_fallback_mode = False
+            except Exception as exc:
+                logger.warning("GovernanceAgent prompt runtime failed (%s); using deterministic fallback.", exc)
+        prompt_note = self.prompt_note(_PROMPT_NAME, llm_fallback_mode)
+        llm_summary = llm_payload.get("summary") or llm_payload.get("phase5_narrative_summary")
         t14 = self._build_t14(engagement_id, result, decl, spawn, risk_tier_mismatch, now)
         t15 = self._build_t15(engagement_id, t01b, result, now)
+        t14["phase5_narrative_summary"] = f"{llm_summary or t14['phase5_narrative_summary']} {prompt_note}".strip()
+        t15["observations"] = list(t15.get("observations", [])) + [prompt_note]
 
         # ── 7. Store artefacts ───────────────────────────────────────────────
         t14_uri = self.store.store_artefact(
@@ -185,6 +230,8 @@ class GovernanceAgent(BaseAgent):
             phase_id="P5",
             artefact_uri=t14_uri,
             summary=(
+                llm_summary
+                or
                 f"Phase 5 complete. cgsa_phase5_verdict={phase5_verdict}, "
                 f"csp_satisfiable={result.state_delta.get('cgsa_csp_satisfiable')}, "
                 f"blocking_findings={len(result.state_delta.get('cgsa_blocking_findings', []))}, "
@@ -201,6 +248,8 @@ class GovernanceAgent(BaseAgent):
                      f"phase5_verdict={phase5_verdict}, "
                      f"risk_tier_match={result.state_delta.get('cgsa_risk_tier_match')}"
                  )},
+                {"tool": "client_doc_search", "result": f"hits={len(client_doc_hits)}"},
+                {"tool": "prompt_runtime", "result": prompt_note},
             ],
             declaration_verification_delta=delta,
         )
@@ -285,6 +334,60 @@ class GovernanceAgent(BaseAgent):
             if item.get("urgency") == "required_before_report_completion":
                 return True
         return False
+
+    @staticmethod
+    def _enrich_remediation_roadmap(
+        items: list[dict[str, Any]],
+        contacts: dict[str, Any],
+        source_items: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Add owner, priority and deadline fields to CGSA remediation items."""
+        domain_to_owner_field = {
+            "D1": "technical_lead",
+            "D2": "data_lead",
+            "D3": "technical_lead",
+            "D4": "compliance_lead",
+            "D5": "compliance_lead",
+            "D6": "dpo",
+        }
+        severity_map = {
+            "critical": ("immediate", 4),
+            "major": ("short_term", 12),
+            "minor": ("medium_term", 26),
+            "observation": ("long_term", 52),
+        }
+        enriched: list[dict[str, Any]] = []
+        for idx, item in enumerate(items):
+            source = source_items[idx] if idx < len(source_items) else {}
+            domain_id = item.get("domain_id") or source.get("domain_id") or ""
+            owner_field = domain_to_owner_field.get(domain_id, "technical_lead")
+            severity = str(
+                item.get("gap_severity") or source.get("gap_severity") or ""
+            ).lower()
+            priority_label, deadline_weeks = severity_map.get(severity, ("long_term", 52))
+            enriched_item = dict(item)
+            enriched_item["domain_id"] = domain_id
+            enriched_item["assigned_owner"] = contacts.get(owner_field, "To be assigned")
+            enriched_item["priority_label"] = priority_label
+            enriched_item["deadline_weeks"] = deadline_weeks
+            enriched.append(enriched_item)
+        return enriched
+
+    @staticmethod
+    def _domain_scores_for_chart(payload: Any) -> dict[str, float]:
+        """Extract {domain_label: score} from CGSA domains for the radar chart."""
+        if not isinstance(payload, dict):
+            return {}
+        domain_scores: dict[str, float] = {}
+        for domain in payload.get("domains", []) or []:
+            domain_id = domain.get("domain_id", "")
+            domain_name = domain.get("domain_name", domain_id)
+            label = f"{domain_id} {domain_name}".strip()
+            try:
+                domain_scores[label] = float(domain.get("domain_score", 0.0))
+            except (TypeError, ValueError):
+                domain_scores[label] = 0.0
+        return domain_scores
 
     @staticmethod
     def _build_hitl_reason(
@@ -451,14 +554,13 @@ class GovernanceAgent(BaseAgent):
                     "control_id": r.get("control_id", ""),
                     "control_name": r.get("control_name", ""),
                     "gap_severity": r.get("gap_severity", "medium"),
-                    "current_score": r.get("current_score"),
-                    "target_score": r.get("target_score"),
-                    "action": r.get("action", ""),
-                    "eu_ai_act_article": r.get("eu_ai_act_article", ""),
-                    "effort_estimate": r.get("effort_estimate"),
-                    "timeline_weeks": r.get("timeline_weeks"),
+                    "recommended_action": r.get("recommended_action") or r.get("action", ""),
+                    "assigned_owner": r.get("assigned_owner", "To be assigned"),
+                    "priority_label": r.get("priority_label"),
+                    "deadline_weeks": r.get("deadline_weeks"),
+                    "domain_id": r.get("domain_id"),
                 }
-                for idx, r in enumerate(payload.get("remediation_roadmap", []) or [])
+                for idx, r in enumerate(result.state_delta.get("remediation_roadmap", []) or [])
             ],
             "aaa_recommended_follow_up": [
                 {

@@ -19,12 +19,15 @@ if TYPE_CHECKING:
 # In-scope article sets per risk tier (§9.1 table)
 ARTICLE_SET: dict[str, FrozenSet[str]] = {
     "high": frozenset({
-        "Art.9", "Art.10", "Art.13", "Art.14", "Art.15", "Art.17", "Art.43",
+        "Art.5", "Art.6", "Art.9", "Art.10", "Art.11", "Art.12", "Art.13",
+        "Art.14", "Art.15", "Art.17", "Art.43", "Art.50", "Art.72",
         "Annex_III", "Annex_IV",
     }),
     "high_llm": frozenset({
-        "Art.9", "Art.10", "Art.13", "Art.14", "Art.15", "Art.17", "Art.43",
-        "Annex_III", "GPAI_51", "GPAI_52", "GPAI_53", "GPAI_54", "GPAI_55",
+        "Art.5", "Art.6", "Art.9", "Art.10", "Art.11", "Art.12", "Art.13",
+        "Art.14", "Art.15", "Art.17", "Art.43", "Art.50", "Art.72",
+        "Annex_III", "Annex_IV", "GPAI_51", "GPAI_52", "GPAI_53", "GPAI_54",
+        "GPAI_55",
     }),
     "limited": frozenset({
         "Art.13", "Art.50", "Annex_IV",
@@ -33,6 +36,7 @@ ARTICLE_SET: dict[str, FrozenSet[str]] = {
         "Art.50",
     }),
     "gpai": frozenset({
+        "Art.5", "Art.6", "Art.11", "Art.12", "Art.50", "Art.72", "Annex_IV",
         "GPAI_51", "GPAI_52", "GPAI_53", "GPAI_54", "GPAI_55",
         "Annex_XI", "Annex_XII",
     }),
@@ -50,6 +54,28 @@ def _resolve_article_set(state: AuditState) -> FrozenSet[str]:
     if tier == "high" and is_llm:
         return ARTICLE_SET["high_llm"]
     return ARTICLE_SET.get(tier, frozenset())
+
+
+def _derive_fallback_verdicts(state: AuditState, article_set: FrozenSet[str]) -> dict:
+    """Populate compliance verdicts derivable from existing admitted state."""
+    compliance_matrix: dict = dict(state.get("compliance_matrix", {}) or {})
+    if "Art.5" in article_set and "Art.5" not in compliance_matrix:
+        art5_prohibited = bool(
+            state.get("art5_prohibited")
+            or state.get("scope_gate", {}).get("art5_prohibited_practices_detected")
+        )
+        compliance_matrix["Art.5"] = "FAIL" if art5_prohibited else "PASS"
+    if "Annex_IV" in article_set and "Annex_IV" not in compliance_matrix:
+        intake_score = state.get("intake_completeness_score")
+        if intake_score is not None:
+            if intake_score >= 0.80:
+                compliance_matrix["Annex_IV"] = "PASS"
+            elif intake_score >= 0.50:
+                compliance_matrix["Annex_IV"] = "PASS_WITH_OBSERVATIONS"
+            else:
+                compliance_matrix["Annex_IV"] = "FAIL"
+    state["compliance_matrix"] = compliance_matrix
+    return compliance_matrix
 
 
 def compute_regulatory_coverage_pct(state: AuditState) -> float:
@@ -87,7 +113,7 @@ def compute_regulatory_coverage_pct(state: AuditState) -> float:
             cited_articles.add(str(cite).strip())
 
     # Fall back to compliance_matrix verdicts if citations unavailable
-    compliance_matrix: dict = state.get("compliance_matrix", {})
+    compliance_matrix: dict = _derive_fallback_verdicts(state, in_scope)
     for article, verdict in compliance_matrix.items():
         if verdict not in ("PENDING", "NOT_APPLICABLE", None):
             cited_articles.add(article)
@@ -113,7 +139,7 @@ def regulatory_coverage_breakdown(state: AuditState) -> dict:
     in_scope = _resolve_article_set(state)
     verifier_critiques: dict = state.get("verifier_critiques", {})
     phase_artefacts: dict = state.get("phase_artefacts", {})
-    compliance_matrix: dict = state.get("compliance_matrix", {})
+    compliance_matrix: dict = _derive_fallback_verdicts(state, in_scope)
 
     cited_articles: set[str] = set()
     for tid in phase_artefacts:

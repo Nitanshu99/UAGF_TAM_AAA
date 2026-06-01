@@ -23,10 +23,14 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, status
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
+from aaa.agents.base import IntakeDispatch
+from aaa.agents.intake_validator import IntakeValidator, IntakeValidatorError
+from aaa.agents.tier1.orchestrator import Orchestrator
+from aaa.platform.evidence import EvidenceStore
 from aaa.settings import settings
 
 # ---------------------------------------------------------------------------
@@ -41,6 +45,9 @@ app = FastAPI(
 
 # In-memory engagement store (replaced by Postgres in production).
 _ENGAGEMENTS: dict[str, dict[str, Any]] = {}
+_STORES: dict[str, EvidenceStore] = {}
+_INTAKE_PAYLOADS: dict[str, dict[str, Any]] = {}
+_FINAL_STATES: dict[str, dict[str, Any]] = {}
 
 # ---------------------------------------------------------------------------
 # Schema models
@@ -73,6 +80,14 @@ class EngagementOut(BaseModel):
     cgsa_assessment_id: str | None
     status: str
     created_at: str
+
+
+class IntakePayload(BaseModel):
+    """Stage A/B/C payload submission for an engagement."""
+
+    stage_a: dict[str, Any]
+    stage_b: dict[str, Any]
+    stage_c: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -129,6 +144,7 @@ def create_engagement(body: EngagementCreate) -> JSONResponse:
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     _ENGAGEMENTS[eid] = record
+    _STORES[eid] = EvidenceStore()
     return JSONResponse(content=record, status_code=status.HTTP_201_CREATED)
 
 
@@ -142,3 +158,115 @@ def get_engagement(engagement_id: str) -> dict[str, Any]:
             detail=f"Engagement '{engagement_id}' not found.",
         )
     return record
+
+
+@app.post("/api/v1/engagements/{engagement_id}/files", tags=["customer-workflow"])
+async def upload_file(
+    engagement_id: str,
+    role: str = Form(...),
+    file: UploadFile = File(...),
+) -> dict[str, Any]:
+    """Store a customer-uploaded artefact and return its EvidenceStore URI."""
+    if engagement_id not in _ENGAGEMENTS:
+        raise HTTPException(status_code=404, detail=f"Engagement '{engagement_id}' not found.")
+    data = await file.read()
+    store = _STORES.setdefault(engagement_id, EvidenceStore())
+    uri = store.store_file(
+        engagement_id=engagement_id,
+        phase="customer_uploads",
+        artefact_type=role,
+        filename=file.filename or "upload.bin",
+        content_type=file.content_type or "application/octet-stream",
+        data=data,
+        agent_name="api",
+    )
+    payload = store.get_artefact(uri) or {}
+    return {"uri": uri, "sha256": payload.get("sha256", ""), "role": role}
+
+
+@app.post("/api/v1/engagements/{engagement_id}/intake", tags=["customer-workflow"])
+def submit_intake(engagement_id: str, body: IntakePayload) -> dict[str, Any]:
+    """Submit Stage A/B/C payloads whose URI fields reference uploaded files."""
+    if engagement_id not in _ENGAGEMENTS:
+        raise HTTPException(status_code=404, detail=f"Engagement '{engagement_id}' not found.")
+    _INTAKE_PAYLOADS[engagement_id] = body.model_dump()
+    _ENGAGEMENTS[engagement_id]["status"] = "intake_submitted"
+    return {"engagement_id": engagement_id, "status": "intake_submitted"}
+
+
+@app.post("/api/v1/engagements/{engagement_id}/run", tags=["customer-workflow"])
+async def run_engagement(engagement_id: str) -> dict[str, Any]:
+    """Run IntakeValidator → Orchestrator for the submitted engagement."""
+    payload = _INTAKE_PAYLOADS.get(engagement_id)
+    if payload is None:
+        raise HTTPException(status_code=400, detail="Intake payload not submitted.")
+    store = _STORES.setdefault(engagement_id, EvidenceStore())
+    stage_a_uri = store.store_artefact(
+        engagement_id, "stage_a_raw", "stage_a_raw", payload["stage_a"], "api")
+    stage_b_uri = store.store_artefact(
+        engagement_id, "stage_b_raw", "stage_b_raw", payload["stage_b"], "api")
+    stage_c = payload.get("stage_c")
+    stage_c_uri = (
+        store.store_artefact(engagement_id, "stage_c_raw", "stage_c_raw", stage_c, "api")
+        if stage_c is not None else None
+    )
+    dispatch: IntakeDispatch = {
+        "engagement_id": engagement_id,
+        "stage_a_uri": stage_a_uri,
+        "stage_b_uri": stage_b_uri,
+        "stage_c_uri": stage_c_uri,
+        "annex_iv_schema_version": "1.0.0",
+    }
+    try:
+        initial = await IntakeValidator(evidence_store=store).process(dispatch)
+    except IntakeValidatorError as exc:
+        _ENGAGEMENTS[engagement_id]["status"] = "intake_failed"
+        raise HTTPException(status_code=400, detail={"stage": exc.stage, "reason": exc.reason})
+    final = await Orchestrator(evidence_store=store).run(dict(initial))
+    if final.get("final_verdict") is None:
+        final["final_verdict"] = "FAIL"
+    _FINAL_STATES[engagement_id] = final
+    _ENGAGEMENTS[engagement_id]["status"] = "completed"
+    return {
+        "engagement_id": engagement_id,
+        "status": "completed",
+        "final_verdict": final.get("final_verdict"),
+        "regulatory_coverage_pct": final.get("regulatory_coverage_pct"),
+    }
+
+
+@app.get("/api/v1/engagements/{engagement_id}/report", tags=["customer-workflow"])
+def get_report(engagement_id: str) -> dict[str, Any]:
+    """Return final verdict, KPI summary, and report artefact URIs."""
+    final = _FINAL_STATES.get(engagement_id)
+    if final is None:
+        raise HTTPException(status_code=404, detail="Report not available.")
+    store = _STORES.setdefault(engagement_id, EvidenceStore())
+    t18_uri = (final.get("phase_artefacts") or {}).get("T18_audit_report", {}).get("uri", "")
+    t18 = store.get_artefact(t18_uri) or {}
+    rendered = t18.get("rendered_report", {}) or {}
+    return {
+        "engagement_id": engagement_id,
+        "final_verdict": final.get("final_verdict"),
+        "kpis": {
+            "intake_completeness_score": final.get("intake_completeness_score"),
+            "completeness_score": final.get("completeness_score"),
+            "regulatory_coverage_pct": final.get("regulatory_coverage_pct"),
+        },
+        "t18_json_uri": rendered.get("json_uri") or t18_uri,
+        "pdf_uri": rendered.get("pdf_uri"),
+    }
+
+
+@app.get("/api/v1/engagements/{engagement_id}/report.pdf", tags=["customer-workflow"])
+def get_report_pdf(engagement_id: str) -> Response:
+    """Return rendered PDF bytes when ReportLab output is available."""
+    report = get_report(engagement_id)
+    store = _STORES.setdefault(engagement_id, EvidenceStore())
+    payload = store.get_artefact(report.get("pdf_uri") or "") or {}
+    if payload.get("encoding") != "latin-1":
+        raise HTTPException(status_code=404, detail="Rendered PDF not available.")
+    return Response(
+        content=str(payload.get("body", "")).encode("latin-1"),
+        media_type="application/pdf",
+    )

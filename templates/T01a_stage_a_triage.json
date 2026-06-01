@@ -178,6 +178,18 @@
     "is_public_body_or_public_service": {
       "type": "boolean",
       "description": "FLI-R5. Deployer is a public-law body or a private entity providing public services. Triggers Art. 27 Fundamental Rights Impact Assessment when combined with a high-risk system."
+    },
+    "organisation_contacts": {
+      "type": "object",
+      "description": "Key contacts for remediation ownership assignment",
+      "properties": {
+        "technical_lead": { "type": "string", "description": "Name or role of the technical owner" },
+        "data_lead": { "type": "string", "description": "Name or role of the data governance owner" },
+        "compliance_lead": { "type": "string", "description": "Name or role of the compliance/legal owner" },
+        "dpo": { "type": "string", "description": "Data Protection Officer name or role, if applicable" },
+        "executive_sponsor": { "type": "string", "description": "Executive accountable for AI governance" }
+      },
+      "additionalProperties": false
     }
   }
 }

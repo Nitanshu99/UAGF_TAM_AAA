@@ -13,11 +13,14 @@ workflow:
   6. Emit ``Report`` whose ``declaration_verification_delta`` carries both
      artefact refs and the final_verdict.
 
-Phase 6 is non-LLM; all logic is deterministic.
+Phase 6 uses a prompt-driven synthesis path in normal mode and falls back to
+deterministic assembly in offline / CI mode.
 """
 from __future__ import annotations
 
 import logging
+import os
+import tempfile
 from datetime import datetime, timezone
 from typing import Any
 
@@ -25,15 +28,20 @@ from aaa.agents.base import BaseAgent, Dispatch, Report
 from aaa.platform.evidence import EvidenceStore
 from aaa.tools.template_render import template_render
 from aaa.tools.report_render import report_render
+from aaa.tools.maturity_radar_render import maturity_radar_render
+from aaa.tools.risk_heatmap_render import risk_heatmap_render
 
 logger = logging.getLogger(__name__)
+_OFFLINE = os.environ.get("AAA_OFFLINE_MODE", "false").lower() == "true"
+_PROMPT_NAME = "phase6_report"
 
 # Article → source phase mapping (used to populate T17.articles.source_phase)
 _ARTICLE_PHASE: dict[str, str] = {
     "Art.5": "P1", "Art.6": "P1", "Art.9": "P5", "Art.10": "P2",
-    "Art.13": "P1", "Art.14": "P3", "Art.15": "P3", "Art.17": "P5",
-    "Art.43": "P1", "Art.50": "P1", "Art.72": "P5", "Annex_III": "P1",
-    "Annex_IV": "ORCH", "GPAI_51": "L", "GPAI_52": "L", "GPAI_53": "L",
+    "Art.11": "P1", "Art.12": "P5", "Art.13": "P1", "Art.14": "P3",
+    "Art.15": "P3", "Art.17": "P5", "Art.43": "P1", "Art.50": "P4",
+    "Art.72": "P5", "Annex_III": "P1",
+    "Annex_IV": "P1", "GPAI_51": "L", "GPAI_52": "L", "GPAI_53": "L",
     "GPAI_54": "L", "GPAI_55": "L", "Annex_XI": "L", "Annex_XII": "L",
 }
 _VALID_PHASES = {"P1", "P2", "P3", "P4", "P5", "P6", "L", "CYBER", "PRIV", "ORCH"}
@@ -44,6 +52,15 @@ _KPI_BANDS = [
     (0.0,  "FAIL"),
 ]
 
+_METHODOLOGY_BASIS = (
+    "This conformity assessment was conducted in accordance with the UAGF-TAM audit "
+    "protocol (v1.0.0), applying the methodology of ISAE 3000 (Revised) for "
+    "non-financial assurance engagements and ISO 19011:2018 for audit programme "
+    "management. The audit was performed by an automated multi-agent system; results "
+    "should be reviewed by a qualified human auditor before regulatory submission "
+    "under Article 43 of the EU AI Act."
+)
+
 
 def _kpi_band(value: float | None, pct: bool = False) -> str | None:
     if value is None:
@@ -53,6 +70,111 @@ def _kpi_band(value: float | None, pct: bool = False) -> str | None:
         if v >= threshold:
             return band
     return "FAIL"
+
+
+def _management_response_shell(
+    findings: list[dict[str, Any]],
+    remediation: list[dict[str, Any]],
+) -> list[dict[str, str]]:
+    """Generate client-fill management-response rows for material findings."""
+    by_control = {str(item.get("control_id", "")): item for item in remediation}
+    shell: list[dict[str, str]] = []
+    for idx, finding in enumerate(findings, start=1):
+        materiality = finding.get("materiality")
+        if materiality not in {"material", "possibly_material"}:
+            continue
+        finding_id = finding.get("finding_id") or f"F-{idx:03d}"
+        control_id = str(finding.get("control_id", ""))
+        remediation_item = by_control.get(control_id, {})
+        recommendation = (
+            finding.get("recommendation")
+            or finding.get("recommended_action")
+            or remediation_item.get("recommended_action")
+            or remediation_item.get("gap_detail")
+            or finding.get("gap_detail")
+            or ""
+        )
+        owner = (
+            finding.get("assigned_owner")
+            or remediation_item.get("assigned_owner")
+            or "[To be assigned]"
+        )
+        shell.append({
+            "finding_id": str(finding_id),
+            "finding_summary": str(finding.get("description", ""))[:200],
+            "materiality": str(materiality),
+            "auditor_recommendation": str(recommendation),
+            "management_response": "[Management response pending]",
+            "action_plan": "[Action plan pending]",
+            "target_completion_date": "[Date pending]",
+            "responsible_owner": str(owner),
+        })
+    return shell
+
+
+def _auditor_opinion(decl: dict[str, Any], final_verdict: str) -> dict[str, str]:
+    """Build a deterministic ISAE 3000-style opinion block."""
+    material_count = int(decl.get("material_findings_count", 0) or 0)
+    findings = decl.get("blocking_findings", []) or []
+    material_ids = [
+        str(f.get("finding_id", f.get("control_id", "finding")))
+        for f in findings
+        if f.get("materiality") in {"material", "possibly_material"}
+    ]
+    if decl.get("hitl_required") and not final_verdict:
+        opinion_type = "disclaimer_of_opinion"
+    elif final_verdict == "FAIL":
+        opinion_type = "adverse"
+    elif final_verdict == "PASS" and material_count == 0:
+        opinion_type = "unqualified"
+    else:
+        opinion_type = "qualified"
+
+    system_name = (decl.get("stage_a") or {}).get("system_name", "the AI system")
+    if opinion_type == "unqualified":
+        opinion = (
+            f"In our opinion, based on the procedures performed, {system_name} was, "
+            "in all material respects, designed and documented in conformity with the "
+            "applicable EU AI Act requirements assessed by UAGF-TAM."
+        )
+        basis = "No material findings were identified from admitted evidence."
+    elif opinion_type == "qualified":
+        opinion = (
+            f"Except for the matters described in the Basis for Conclusion, {system_name} "
+            "was designed and documented in conformity with the applicable EU AI Act "
+            "requirements assessed by UAGF-TAM."
+        )
+        basis = (
+            "Qualified matters include material or possibly material findings: "
+            f"{', '.join(material_ids) if material_ids else 'see findings register'}."
+        )
+    elif opinion_type == "adverse":
+        opinion = (
+            f"In our opinion, due to the significance of the matters described in the "
+            f"Basis for Conclusion, {system_name} is not in conformity with the applicable "
+            "EU AI Act requirements assessed by UAGF-TAM."
+        )
+        basis = "The final audit verdict is FAIL and unresolved blocking matters remain."
+    else:
+        opinion = (
+            "We do not express an assurance conclusion because sufficient appropriate "
+            "evidence was not available to form an opinion."
+        )
+        basis = str(decl.get("hitl_reason") or "Critical evidence remains unresolved.")
+
+    scope = (
+        "The assessment covered admitted intake artefacts, phase reports, verifier "
+        "critiques, the T17 compliance matrix, and CGSA handoff evidence available to "
+        "UAGF-TAM at report generation time. It did not extend beyond evidence admitted "
+        "to the audit evidence store."
+    )
+    return {
+        "opinion_type": opinion_type,
+        "opinion_paragraph": opinion,
+        "basis_paragraph": basis,
+        "methodology_basis": _METHODOLOGY_BASIS,
+        "scope_paragraph": scope,
+    }
 
 
 class ReportArchitect(BaseAgent):
@@ -91,6 +213,52 @@ class ReportArchitect(BaseAgent):
 
         # ── 2. Build T18 (without rendered_report yet) ────────────────────────
         t18 = self._build_t18(engagement_id, decl, t17_ref, now)
+        heatmap_tmp = os.path.join(tempfile.gettempdir(), f"heatmap_{engagement_id}.png")
+        try:
+            t18["risk_heatmap_uri"] = risk_heatmap_render(
+                findings=t18.get("blocking_findings", []),
+                output_path=heatmap_tmp,
+            )
+        except Exception as exc:
+            logger.warning("risk_heatmap_render failed (%s); continuing without heatmap.", exc)
+            t18["risk_heatmap_uri"] = None
+        radar_tmp = os.path.join(tempfile.gettempdir(), f"radar_{engagement_id}.png")
+        domain_scores = decl.get("cgsa_domain_scores", {}) or {}
+        try:
+            t18["maturity_radar_uri"] = (
+                maturity_radar_render(domain_scores, radar_tmp)
+                if domain_scores else None
+            )
+        except Exception as exc:
+            logger.warning("maturity_radar_render failed (%s); continuing without radar.", exc)
+            t18["maturity_radar_uri"] = None
+        llm_fallback_mode = _OFFLINE
+        llm_summary: str | None = None
+        if not _OFFLINE:
+            try:
+                llm_payload = await self.acompletion_json(
+                    _PROMPT_NAME,
+                    {
+                        "task": message.get("task_brief")
+                        or "Compose the final T18 audit report from admitted artefacts.",
+                        "evidence_uris": message.get("evidence_uris", []),
+                        "declaration_summary": decl,
+                        "t17_payload": t17,
+                        "t18_seed": t18,
+                    },
+                )
+                llm_summary = (
+                    llm_payload.get("executive_summary")
+                    or llm_payload.get("summary")
+                    or llm_payload.get("rationale_summary")
+                )
+                if isinstance(llm_payload.get("auditor_opinion"), dict):
+                    t18["auditor_opinion"].update(llm_payload["auditor_opinion"])
+                llm_fallback_mode = False
+            except Exception as exc:
+                logger.warning("ReportArchitect prompt runtime failed (%s); using deterministic fallback.", exc)
+        prompt_note = self.prompt_note(_PROMPT_NAME, llm_fallback_mode)
+        t18["executive_summary"] = f"{llm_summary or t18['executive_summary']} {prompt_note}".strip()
 
         # ── 3. Render to PDF + JSON ───────────────────────────────────────────
         rendered = report_render(t18, engagement_id=engagement_id,
@@ -115,6 +283,8 @@ class ReportArchitect(BaseAgent):
             phase_id="P6",
             artefact_uri=t18_ref["uri"],
             summary=(
+                llm_summary
+                or
                 f"Phase 6 complete. final_verdict={final_verdict}, "
                 f"articles={len(t17.get('articles', []))}, "
                 f"renderer={rendered.get('renderer')}."
@@ -124,6 +294,7 @@ class ReportArchitect(BaseAgent):
                 {"tool": "template_render", "result": f"T17 uri={t17_ref['uri']}"},
                 {"tool": "report_render", "result": f"renderer={rendered.get('renderer')}"},
                 {"tool": "template_render", "result": f"T18 uri={t18_ref['uri']}"},
+                {"tool": "prompt_runtime", "result": prompt_note},
             ],
             declaration_verification_delta={
                 "phase_artefacts": {
@@ -131,6 +302,7 @@ class ReportArchitect(BaseAgent):
                     "T18_audit_report": dict(t18_ref),
                 },
                 "final_verdict": final_verdict,
+                "auditor_opinion": t18.get("auditor_opinion"),
             },
         )
 
@@ -235,6 +407,14 @@ class ReportArchitect(BaseAgent):
             f"Blocking findings: {n_blocking}. "
             f"See embedded artefacts T01a\u2013T17 for full evidence chain."
         )
+        blocking_findings = decl.get("blocking_findings", []) or []
+        positive_findings = decl.get("positive_findings", []) or []
+        remediation_roadmap = decl.get("remediation_roadmap", []) or []
+        management_response = _management_response_shell(
+            blocking_findings + positive_findings,
+            remediation_roadmap,
+        )
+        auditor_opinion = _auditor_opinion(decl, final_verdict)
 
         return {
             "engagement_id": engagement_id,
@@ -261,12 +441,16 @@ class ReportArchitect(BaseAgent):
                 "kpi2_band": _kpi_band(rc, pct=True),
             },
             "final_verdict": final_verdict,
+            "auditor_opinion": auditor_opinion,
             "art43_decision": decl.get("art43_decision"),
             "embedded_artefacts": embedded,
             "compliance_matrix_ref": dict(t17_ref),
-            "blocking_findings": decl.get("blocking_findings", []) or [],
-            "positive_findings": decl.get("positive_findings", []) or [],
-            "remediation_roadmap": decl.get("remediation_roadmap", []) or [],
+            "blocking_findings": blocking_findings,
+            "positive_findings": positive_findings,
+            "remediation_roadmap": remediation_roadmap,
+            "management_response": management_response,
+            "risk_heatmap_uri": None,
+            "maturity_radar_uri": None,
             "cgsa_report_url": decl.get("cgsa_report_url"),
             "rendered_report": {"json_uri": ""},  # filled after report_render
             "hitl_required": bool(decl.get("hitl_required", False)),

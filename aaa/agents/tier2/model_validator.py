@@ -31,6 +31,7 @@ from typing import Any
 
 from aaa.agents.base import BaseAgent, Dispatch, Report
 from aaa.platform.evidence import EvidenceStore
+from aaa.tools.client_doc_ingest import client_doc_search
 from aaa.tools.gradcam_explain import gradcam_explain
 from aaa.tools.lime_explain import lime_explain
 from aaa.tools.metric_suite import metric_suite
@@ -41,6 +42,7 @@ logger = logging.getLogger(__name__)
 
 _OFFLINE = os.environ.get("AAA_OFFLINE_MODE", "false").lower() == "true"
 _SKIPPED_MODALITIES = {"llm", "agentic", "gpai"}
+_PROMPT_NAME = "phase3_model"
 
 
 class ModelValidatorError(Exception):
@@ -152,11 +154,49 @@ class ModelValidator(BaseAgent):
 
         # ── 5. Build artefacts ───────────────────────────────────────────────
         now = datetime.now(timezone.utc).isoformat()
+        client_doc_hits: list[dict[str, Any]] = []
+        if decl.get("client_doc_collection"):
+            client_doc_hits = client_doc_search(
+                engagement_id,
+                "model architecture training evaluation performance explainability robustness",
+                top_k=3,
+            )
+        llm_payload: dict[str, Any] = {}
+        llm_fallback_mode = _OFFLINE
+        if not _OFFLINE:
+            try:
+                llm_payload = await self.acompletion_json(
+                    _PROMPT_NAME,
+                    {
+                        "task": message.get("task_brief")
+                        or "Execute Phase 3 model validation per the Phase 3 Protocol.",
+                        "evidence_uris": message.get("evidence_uris", []),
+                        "declaration_summary": decl,
+                        "client_doc_hits": client_doc_hits,
+                        "rerun_context": None,
+                        "tool_outputs": {
+                            "metrics_result": metrics_result,
+                            "techniques": techniques,
+                            "global_explanation": global_expl,
+                            "local_explanations": local_expl[:5],
+                            "visual_explanations": visual_expl[:5],
+                            "robustness_result": robustness_result,
+                        },
+                    },
+                )
+                llm_fallback_mode = False
+            except Exception as exc:
+                logger.warning("ModelValidator prompt runtime failed (%s); using deterministic fallback.", exc)
+        prompt_note = self.prompt_note(_PROMPT_NAME, llm_fallback_mode)
+        llm_summary = llm_payload.get("summary") or llm_payload.get("rationale_summary")
         t09 = self._build_t09(engagement_id, t01a, t01b, modality, metrics_result, now)
         t10 = self._build_t10(
             engagement_id, modality, techniques, global_expl, local_expl, visual_expl, now,
         )
         t11 = self._build_t11(engagement_id, modality, robustness_result, now)
+        t09["art13_compliance_notes"] = f"{t09['art13_compliance_notes']} {prompt_note}".strip()
+        t10["interpretation"] = f"{t10['interpretation']} {prompt_note}".strip()
+        t11["robustness_narrative"] = f"{llm_summary or t11['robustness_narrative']} {prompt_note}".strip()
 
         # ── 6. Store artefacts ───────────────────────────────────────────────
         t09_uri = self.store.store_artefact(
@@ -200,6 +240,8 @@ class ModelValidator(BaseAgent):
             phase_id="P3",
             artefact_uri=t09_uri,
             summary=(
+                llm_summary
+                or
                 f"Phase 3 complete. {primary_str}, "
                 f"explainability={','.join(techniques)}, "
                 f"robustness={robustness_verdict}."
@@ -216,6 +258,8 @@ class ModelValidator(BaseAgent):
                 {"tool": "robustness_probe",
                  "result": f"verdict={robustness_verdict}, "
                            f"probes={len(robustness_result.get('probes', []))}"},
+                {"tool": "client_doc_search", "result": f"hits={len(client_doc_hits)}"},
+                {"tool": "prompt_runtime", "result": prompt_note},
             ],
             declaration_verification_delta=delta,
         )

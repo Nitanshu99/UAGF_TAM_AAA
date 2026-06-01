@@ -23,7 +23,6 @@ Returns the fully-populated AuditState ready for Phase 1.
 """
 from __future__ import annotations
 
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
@@ -31,9 +30,6 @@ from aaa.agents.base import BaseAgent, IntakeDispatch
 from aaa.platform.state import (
     AuditState,
     ClientSubmission,
-    StageATriage,
-    AnnexIVDossier,
-    StageCAccess,
     Art43Decision,
 )
 from aaa.platform.evidence import EvidenceStore
@@ -41,9 +37,19 @@ from aaa.tools.triage_render import triage_render
 from aaa.tools.annex_iv_validator import annex_iv_validator
 from aaa.tools.intake_completeness_calculator import intake_completeness_calculator
 from aaa.tools.art43_select import art43_select_from_state
+from aaa.tools.client_doc_ingest import client_doc_ingest
 
 # Threshold defined in §9.1 and §6.2 constraint 7.
 COMPLETENESS_GATE = 0.80
+_CLIENT_DOC_URI_FIELDS = (
+    "risk_management_file_uri",
+    "post_market_plan_uri",
+    "eu_doc_uri",
+    "system_prompt_uri",
+    "rag_manifest_uri",
+    "guardrail_config_uri",
+    "golden_set_uri",
+)
 
 
 class IntakeValidatorError(Exception):
@@ -176,6 +182,25 @@ class IntakeValidator(BaseAgent):
                 details=completeness_report.to_dict(),
             )
 
+        doc_uris = [
+            uri for uri in (stage_b_payload.get(field) for field in _CLIENT_DOC_URI_FIELDS)
+            if isinstance(uri, str) and uri
+        ]
+        client_doc_collection: str | None = None
+        if doc_uris:
+            try:
+                ingest_result = client_doc_ingest(
+                    engagement_id=engagement_id,
+                    doc_uris=doc_uris,
+                    store=self.store,
+                )
+                client_doc_collection = ingest_result.get("collection_name")
+            except Exception as exc:
+                client_doc_collection = None
+                t01c_content.setdefault("warnings", []).append(
+                    f"client_doc_ingest failed: {exc}"
+                )
+
         # ── Stage C (optional) ────────────────────────────────────────────────
         stage_c_payload: dict[str, Any] | None = None
         if message.get("stage_c_uri"):
@@ -185,6 +210,7 @@ class IntakeValidator(BaseAgent):
         # ── Assemble initial AuditState ───────────────────────────────────────
         state: AuditState = {
             "engagement_id": engagement_id,
+            "client_doc_collection": client_doc_collection,
             "client_submission": submission,
             "scope_gate": gate,
             "declared_modality": declared_modality,
@@ -209,6 +235,7 @@ class IntakeValidator(BaseAgent):
             "cgsa_schema_version": None,
             "cgsa_composite_maturity_score": None,
             "cgsa_composite_maturity_label": None,
+            "cgsa_domain_scores": None,
             "cgsa_eu_ai_act_coverage_pct": None,
             "cgsa_csp_satisfiable": None,
             "cgsa_governance_verdict": None,
@@ -224,11 +251,14 @@ class IntakeValidator(BaseAgent):
             "blocking_findings": [],
             "positive_findings": [],
             "remediation_roadmap": [],
+            "material_findings_count": None,
+            "possibly_material_findings_count": None,
             "verifier_critiques": {},
             "intake_completeness_score": completeness_report.score,
             "completeness_score": None,
             "regulatory_coverage_pct": None,
             "final_verdict": None,
+            "auditor_opinion": None,
         }
 
         # Mark live-system evidence as not_verifiable if Stage C absent.

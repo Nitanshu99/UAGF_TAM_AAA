@@ -32,11 +32,13 @@ from aaa.platform.evidence import EvidenceStore
 from aaa.tools.data_profile import data_profile
 from aaa.tools.missingness_scan import missingness_scan
 from aaa.tools.class_balance import class_balance
+from aaa.tools.client_doc_ingest import client_doc_search
 from aaa.tools.pii_scan import pii_scan
 
 logger = logging.getLogger(__name__)
 
 _OFFLINE = os.environ.get("AAA_OFFLINE_MODE", "false").lower() == "true"
+_PROMPT_NAME = "phase2_data"
 
 
 class DataAuditorError(Exception):
@@ -118,12 +120,49 @@ class DataAuditor(BaseAgent):
 
         # ── 8. Build artefacts ────────────────────────────────────────────────
         now = datetime.now(timezone.utc).isoformat()
+        client_doc_hits: list[dict[str, Any]] = []
+        if decl.get("client_doc_collection"):
+            client_doc_hits = client_doc_search(
+                engagement_id,
+                "data governance training data quality missingness class balance PII policy",
+                top_k=3,
+            )
+        llm_payload: dict[str, Any] = {}
+        llm_fallback_mode = _OFFLINE
+        if not _OFFLINE:
+            try:
+                llm_payload = await self.acompletion_json(
+                    _PROMPT_NAME,
+                    {
+                        "task": message.get("task_brief")
+                        or "Execute Phase 2 data governance audit per the Phase 2 Protocol.",
+                        "evidence_uris": message.get("evidence_uris", []),
+                        "declaration_summary": decl,
+                        "client_doc_hits": client_doc_hits,
+                        "rerun_context": None,
+                        "tool_outputs": {
+                            "profile_result": profile_result,
+                            "missingness": miss_result,
+                            "class_balance": balance_result,
+                            "pii_scan": pii_result,
+                            "overall_quality_verdict": verdict,
+                        },
+                    },
+                )
+                llm_fallback_mode = False
+            except Exception as exc:
+                logger.warning("DataAuditor prompt runtime failed (%s); using deterministic fallback.", exc)
+        prompt_note = self.prompt_note(_PROMPT_NAME, llm_fallback_mode)
+        llm_summary = llm_payload.get("summary") or llm_payload.get("rationale_summary")
 
         t06 = self._build_t06(engagement_id, t01a, t01b, decl, now)
         t07 = self._build_t07(engagement_id, profile_result, miss_result,
                               balance_result, pii_result, verdict, now)
         t08 = self._build_t08(engagement_id, effective_special_cat,
                               pii_result, special_cat_delta, now)
+        t06["art10_compliance_notes"] = f"{t06['art10_compliance_notes']} {prompt_note}".strip()
+        t07["quality_narrative"] = f"{llm_summary or t07['quality_narrative']} {prompt_note}".strip()
+        t08["compliance_narrative"] = f"{t08['compliance_narrative']} {prompt_note}".strip()
 
         # ── 9. Store artefacts ────────────────────────────────────────────────
         t06_uri = self.store.store_artefact(
@@ -159,6 +198,8 @@ class DataAuditor(BaseAgent):
             phase_id="P2",
             artefact_uri=t06_uri,
             summary=(
+                llm_summary
+                or
                 f"Phase 2 complete. quality_verdict={verdict}, "
                 f"pii_detected={pii_result['pii_detected']}, "
                 f"special_category_data={effective_special_cat}, "
@@ -174,6 +215,8 @@ class DataAuditor(BaseAgent):
                  "result": f"imbalance={balance_result['imbalance_detected']}"},
                 {"tool": "pii_scan",
                  "result": f"entities={len(pii_result['entities_found'])}"},
+                {"tool": "client_doc_search", "result": f"hits={len(client_doc_hits)}"},
+                {"tool": "prompt_runtime", "result": prompt_note},
             ],
             declaration_verification_delta=delta,
         )

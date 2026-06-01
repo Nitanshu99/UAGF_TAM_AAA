@@ -10,7 +10,7 @@ Ranking strategy (deterministic in both branches):
 
 * **Dense branch** — when an OpenAI client + ``OPENAI_API_KEY`` are
   available *and* ``AAA_OFFLINE_MODE`` is not set: each top-level value is
-  serialised, embedded with ``text-embedding-3-small`` (1536-dim), and
+  serialised, embedded with ``text-embedding-3-large`` (3072-dim), and
   ranked by cosine similarity against the query embedding.
 * **Offline branch** — token-overlap (Jaccard on lowercased ASCII word
   tokens). Produces stable scores from the same inputs without network.
@@ -36,7 +36,7 @@ from aaa.platform.token_guard import count_tokens
 logger = logging.getLogger(__name__)
 
 _OFFLINE = os.environ.get("AAA_OFFLINE_MODE", "false").lower() == "true"
-_DENSE_MODEL = "text-embedding-3-small"
+_DENSE_MODEL = "text-embedding-3-large"
 _WORD_RE = re.compile(r"[a-z0-9]+")
 
 

@@ -39,6 +39,10 @@
       "minLength": 30,
       "description": "§2 Description of training, validation, and test datasets (Art. 10)."
     },
+    "training_dataset_uri": { "type": ["string", "null"] },
+    "evaluation_dataset_uri": { "type": ["string", "null"] },
+    "model_artifact_uri": { "type": ["string", "null"] },
+    "model_metadata_uri": { "type": ["string", "null"] },
     "data_governance_measures": {
       "type": "string",
       "minLength": 20,

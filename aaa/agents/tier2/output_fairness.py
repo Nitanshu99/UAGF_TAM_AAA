@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 _OFFLINE = os.environ.get("AAA_OFFLINE_MODE", "false").lower() == "true"
 _FAIRNESS_VERDICT_ORDER = ["NOT_TESTED", "PASS", "PASS_WITH_OBSERVATIONS", "FAIL"]
 _TOXICITY_SAMPLE_CAP = 200
+_PROMPT_NAME = "phase4_output"
 
 
 class OutputFairnessError(Exception):
@@ -156,6 +157,33 @@ class OutputFairnessTester(BaseAgent):
 
         # ── 8. Build artefacts ───────────────────────────────────────────────
         now = datetime.now(timezone.utc).isoformat()
+        llm_payload: dict[str, Any] = {}
+        llm_fallback_mode = _OFFLINE
+        if not _OFFLINE:
+            try:
+                llm_payload = await self.acompletion_json(
+                    _PROMPT_NAME,
+                    {
+                        "task": message.get("task_brief")
+                        or "Execute Phase 4 fairness testing per the Phase 4 Protocol.",
+                        "evidence_uris": message.get("evidence_uris", []),
+                        "declaration_summary": decl,
+                        "rerun_context": None,
+                        "tool_outputs": {
+                            "demographic_parity": dp_result,
+                            "equal_opportunity": eo_result,
+                            "disparate_impact": di_result,
+                            "subgroup_metrics": sg_result,
+                            "toxicity_results": tox_result,
+                            "overall_verdict": overall_verdict,
+                        },
+                    },
+                )
+                llm_fallback_mode = False
+            except Exception as exc:
+                logger.warning("OutputFairnessTester prompt runtime failed (%s); using deterministic fallback.", exc)
+        prompt_note = self.prompt_note(_PROMPT_NAME, llm_fallback_mode)
+        llm_summary = llm_payload.get("summary") or llm_payload.get("rationale_summary")
         t12 = self._build_t12(
             engagement_id, modality, sensitive_feature_names, sample_size,
             dp_result, eo_result, di_result, sg_result,
@@ -166,6 +194,8 @@ class OutputFairnessTester(BaseAgent):
             y_true, y_pred, sensitive_features, sensitive_feature_names,
             prediction_texts, prediction_ids, tox_result, now,
         )
+        t12["fairness_narrative"] = f"{llm_summary or t12['fairness_narrative']} {prompt_note}".strip()
+        t13["sampling_narrative"] = f"{t13['sampling_narrative']} {prompt_note}".strip()
 
         # ── 9. Store artefacts ───────────────────────────────────────────────
         t12_uri = self.store.store_artefact(
@@ -204,6 +234,8 @@ class OutputFairnessTester(BaseAgent):
             phase_id="P4",
             artefact_uri=t12_uri,
             summary=(
+                llm_summary
+                or
                 f"Phase 4 complete. fairness_verdict={overall_verdict}, "
                 f"toxicity_flagged={tox_result.get('flagged_count', 0)} / "
                 f"{tox_result.get('sample_size', 0)}."
@@ -225,6 +257,7 @@ class OutputFairnessTester(BaseAgent):
                 {"tool": "toxicity_classifier",
                  "result": f"verdict={tox_result['verdict']}, "
                            f"flagged={tox_result.get('flagged_count', 0)}"},
+                {"tool": "prompt_runtime", "result": prompt_note},
             ],
             declaration_verification_delta=delta,
         )

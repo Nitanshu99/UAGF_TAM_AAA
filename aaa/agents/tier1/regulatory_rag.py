@@ -131,6 +131,8 @@ _REGULATION_LABEL: dict[str, str] = {
     "EU_AI_Act": "EU AI Act",
     "GDPR": "GDPR",
     "ISO_IEC_42001": "ISO/IEC 42001",
+    "ISAE 3000": "ISAE 3000 (Revised)",
+    "ISO 19011": "ISO 19011:2018",
 }
 
 
