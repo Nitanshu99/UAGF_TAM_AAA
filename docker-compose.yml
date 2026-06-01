@@ -32,7 +32,7 @@ services:
   # Qdrant — Vector store for RegulatoryRAG
   # --------------------------------------------------------------------------
   qdrant:
-    image: qdrant/qdrant:v1.9.0
+    image: qdrant/qdrant:v1.18.0
     restart: unless-stopped
     ports:
       - "6333:6333"
@@ -40,7 +40,7 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:6333/healthz || exit 1"]
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/6333'"]
       interval: 15s
       timeout: 5s
       retries: 5
