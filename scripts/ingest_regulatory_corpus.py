@@ -5,7 +5,7 @@ of the regulatory corpus consumed by Tier-1 RegulatoryRAG (§3.1 #3, §10).
 
 Pipeline
 --------
-  0. Pre-load ``data/files/eu_ai_act_compliance_checker.json`` → build the
+  0. Pre-load ``data/eu_ai_act_compliance_checker.json`` → build the
      article → {obligations, entity_types, risk_classes} lookup used to
      enrich each chunk's payload (§"checker lookup").
   1. Loaders — BeautifulSoup for EUR-Lex HTML (EU AI Act, GDPR),
@@ -26,7 +26,7 @@ Usage
 -----
     python3.12 scripts/ingest_regulatory_corpus.py \\
         --corpus data/regulatory_corpus \\
-        --checker data/files/eu_ai_act_compliance_checker.json \\
+        --checker data/eu_ai_act_compliance_checker.json \\
         --collection regulatory_corpus \\
         --obligations-collection obligations_index
 
@@ -235,7 +235,21 @@ class CheckerLookup:
 
 def build_checker_lookup(path: Path) -> CheckerLookup:
     """Parse the compliance-checker JSON into the article→obligations index."""
-    raw = json.loads(path.read_text(encoding="utf-8"))
+    candidate_paths = [path]
+    if not path.is_absolute():
+        candidate_paths.append(REPO_ROOT / path)
+    if path.name == DEFAULT_CHECKER_PATH.name:
+        candidate_paths.append(DEFAULT_CHECKER_PATH)
+
+    checker_path = next((p for p in candidate_paths if p.exists()), None)
+    if checker_path is None:
+        tried = ", ".join(str(p) for p in dict.fromkeys(candidate_paths))
+        raise FileNotFoundError(
+            f"checker JSON not found; tried: {tried}. "
+            f"Use '{DEFAULT_CHECKER_PATH.relative_to(REPO_ROOT)}'."
+        )
+
+    raw = json.loads(checker_path.read_text(encoding="utf-8"))
     by_article: dict[str, dict[str, set[str]]] = {}
     questions: list[dict[str, Any]] = []
 

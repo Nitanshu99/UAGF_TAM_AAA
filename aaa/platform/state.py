@@ -214,6 +214,15 @@ class Finding(TypedDict, total=False):
 # AuditState — full LangGraph typed dict threaded through the graph (§5.1)
 # ──────────────────────────────────────────────────────────────────────────────
 
+class DocExtractionResult(TypedDict):
+    """Result returned by DocIntelligenceAgent after reading customer uploads."""
+    stage_a_partial: dict[str, Any]
+    stage_b_partial: dict[str, Any]
+    field_confidence: dict[str, float]   # field_name → 0.0–1.0
+    field_sources: dict[str, str]        # field_name → "filename, p. N"
+    missing_fields: list[str]
+
+
 class AuditState(TypedDict):
     # --- engagement identity ---
     engagement_id: str

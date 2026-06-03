@@ -113,18 +113,18 @@ CGSA_FIXTURE_DIR=scripts/fixtures/cgsa \
 streamlit run aaa/ui/app.py
 ```
 
-What you get:
+What you get — a 5-step guided wizard:
 
-- a browser UI
-- editable Stage A form
-- Stage B text fields and file uploaders
-- optional dataset/model uploaders
-- live completeness score preview
-- a **Run full audit** button
-- download buttons for:
-  - audit report PDF
-  - T18 audit report JSON
-  - T17 compliance matrix JSON
+1. **Start** — provide an engagement ID
+2. **Upload Documents** — drag-and-drop technical docs, model artefacts, datasets
+3. **Quick Questions** — 8 guided questions (role, deployment context, GDPR, Annex III categories, etc.)
+4. **Review & Confirm** — `DocIntelligenceAgent` (agent #13, `gpt-5.4`) reads your uploads and pre-fills every Stage A / Stage B field; each auto-filled field shows its source file and confidence score; you edit any field and see the live intake completeness score (gate ≥ 0.80) before confirming
+5. **Results** — final verdict, KPI metrics, remediation checklist, compliance matrix, download buttons for:
+   - audit report PDF
+   - T18 audit report JSON
+   - T17 compliance matrix JSON
+
+In offline mode (`AAA_OFFLINE_MODE=true`) the `DocIntelligenceAgent` skips Qdrant ingestion and returns an empty extraction — all fields show "please fill in manually". The wizard still works; you fill the form manually and the audit pipeline runs fully offline.
 
 ### Option B — fastest smoke test: CLI
 
@@ -225,7 +225,7 @@ Current dry-run totals:
 ```bash
 python3.12 scripts/ingest_regulatory_corpus.py \
   --corpus data/regulatory_corpus \
-  --checker data/files/eu_ai_act_compliance_checker.json \
+  --checker data/eu_ai_act_compliance_checker.json \
   --collection regulatory_corpus \
   --obligations-collection obligations_index
 ```

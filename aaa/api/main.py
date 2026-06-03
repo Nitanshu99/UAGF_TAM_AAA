@@ -235,6 +235,24 @@ async def run_engagement(engagement_id: str) -> dict[str, Any]:
     }
 
 
+@app.post("/api/v1/engagements/{engagement_id}/extract-triage", tags=["customer-workflow"])
+async def extract_triage(engagement_id: str) -> dict[str, Any]:
+    """Run DocIntelligenceAgent over uploaded files and return pre-filled Stage A/B fields."""
+    if engagement_id not in _ENGAGEMENTS:
+        raise HTTPException(status_code=404, detail=f"Engagement '{engagement_id}' not found.")
+    from aaa.agents.doc_intelligence import DocIntelligenceAgent
+    store = _STORES.setdefault(engagement_id, EvidenceStore())
+    doc_uris = [
+        uri
+        for uri, meta in store._store.items()  # type: ignore[attr-defined]
+        if isinstance(meta, dict) and meta.get("engagement_id") == engagement_id
+        and meta.get("phase") == "customer_uploads"
+    ]
+    agent = DocIntelligenceAgent(evidence_store=store)
+    result = await agent.process({"engagement_id": engagement_id, "doc_uris": doc_uris})
+    return dict(result)
+
+
 @app.get("/api/v1/engagements/{engagement_id}/report", tags=["customer-workflow"])
 def get_report(engagement_id: str) -> dict[str, Any]:
     """Return final verdict, KPI summary, and report artefact URIs."""

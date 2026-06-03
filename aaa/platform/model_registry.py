@@ -77,6 +77,9 @@ AGENT_MODELS: dict[str, ModelConfig] = {
     "CyberSecurityAgent":   ModelConfig("gpt-5.4"),
     # 12. Privacy / DPO — GDPR overlap check.
     "PrivacyDPOAgent":      ModelConfig("gpt-5.4"),
+    # 13. DocIntelligenceAgent — pre-intake field extraction from customer uploads.
+    # Default tier (not Flex): on the interactive critical path; user waits for this.
+    "DocIntelligenceAgent": ModelConfig("gpt-5.4"),
 }
 
 

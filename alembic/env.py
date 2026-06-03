@@ -1,11 +1,17 @@
-"""Alembic environment — reads DATABASE_URL from the AAA settings."""
+"""Alembic environment — loads ``.env`` and uses ``DATABASE_URL`` when set."""
 from __future__ import annotations
 
 import os
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
+
+try:
+    from dotenv import load_dotenv
+except ImportError:  # pragma: no cover - optional during bootstrap
+    load_dotenv = None
 
 # Alembic Config object
 config = context.config
@@ -13,6 +19,9 @@ config = context.config
 # Set up Python logging from alembic.ini
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+if load_dotenv is not None:
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
 
 # Override sqlalchemy.url with env var if set (12-factor)
 database_url = os.environ.get("DATABASE_URL")

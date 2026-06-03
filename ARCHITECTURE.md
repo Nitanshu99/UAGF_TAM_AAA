@@ -114,6 +114,7 @@ Tier-3 agents are required to satisfy Mökander 2023's **application-layer audit
 | 10 | **UAGF-TAM-L Branch Agent** | **gpt-5.5** (Flex) | Phase 1 sets `is_llm_or_agentic = true` | Replaces Phases 2–4 with golden-set evaluation, faithfulness/grounding tests, prompt-injection & jailbreak suites, tool-call trajectory audit for agentic systems. | Mökander 2023 §4 (LLM-specific audit layer); exposé §2 Phase 1 UAGF-TAM-L requirement |
 | 11 | **Cybersecurity Sub-Agent** | **gpt-5.4** | Phase 5 when Art. 15 evidence is missing **or** risk tier = high **or** Cyber red-flag in any phase artefact | Adversarial robustness (FGSM/PGD on CV, injection on LLM), sandbox-escape probes for agentic systems. | EU AI Act Art. 15 (accuracy, robustness, cybersecurity); Falco 2021 (independent security audit) |
 | 12 | **Privacy / DPO Sub-Agent** | **gpt-5.4** | Phase 5 when GDPR overlap detected (special-category data, biometric data, Annex III §1 use case) | Art. 10 §5 lawful-basis check, DPIA cross-reference, retention & minimisation review. | EU AI Act Art. 10 §5; GDPR Art. 35 (DPIA); Mökander 2023 application-layer privacy audit |
+| 13 | **DocIntelligenceAgent** | **gpt-5.4** (default tier) | Stage 0 — triggered by the wizard UI after file upload, before the intake form is submitted | Ingests customer-uploaded artefacts into the per-engagement Qdrant collection (`client_doc_ingest`), issues per-field vector searches (`client_doc_search`), and calls the LLM in a single batched extraction to pre-populate Stage A / Stage B fields. Returns a `DocExtractionResult` (field values + confidence scores + source attribution) that the wizard review form uses for pre-fill. Non-interactive agents stalled by the Flex `429 Resource Unavailable` risk would block the user mid-wizard, so this agent stays on the default tier. | §6 Stage 0 UX redesign; EU AI Act Art. 11 (intake quality); user-experience best practice (agent-assisted form fill) |
 
 **Why these three are non-negotiable for quality.** The exposé's required deliverable is *"EU AI Act-compliant"* reports (line 82). Compliance with Articles 10 §5, 15, and the GPAI/LLM evidentiary obligations cannot be discharged by the six phase agents alone without violating the Mökander/Falco independence principle: the agent that wrote the artefact cannot also be the agent that adversarially tests it. Removing any Tier-3 agent would either (a) leave a regulatory article unaudited, or (b) collapse audit and adversarial review into the same agent. Both are documented quality regressions.
 
@@ -1119,7 +1120,7 @@ Engineering tactics from the MAS blog set are listed first; academic methodology
 | **Academic (methodology) sources** | |
 | Mökander 2023 — *Three-layered audit (governance / model / application)* | 6-phase protocol decomposition; Tier-3 application-layer audits (§3.3, §1.1) |
 | Koshiyama 2022 — *Practitioner-gap analysis; need for standardised completeness measures* | `completeness_score` and `regulatory_coverage_pct` KPIs (§9.1); open-source template registry (§4A) |
-| Wang 2024 — *Autonomous-agent role specialisation* | 12-agent role taxonomy (§3); Orchestrator planner-executor pattern (§6) |
+| Wang 2024 — *Autonomous-agent role specialisation* | 13-agent role taxonomy (§3); Orchestrator planner-executor pattern (§6) |
 | Falco 2021 — *Independent audit principle* | Verifier as independent agent (§3.1); Tier-3 Cyber sub-agent independence (§3.3) |
 | Gebru 2021 — *Datasheets for Datasets* | T06 datasheet template (§4A); Phase 2 evidence rubric; Stage B `training_data_description` field (Annex IV §2) |
 | **Mitchell 2019 — *Model Cards for Model Reporting*** | T02 system card template (§4A); Stage A triage form structure (provider, intended purpose, deployment context, performance metrics) — Model Cards are the practitioner predecessor of the Annex IV §1 general description requirement. |
@@ -1130,7 +1131,7 @@ Engineering tactics from the MAS blog set are listed first; academic methodology
 
 ## 13. Summary
 
-The AAA is a **hub-and-spoke orchestrator-worker system of 12 agents** that consumes the S4 `uagf_cgsa_aaa_schema.json` payload via a pull at Phase 5 (§10.2) and emits an EU AI Act-compliant conformity-assessment report at Phase 6 covering **Articles 9, 10, 11, 13, 14, 15, 17, 43, Annex III, Annex IV, and GPAI 51–55**. Engagements begin with a three-stage Annex-IV-aligned intake — Stage A triage (modality / risk / Annex III declaration), Stage B dossier (Annex IV §1–§9 technical documentation), Stage C scoped live-system access — captured as templates T01a/T01b/T01c and validated against published JSON Schemas before Phase 1 runs (§6 Stage 0). Three always-on cross-cutting agents (Orchestrator, Verifier, Regulatory RAG) coordinate six phase agents through a LangGraph state machine, with a Router fork at Phase 1 sending LLM/agentic systems down the UAGF-TAM-L branch and progressive-disclosure spawns of Cyber and Privacy specialists when their evidence is needed (Tier-3 agents justified by Mökander 2023 application-layer audit obligations, §3.3). Twenty MIT-licensed artefact templates (§4A) are the durable currency between agents; the Orchestrator's deterministic Article 43 procedure selector (§3.5) and the published Risk-Tier × Phase CSP catalogue (§6.2) make every routing decision regulator-replayable. Three operational KPIs — `intake_completeness_score`, `completeness_score`, and `regulatory_coverage_pct` (§9.1) — are computed deterministically on every engagement and benchmarked against the supervisor's human audit on the four thesis case studies. The Ready-to-Deploy Plan (§14) makes every exposé milestone executable via a single `make` target, from `make m3-linear` (Week 7) through `make deploy-prod` (Week 24).
+The AAA is a **hub-and-spoke orchestrator-worker system of 13 agents** that consumes the S4 `uagf_cgsa_aaa_schema.json` payload via a pull at Phase 5 (§10.2) and emits an EU AI Act-compliant conformity-assessment report at Phase 6 covering **Articles 9, 10, 11, 13, 14, 15, 17, 43, Annex III, Annex IV, and GPAI 51–55**. Engagements begin with a three-stage Annex-IV-aligned intake — Stage A triage (modality / risk / Annex III declaration), Stage B dossier (Annex IV §1–§9 technical documentation), Stage C scoped live-system access — captured as templates T01a/T01b/T01c and validated against published JSON Schemas before Phase 1 runs (§6 Stage 0). Three always-on cross-cutting agents (Orchestrator, Verifier, Regulatory RAG) coordinate six phase agents through a LangGraph state machine, with a Router fork at Phase 1 sending LLM/agentic systems down the UAGF-TAM-L branch and progressive-disclosure spawns of Cyber and Privacy specialists when their evidence is needed (Tier-3 agents justified by Mökander 2023 application-layer audit obligations, §3.3). Twenty MIT-licensed artefact templates (§4A) are the durable currency between agents; the Orchestrator's deterministic Article 43 procedure selector (§3.5) and the published Risk-Tier × Phase CSP catalogue (§6.2) make every routing decision regulator-replayable. Three operational KPIs — `intake_completeness_score`, `completeness_score`, and `regulatory_coverage_pct` (§9.1) — are computed deterministically on every engagement and benchmarked against the supervisor's human audit on the four thesis case studies. The Ready-to-Deploy Plan (§14) makes every exposé milestone executable via a single `make` target, from `make m3-linear` (Week 7) through `make deploy-prod` (Week 24).
 
 ---
 
@@ -1501,19 +1502,21 @@ jobs:
       - run: .venv/bin/python -m aaa.cli run --engagement-id eng-ci-smoke-001 --intake-dir scripts/fixtures/uci_german_credit --cgsa-fixture-dir scripts/fixtures/cgsa --offline
 ```
 
-### 14.7 Streamlit Demo (`aaa/ui/app.py`)
+### 14.7 Streamlit Wizard (`aaa/ui/app.py`)
 
-The implemented Streamlit demo is the primary thesis UI. It runs the same intake → orchestrator → report path as the CLI/API and is designed to work fully in `AAA_OFFLINE_MODE=true` using fixtures from `scripts/fixtures/uci_german_credit/` and `scripts/fixtures/cgsa/`.
+The Streamlit wizard is the primary thesis UI. It runs the same intake → orchestrator → report path as the CLI/API and is designed to work fully in `AAA_OFFLINE_MODE=true` using fixtures from `scripts/fixtures/uci_german_credit/` and `scripts/fixtures/cgsa/`.
 
-Current behavior:
+The UI is a **5-step guided wizard** driven by `st.session_state["step"]`:
 
-1. **Stage A** — editable triage form seeded from fixture JSON.
-2. **Stage B** — required Annex IV text fields plus uploaders for risk-management, declaration-of-conformity, post-market, LLM artefacts, and optional dataset/model files. Uploaded artefacts are stored through `EvidenceStore.store_file(...)` and written back into the Stage B payload as URIs.
-3. **Live scope/completeness preview** — the UI shows the scope gate result and `intake_completeness_score` before the run starts.
-4. **Run full audit** — executes `IntakeValidator → Orchestrator` using the same EvidenceStore instance as the upload widgets so uploaded files and intake payloads are available to the downstream phases.
-5. **Downloads** — after completion, the UI exposes the rendered audit-report PDF when available, the T18 JSON payload, the T17 compliance matrix JSON, and the full AuditState JSON behind an advanced/debug expander.
+1. **Start** — engagement ID entry.
+2. **Upload Documents** — three upload zones (technical docs, model artefact, datasets). Files are stored via `EvidenceStore.store_file(...)` and their URIs collected for the extraction step.
+3. **Quick Questions** — 8 FLI-derived questions (`entity_type`, `deployment_context`, `gdpr_overlap`, `special_category_data`, `gpai_general_purpose`, `declared_annex_iii_sections`, `provider_elects_third_party`, `territorial_scope`) rendered in a single `st.form`.
+4. **Review & Confirm** — **DocIntelligenceAgent** (agent #13) is called via `POST /api/v1/engagements/{id}/extract-triage` after upload; it returns a `DocExtractionResult` used to pre-populate all Stage A and Stage B widget keys. Every field shows its EU AI Act article reference, a placeholder example, and — when auto-filled — a source-file caption with confidence percentage. The live `intake_completeness_score` (gate ≥ 0.80) and scope-gate verdict render on every widget interaction. The **Confirm & Run Audit** button is disabled until the gate passes.
+5. **Results** — `IntakeValidator → Orchestrator` executes using the same `EvidenceStore` instance; on completion the UI shows the final verdict banner, three KPI metrics, a remediation checklist (blocking findings), the compliance matrix, phase artefact URIs, and download buttons for the PDF report, T18 JSON, T17 JSON, and full `AuditState` JSON.
 
-The current UI does **not** embed Langfuse trace replay or an inline PDF viewer; those remain future UX extensions rather than part of the implemented thesis MVP.
+In offline mode (`AAA_OFFLINE_MODE=true`) `DocIntelligenceAgent` returns an empty `DocExtractionResult` (no Qdrant available); all Stage B fields render with "please fill in manually" warnings and the user completes the form manually before running.
+
+The wizard does **not** embed Langfuse trace replay or an inline PDF viewer; those remain future UX extensions.
 
 ### 14.8 Production Topology (`infra/tofu/`)
 
@@ -1579,7 +1582,7 @@ Run after every deploy and after every milestone target. All eleven steps must p
 8. `.venv/bin/pytest tests/intake/test_completeness.py` — unit tests for `intake_completeness_calculator` covering all nine Annex IV sections + L-branch conditional fields; all cases pass.
 9. `.venv/bin/pytest tests/contract/test_cgsa_pull.py` — pull from S4 FastAPI, validate, hydrate against all fixtures in `scripts/fixtures/cgsa/`.
 10. `.venv/bin/pytest tests/e2e/test_uagf_tam_l.py` — L-branch end-to-end produces T16; UAGF-TAM-L PDF emitted; `intake_completeness_score` present in T01c.
-11. Open Streamlit demo at `http://localhost:8501`, click "Load German Credit example", verify Stage A triage page shows `art43_preview`; proceed through Stage B; observe `intake_completeness_score` displayed; click through to live trace; download PDF; verify it contains T05 (Article 43 decision), T17 (compliance matrix), and T01c (intake completeness report).
+11. Open Streamlit wizard at `http://localhost:8501`; advance through all 5 steps using the German Credit fixture data; confirm the Review & Confirm step shows a completeness score ≥ 0.80 and a green scope-gate banner; click **Confirm & Run Audit**; verify the Results step shows a non-null `final_verdict`, `intake_completeness_score`, and active download buttons for PDF, T18 JSON, and T17 JSON.
 
 ### 14.11 Exposé Milestone ↔ Deployment Checklist
 
