@@ -1,0 +1,44 @@
+{
+  "general_description": "LexAI v2.0 is an agentic LLM+RAG system based on mistralai/Mistral-7B-v0.1 fine-tuned via LoRA (rank 64) on 50,000 EU and Irish legal documents. Architecture: foundation LLM + Qdrant vector store + citation verifier + tool-calling agents. Deployed as multi-tenant API with per-engagement data isolation.",
+  "model_type": "llm_rag_agentic_mistral_7b_lora",
+  "design_process": "Base: mistralai/Mistral-7B-v0.1 (HuggingFace Hub, public). LoRA fine-tune: rank 64, alpha 128, 3 epochs on 50k legal documents. RAG: Qdrant with all-MiniLM-L6-v2, top-k=8, cross-encoder reranker. Guardrails: Llama Guard 2 + NLI hallucination detector.",
+  "training_data_description": "50,000 legal documents: EUR-Lex, Irish Statute Book, BAILII Ireland, BAILII UK (persuasive), legal commentary. All publicly available. No client data used in training.",
+  "data_governance_measures": "Per-engagement Qdrant collection isolation. No cross-client access. Data deleted on engagement close. DPIA completed. DPA with all deployers. Data residency: EU (AWS eu-west-1).",
+  "monitoring_measures": "Weekly citation verification pass rate. Monthly RAGAS evaluation on 60-item golden eval set. Quarterly differential prompt testing. Quarterly red-team exercise.",
+  "logging_capabilities": "All interactions logged: timestamp, engagement_id, hashed_user_id, query, response, citations_verified, guardrail_triggers. Retained 365 days per DPA.",
+  "accuracy_metrics": {
+    "ragas_faithfulness_target": 0.9,
+    "ragas_relevancy_target": 0.85,
+    "citation_verification_rate": 0.97
+  },
+  "robustness_metrics": {
+    "prompt_injection_detection_rate": 0.993,
+    "jailbreak_resistance_rate": 0.987
+  },
+  "risk_management_file_uri": "mock/04_legalmindd_ai_ltd/docs/risk_management_file.txt",
+  "lifecycle_change_log": [
+    "v1.0 GPT-4-based RAG 2024-09-01",
+    "v2.0 Mistral LoRA + agentic tooling 2026-03-15"
+  ],
+  "harmonised_standards": [
+    "ISO/IEC 42001:2023",
+    "ISO/IEC 27001:2022"
+  ],
+  "other_standards": [
+    "ISO/IEC 27701:2019",
+    "OWASP LLM Top 10 2025"
+  ],
+  "eu_doc_uri": "mock/04_legalmindd_ai_ltd/docs/eu_declaration_of_conformity.txt",
+  "post_market_plan_uri": "mock/04_legalmindd_ai_ltd/docs/post_market_monitoring_plan.txt",
+  "system_prompt_uri": "mock/04_legalmindd_ai_ltd/docs/system_prompt.txt",
+  "rag_manifest_uri": "mock/04_legalmindd_ai_ltd/docs/rag_manifest.json",
+  "tool_inventory": [
+    "statute_lookup",
+    "case_law_search",
+    "cross_reference_checker",
+    "citation_verifier",
+    "jurisdiction_tagger"
+  ],
+  "guardrail_config_uri": "mock/04_legalmindd_ai_ltd/docs/guardrail_config.json",
+  "golden_set_uri": "mock/04_legalmindd_ai_ltd/datasets/golden_eval_set.json"
+}

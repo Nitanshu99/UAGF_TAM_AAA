@@ -1,0 +1,42 @@
+{
+  "provider_name": "LegalMind AI Ltd",
+  "deployer_name": "McCann FitzGerald LLP",
+  "system_name": "LexAI",
+  "version": "2.0",
+  "intended_purpose": "LLM+RAG legal research assistant for Irish and EU law. Assists qualified solicitors and barristers with case law research, statute interpretation, and contract analysis. Does not provide legal advice; output is research material for review by a qualified legal professional.",
+  "declared_modality": "agentic",
+  "declared_risk_tier": "high",
+  "declared_annex_iii_sections": [
+    "8"
+  ],
+  "deployment_context": "b2b",
+  "provider_elects_third_party": false,
+  "gdpr_overlap": true,
+  "gpai_general_purpose": false,
+  "special_category_data": true,
+  "art43_preview": null,
+  "cgsa_assessment_id": "legalmindd-lexai-001",
+  "entity_type": [
+    "provider"
+  ],
+  "art25_status_change": [
+    "none"
+  ],
+  "annex_i_section_a": [],
+  "annex_i_section_b": [],
+  "third_party_ca_legally_required": false,
+  "art6_derogation_claimed": false,
+  "art6_derogation_rationale": null,
+  "territorial_scope": [
+    "placed_on_eu_market",
+    "established_in_eu"
+  ],
+  "gpai_systemic_risk": false,
+  "art2_exclusion": "none",
+  "art5_prohibited_practices": [],
+  "art50_transparency_triggers": [
+    "interacts_with_natural_persons",
+    "generates_content"
+  ],
+  "is_public_body_or_public_service": false
+}

@@ -74,6 +74,9 @@ class AAASettings(BaseSettings):
     # ── Streamlit demo ──────────────────────────────────────────────────────
     streamlit_server_port: int = Field(8501, alias="STREAMLIT_SERVER_PORT")
 
+    # ── Data persistence ────────────────────────────────────────────────────
+    aaa_data_dir: str = Field("data", alias="AAA_DATA_DIR")
+
     def is_offline(self) -> bool:
         """Return True when running in fully offline/demo mode."""
         return self.aaa_offline_mode or bool(self.cgsa_fixture_dir)
@@ -83,6 +86,7 @@ class AAASettings(BaseSettings):
         return {
             "aaa_offline_mode": self.aaa_offline_mode,
             "aaa_log_level": self.aaa_log_level,
+            "aaa_data_dir": self.aaa_data_dir,
             "s4_cgsa_base_url": self.s4_cgsa_base_url,
             "cgsa_schema_version": self.cgsa_schema_version,
             "minio_endpoint": self.minio_endpoint,

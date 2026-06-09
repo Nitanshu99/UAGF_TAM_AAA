@@ -1,0 +1,26 @@
+EU DECLARATION OF CONFORMITY
+Pursuant to Regulation (EU) 2024/1689 (EU AI Act), Article 47
+
+Provider:  FinClear GmbH
+           Neue Mainzer Str. 52, 60311 Frankfurt am Main, Germany
+           HRB 123456 | EU VAT: DE345678901
+
+AI System: CreditGuard v2.1
+Purpose:   Creditworthiness scoring for retail loan applicants
+Class:     HIGH-RISK -- Annex III para 5(b)
+
+FinClear GmbH declares under sole responsibility that CreditGuard v2.1
+is in conformity with Regulation (EU) 2024/1689:
+  Article 9  -- Risk management system         COMPLIANT
+  Article 10 -- Data and data governance        COMPLIANT
+  Article 12 -- Record-keeping                  COMPLIANT
+  Article 13 -- Transparency to deployers       COMPLIANT
+  Article 14 -- Human oversight                 COMPLIANT
+  Article 15 -- Accuracy and robustness         COMPLIANT
+  Article 72 -- Post-market monitoring          COMPLIANT
+
+Standards: ISO/IEC 42001:2023 | ISO/IEC 23894:2023 | ISO/IEC TR 24028:2020
+Procedure: Annex VI internal control (Art. 43 para 2)
+
+Frankfurt am Main, 2026-01-20
+Signed: Dr. Markus Brenner, CEO  (eIDAS Qualified Electronic Signature)

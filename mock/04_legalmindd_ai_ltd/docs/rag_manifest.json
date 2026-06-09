@@ -1,0 +1,60 @@
+{
+  "version": "2.0",
+  "vector_store": "qdrant",
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "chunk_size": 512,
+  "chunk_overlap": 64,
+  "collections": [
+    {
+      "name": "eu_legislation",
+      "documents": 8420,
+      "sources": [
+        "EUR-Lex",
+        "EU AI Act",
+        "GDPR",
+        "DORA",
+        "NIS2"
+      ]
+    },
+    {
+      "name": "irish_statute_book",
+      "documents": 12350,
+      "sources": [
+        "Irish Statute Book",
+        "SI database"
+      ]
+    },
+    {
+      "name": "irish_case_law",
+      "documents": 18900,
+      "sources": [
+        "BAILII Ireland",
+        "Irish Courts Service"
+      ]
+    },
+    {
+      "name": "uk_persuasive",
+      "documents": 7200,
+      "sources": [
+        "BAILII UK (persuasive authority)"
+      ]
+    },
+    {
+      "name": "commentary",
+      "documents": 3200,
+      "sources": [
+        "Roundhall Annotated Statutes",
+        "ICLSA"
+      ]
+    }
+  ],
+  "retrieval_config": {
+    "top_k": 8,
+    "similarity_threshold": 0.72,
+    "reranker": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "citation_verification": true,
+    "jurisdiction_filter": true
+  },
+  "last_updated": "2026-03-31",
+  "total_documents": 50070
+}

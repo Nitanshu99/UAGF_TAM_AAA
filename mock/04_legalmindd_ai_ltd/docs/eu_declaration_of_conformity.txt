@@ -1,0 +1,24 @@
+EU DECLARATION OF CONFORMITY
+Regulation (EU) 2024/1689 (EU AI Act), Article 47
+
+Provider:  LegalMind AI Ltd
+           1 Grand Canal Square, Dublin 2, Ireland D02 P820
+           Company No: 654321 | EU VAT: IE3456789W
+
+AI System: LexAI v2.0  |  Modality: Agentic (LLM + RAG + tool-calling)
+Class:     HIGH-RISK -- Annex III para 8 (administration of justice)
+
+Foundation: mistralai/Mistral-7B-v0.1 (HuggingFace, public)
+Fine-tune:  LoRA rank 64 on 50,000 EU/Irish legal documents
+
+Conformity with Regulation (EU) 2024/1689:
+  Article 9  -- Risk management          COMPLIANT
+  Article 10 -- Data governance           COMPLIANT
+  Article 13 -- Transparency              COMPLIANT
+  Article 14 -- Human oversight           COMPLIANT
+  Article 15 -- Accuracy and robustness   COMPLIANT
+  Article 50 -- Transparency obligations  COMPLIANT
+  Article 72 -- Post-market monitoring    COMPLIANT
+
+Dublin, 2026-04-05
+Signed: Aoife O Sullivan, CEO -- LegalMind AI Ltd (eIDAS QES)

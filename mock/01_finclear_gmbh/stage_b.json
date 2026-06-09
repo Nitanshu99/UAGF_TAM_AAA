@@ -1,0 +1,39 @@
+{
+  "general_description": "Gradient-boosted tree classifier (XGBoost 2.0) trained on a proprietary 1000-instance German retail credit portfolio. Inputs: 20 features (financial standing, credit history, socio-demographic). Output: creditworthiness probability score [0,1] plus binary decision at calibrated threshold. Intended for human-in-the-loop decision support only.",
+  "model_type": "gradient_boosted_trees_xgboost_v2",
+  "design_process": "Stratified 80/20 train/test split; 5-fold CV with grid-search over n_estimators and max_depth; calibration via isotonic regression; threshold tuned to maximise expected utility at asymmetric cost 1:5.",
+  "training_data_description": "FinClear proprietary credit dataset -- 1000 instances, 20 attributes (7 numerical, 13 categorical), binary target (1=creditworthy, 0=not). Class prior 70/30. Age variable retained under Art. 10 para 5 derogation for fairness monitoring only.",
+  "data_governance_measures": "Data minimisation per Art. 10 para 2(b); access restricted to model-risk team; annual re-collection audit; no enrichment from external broker data.",
+  "monitoring_measures": "Monthly production-sample AUC review; PSI drift monitoring on top-10 features (threshold PSI > 0.2); quarterly adversarial robustness re-probe.",
+  "logging_capabilities": "Per-prediction log: timestamp, hashed applicant_id, feature hash, model_version, score, threshold band, decision, human_override flag -- retained 10 years per Art. 12 para 1.",
+  "accuracy_metrics": {
+    "accuracy": 0.935,
+    "auc_roc": 0.9819,
+    "f1_score": 0.9312
+  },
+  "robustness_metrics": {
+    "adversarial_accuracy_l_inf_0_01": 0.74,
+    "psi_baseline_max": 0.04
+  },
+  "risk_management_file_uri": "mock/01_finclear_gmbh/docs/risk_management_file.txt",
+  "lifecycle_change_log": [
+    "v2.0 initial production release 2025-07-01",
+    "v2.1 fairness recalibration 2026-01-10"
+  ],
+  "harmonised_standards": [
+    "ISO/IEC 42001:2023",
+    "ISO/IEC 23894:2023",
+    "ISO/IEC TR 24028:2020",
+    "ISO/IEC 5259-1:2024"
+  ],
+  "other_standards": [
+    "EBA/GL/2019/04 ICT Risk Guidelines"
+  ],
+  "eu_doc_uri": "mock/01_finclear_gmbh/docs/eu_declaration_of_conformity.txt",
+  "post_market_plan_uri": "mock/01_finclear_gmbh/docs/post_market_monitoring_plan.txt",
+  "system_prompt_uri": null,
+  "rag_manifest_uri": null,
+  "tool_inventory": null,
+  "guardrail_config_uri": null,
+  "golden_set_uri": null
+}

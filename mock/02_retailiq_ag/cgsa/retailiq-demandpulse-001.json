@@ -1,0 +1,383 @@
+{
+  "schema_version": "1.0.0",
+  "metadata": {
+    "assessment_id": "retailiq-demandpulse-001",
+    "organisation_name": "RetailIQ AG",
+    "system_under_audit": "DemandPulse v3.0",
+    "cgsa_version": "1.0.0",
+    "assessment_timestamp": "2026-05-28T10:00:00Z",
+    "risk_tier": "limited",
+    "document_sources": [
+      "risk_management_file.txt",
+      "post_market_monitoring_plan.txt"
+    ],
+    "uagf_gmm_version": "1.0.0"
+  },
+  "overall_scores": {
+    "composite_maturity_score": 2.9,
+    "composite_maturity_label": "developing",
+    "eu_ai_act_coverage_pct": 78.0,
+    "csp_satisfiable": true,
+    "governance_verdict": "partially_compliant",
+    "controls_assessed": 28,
+    "controls_meeting_threshold": 21,
+    "controls_below_threshold": 7
+  },
+  "domains": [
+    {
+      "domain_id": "D1",
+      "domain_name": "Risk Management",
+      "domain_score": 3.0,
+      "domain_eu_ai_act_articles": [
+        "Article 9"
+      ],
+      "controls": [
+        {
+          "control_id": "C01",
+          "control_name": "Risk Identification",
+          "maturity_score": 3,
+          "maturity_label": "defined",
+          "evidence_summary": "Three risks identified with mitigation measures.",
+          "confidence": 0.85,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 9"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": true
+          },
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D2",
+      "domain_name": "Data Governance",
+      "domain_score": 3.2,
+      "domain_eu_ai_act_articles": [
+        "Article 10"
+      ],
+      "controls": [
+        {
+          "control_id": "C07",
+          "control_name": "Data Quality Management",
+          "maturity_score": 3,
+          "maturity_label": "defined",
+          "evidence_summary": "Aggregate-only data; no PII; retention policy documented.",
+          "confidence": 0.87,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 10 point 2"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": true
+          },
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D3",
+      "domain_name": "Model Development and Testing",
+      "domain_score": 3.0,
+      "domain_eu_ai_act_articles": [
+        "Article 15"
+      ],
+      "controls": [
+        {
+          "control_id": "C14",
+          "control_name": "Model Testing",
+          "maturity_score": 3,
+          "maturity_label": "defined",
+          "evidence_summary": "WAPE and MASE thresholds defined; seasonal hold-out test documented.",
+          "confidence": 0.82,
+          "source_frameworks": [
+            "ISO 42001"
+          ],
+          "eu_ai_act_articles": [
+            "Article 15"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": true
+          },
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D4",
+      "domain_name": "Transparency and Explainability",
+      "domain_score": 2.8,
+      "domain_eu_ai_act_articles": [
+        "Article 13"
+      ],
+      "controls": [
+        {
+          "control_id": "C20",
+          "control_name": "Model Card",
+          "maturity_score": 3,
+          "maturity_label": "defined",
+          "evidence_summary": "Model card references Chronos-T5-Tiny; limited detail on fine-tuning.",
+          "confidence": 0.75,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 13"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": true
+          },
+          "gap_severity": null
+        },
+        {
+          "control_id": "C21",
+          "control_name": "Explainability Reports",
+          "maturity_score": 2,
+          "maturity_label": "developing",
+          "evidence_summary": "RF wrapper SHAP available but not surfaced to deployers yet.",
+          "confidence": 0.7,
+          "source_frameworks": [
+            "ISO 42001"
+          ],
+          "eu_ai_act_articles": [
+            "Article 13"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": false
+          },
+          "gap_severity": "minor"
+        }
+      ]
+    },
+    {
+      "domain_id": "D5",
+      "domain_name": "Human Oversight and Accountability",
+      "domain_score": 2.9,
+      "domain_eu_ai_act_articles": [
+        "Article 14"
+      ],
+      "controls": [
+        {
+          "control_id": "C26",
+          "control_name": "Human Oversight Roles",
+          "maturity_score": 3,
+          "maturity_label": "defined",
+          "evidence_summary": "Procurement managers override forecasts manually; process documented.",
+          "confidence": 0.78,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 14"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": true
+          },
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D6",
+      "domain_name": "Monitoring and Incident Response",
+      "domain_score": 2.5,
+      "domain_eu_ai_act_articles": [
+        "Article 72"
+      ],
+      "controls": [
+        {
+          "control_id": "C30",
+          "control_name": "Incident Response Procedures",
+          "maturity_score": 2,
+          "maturity_label": "developing",
+          "evidence_summary": "No formal IR runbook; escalation contacts exist but undocumented.",
+          "confidence": 0.58,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 72"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": false
+          },
+          "gap_severity": "minor"
+        },
+        {
+          "control_id": "C31",
+          "control_name": "Automated Monitoring",
+          "maturity_score": 3,
+          "maturity_label": "defined",
+          "evidence_summary": "Grafana WAPE/MASE dashboard with Slack alerts operational.",
+          "confidence": 0.8,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 72"
+          ],
+          "hard_constraint": {
+            "applicable": false,
+            "threshold_score": null,
+            "satisfied": true
+          },
+          "gap_severity": null
+        }
+      ]
+    }
+  ],
+  "eu_ai_act_compliance_matrix": {
+    "article_9": {
+      "article_reference": "Article 9",
+      "article_title": "Risk management system",
+      "status": "satisfied",
+      "controls_mapped": [
+        "C01"
+      ],
+      "controls_satisfied": [
+        "C01"
+      ],
+      "coverage_pct": 100.0,
+      "hard_constraints_violated": [],
+      "article_summary": "Basic risk identification for limited-risk system."
+    },
+    "article_13": {
+      "article_reference": "Article 13",
+      "article_title": "Transparency",
+      "status": "partially_satisfied",
+      "controls_mapped": [
+        "C20",
+        "C21"
+      ],
+      "controls_satisfied": [
+        "C20"
+      ],
+      "coverage_pct": 50.0,
+      "hard_constraints_violated": [],
+      "article_summary": "Model card present; SHAP explainability not yet exposed to deployers."
+    },
+    "article_50": {
+      "article_reference": "Article 50",
+      "article_title": "Transparency obligations",
+      "status": "satisfied",
+      "controls_mapped": [
+        "C20"
+      ],
+      "controls_satisfied": [
+        "C20"
+      ],
+      "coverage_pct": 100.0,
+      "hard_constraints_violated": [],
+      "article_summary": "Voluntary Art. 50 declaration filed."
+    }
+  },
+  "hard_constraint_results": {
+    "csp_satisfiable": true,
+    "total_hard_constraints": 10,
+    "violated_constraints": [],
+    "satisfied_constraints": [
+      {
+        "control_id": "C01",
+        "control_name": "Risk Identification",
+        "required_score": 2,
+        "actual_score": 3,
+        "eu_ai_act_article": "Article 9"
+      },
+      {
+        "control_id": "C07",
+        "control_name": "Data Quality",
+        "required_score": 2,
+        "actual_score": 3,
+        "eu_ai_act_article": "Article 10 point 2"
+      }
+    ]
+  },
+  "remediation_roadmap": [
+    {
+      "rank": 1,
+      "control_id": "C30",
+      "control_name": "Incident Response",
+      "gap_severity": "minor",
+      "current_score": 2,
+      "target_score": 3,
+      "action": "Create formal IR runbook with escalation contacts and SLA commitments.",
+      "eu_ai_act_article": "Article 72",
+      "effort_estimate": "low",
+      "timeline_weeks": 3,
+      "priority_rationale": "Monitoring plan references IR procedures that do not yet exist in writing."
+    },
+    {
+      "rank": 2,
+      "control_id": "C21",
+      "control_name": "Explainability Reports",
+      "gap_severity": "minor",
+      "current_score": 2,
+      "target_score": 3,
+      "action": "Surface RF wrapper SHAP plots in deployer dashboard and quarterly report.",
+      "eu_ai_act_article": "Article 13",
+      "effort_estimate": "low",
+      "timeline_weeks": 4,
+      "priority_rationale": "Transparency to deployers requires explainability reports be accessible."
+    }
+  ],
+  "aaa_phase5_handoff": {
+    "phase5_verdict": "PASS_WITH_OBSERVATIONS",
+    "phase5_narrative_summary": "CSP satisfiable. DemandPulse v3.0 meets baseline governance requirements for a limited-risk system. Two minor observations: (1) Incident response procedures are undocumented; (2) SHAP explainability not surfaced to deployers. EU AI Act coverage 78.0% is below 80% target -- two quick remediation actions would close the gap. No hard constraints violated.",
+    "blocking_findings_count": 0,
+    "blocking_findings": [],
+    "positive_findings": [
+      {
+        "control_id": "C31",
+        "control_name": "Automated Monitoring",
+        "maturity_score": 3,
+        "finding": "Real-time Grafana dashboard with WAPE/MASE Slack alerts is operational and well-documented."
+      },
+      {
+        "control_id": "C07",
+        "control_name": "Data Quality",
+        "maturity_score": 3,
+        "finding": "Aggregate-only data pipeline with no PII; retention and access policy clearly documented."
+      }
+    ],
+    "low_confidence_controls": [
+      {
+        "control_id": "C30",
+        "control_name": "Incident Response Procedures",
+        "confidence": 0.58,
+        "flag_reason": "Evidence referenced in PMM plan but actual IR runbook not found in submitted documents."
+      }
+    ],
+    "aaa_recommended_follow_up": [
+      {
+        "recommendation": "Document IR runbook (C30) before next quarterly review.",
+        "rationale": "Referenced in PMM but absent from submitted evidence.",
+        "urgency": "recommended"
+      },
+      {
+        "recommendation": "Publish SHAP explainability summary in deployer portal (C21).",
+        "rationale": "Improves Art. 13 coverage above 80% threshold.",
+        "urgency": "recommended"
+      }
+    ],
+    "cgsa_report_url": "https://cgsa.example/reports/retailiq-demandpulse-001"
+  }
+}

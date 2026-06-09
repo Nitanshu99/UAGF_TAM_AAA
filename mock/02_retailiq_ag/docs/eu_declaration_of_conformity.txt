@@ -1,0 +1,14 @@
+EU TRANSPARENCY DECLARATION (Art. 50)
+RetailIQ AG  |  Theaterstrasse 12, 8001 Zurich, Switzerland
+CHE-123.456.789 | EU Representative: RetailIQ EU SARL, Paris
+
+AI System: DemandPulse v3.0
+Purpose:   Demand forecasting for EU grocery and FMCG retailers
+Risk tier: LIMITED -- not Annex III listed
+
+This declaration confirms voluntary compliance with Art. 50 transparency
+obligations. DemandPulse v3.0 is based on Amazon Chronos-T5-Tiny,
+a publicly available time-series foundation model (HuggingFace: amazon/chronos-t5-tiny).
+
+Zurich, 2026-02-05
+Signed: Marco Eigenmann, CEO -- RetailIQ AG

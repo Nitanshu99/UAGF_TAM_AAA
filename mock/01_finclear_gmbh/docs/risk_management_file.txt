@@ -1,0 +1,38 @@
+FinClear GmbH -- CreditGuard v2.1
+RISK MANAGEMENT SYSTEM FILE  |  Ref: RMF-CG-v2.1-2026
+Pursuant to EU AI Act Article 9 and Annex IV para 5
+Approved by: Dr. Katrin Schulz, CRMO  |  Date: 2026-01-15
+
+1. SCOPE
+CreditGuard v2.1 is a gradient-boosted tree model (XGBoost 2.0) deployed
+by Deutsche Partner Bank AG (Berlin) to score retail loan applicants.
+Risk tier: HIGH -- Annex III para 5(b) (access to credit services).
+
+2. IDENTIFIED RISKS  (Art. 9 para 2(a))
+R-001  Discriminatory credit denial for protected groups    HIGH
+R-002  Model decay / concept drift post-deployment         MEDIUM
+R-003  Adversarial feature manipulation by applicants       MEDIUM
+R-004  Data quality failures in upstream banking systems    MEDIUM
+R-005  Human oversight bypass under time pressure           HIGH
+
+3. MITIGATION MEASURES  (Art. 9 para 2(c))
+R-001: Monthly demographic parity monitoring; SHAP feature auditing;
+       equal-opportunity threshold calibration per gender and age cohort.
+R-002: PSI drift monitoring (alert threshold PSI > 0.2); monthly review.
+R-003: L-infinity adversarial robustness test (eps=0.01) at each release.
+R-004: Quarterly data source audit; provenance tracking in MLflow.
+R-005: Two-person adverse-decision review; UI hard-stop at confidence < 0.55.
+
+4. TESTING BEFORE MARKET PLACEMENT  (Art. 9 para 5)
+[x] 5-fold stratified CV (AUC >= 0.80)
+[x] Calibration via isotonic regression
+[x] Demographic parity delta -- gender (|delta| <= 0.05)
+[x] Age-group parity (|delta| <= 0.08)
+[x] Adversarial robustness probe (L-inf eps=0.01)
+[x] PSI baseline established
+
+5. HARMONISED STANDARDS
+ISO/IEC 42001:2023 | ISO/IEC 23894:2023 | ISO/IEC TR 24028:2020
+ISO/IEC 5259-1:2024 | EBA/GL/2019/04 ICT Risk Guidelines
+
+Residual risks accepted at Board level on 2026-01-15.

@@ -1,0 +1,32 @@
+{
+  "general_description": "IsolationForest anomaly detection model trained on 5000 sensor readings from 12 port cranes. Features: vibration, temperature, hydraulic pressure, load, speed, power, and operational metadata. Output: anomaly score and alert flag. Industry-standard approach for OT/ICS anomaly detection.",
+  "model_type": "isolation_forest_anomaly_detection",
+  "design_process": "IsolationForest with contamination=0.05 trained on normal operating data. No labelled anomaly data available at training time (unsupervised). Threshold tuned on 3-month historical alert validation.",
+  "training_data_description": "5000 sensor readings from 12 Hamburg Harbour cranes, 2025-Q4. Features: vibration_hz, temperature_c, load_kn, hydraulic_pressure_bar, speed_rpm, power_kw, and 6 additional operational metrics. Worker IDs are hashed.",
+  "data_governance_measures": "[DRAFT] Data validation pipeline under development. Current: basic range checks only. Worker operational logs pseudonymised. Art. 10 data governance framework not yet fully implemented.",
+  "monitoring_measures": "Daily anomaly count dashboard; weekly false-positive rate review. Monthly full review NOT yet operational.",
+  "logging_capabilities": "Per-alert log: timestamp, crane_id, score, alert_flag, operator_acknowledgement. Retained 3 years. Logging system operational.",
+  "accuracy_metrics": {
+    "contamination": 0.05,
+    "target_fnr": 0.02,
+    "target_fpr": 0.1
+  },
+  "robustness_metrics": null,
+  "risk_management_file_uri": "mock/03_harbourlogistik_gmbh/docs/risk_management_file.txt",
+  "lifecycle_change_log": [
+    "v1.0 initial 2024-06-01",
+    "v1.2 threshold retuning 2025-01-01",
+    "v1.4 12-crane expansion 2025-10-01"
+  ],
+  "harmonised_standards": [],
+  "other_standards": [
+    "IEC 62443 series (partially implemented)"
+  ],
+  "eu_doc_uri": "mock/03_harbourlogistik_gmbh/docs/eu_declaration_of_conformity.txt",
+  "post_market_plan_uri": "mock/03_harbourlogistik_gmbh/docs/post_market_monitoring_plan.txt",
+  "system_prompt_uri": null,
+  "rag_manifest_uri": null,
+  "tool_inventory": null,
+  "guardrail_config_uri": null,
+  "golden_set_uri": null
+}

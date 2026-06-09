@@ -1,0 +1,502 @@
+{
+  "schema_version": "1.0.0",
+  "metadata": {
+    "assessment_id": "legalmindd-lexai-001",
+    "organisation_name": "LegalMind AI Ltd",
+    "system_under_audit": "LexAI v2.0",
+    "cgsa_version": "1.0.0",
+    "assessment_timestamp": "2026-05-28T12:00:00Z",
+    "risk_tier": "high",
+    "document_sources": [
+      "risk_management_file.txt",
+      "system_prompt.txt",
+      "rag_manifest.json",
+      "guardrail_config.json"
+    ],
+    "uagf_gmm_version": "1.0.0"
+  },
+  "overall_scores": {
+    "composite_maturity_score": 3.1,
+    "composite_maturity_label": "defined",
+    "eu_ai_act_coverage_pct": 82.0,
+    "csp_satisfiable": true,
+    "governance_verdict": "partially_compliant",
+    "controls_assessed": 35,
+    "controls_meeting_threshold": 28,
+    "controls_below_threshold": 7
+  },
+  "domains": [
+    {
+      "domain_id": "D1",
+      "domain_name": "Risk Management",
+      "domain_score": 3.5,
+      "domain_eu_ai_act_articles": [
+        "Article 9"
+      ],
+      "controls": [
+        {
+          "control_id": "C01",
+          "control_name": "Risk Identification",
+          "maturity_score": 4,
+          "maturity_label": "optimised",
+          "evidence_summary": "Five risks identified including hallucination and prompt injection; all have documented mitigations.",
+          "confidence": 0.92,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 9"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": true
+          },
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D2",
+      "domain_name": "Data Governance",
+      "domain_score": 3.4,
+      "domain_eu_ai_act_articles": [
+        "Article 10"
+      ],
+      "controls": [
+        {
+          "control_id": "C07",
+          "control_name": "Data Quality",
+          "maturity_score": 3,
+          "maturity_label": "defined",
+          "evidence_summary": "Training data publicly sourced and documented. Client data isolated per engagement.",
+          "confidence": 0.88,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 10 point 2"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": true
+          },
+          "gap_severity": null
+        },
+        {
+          "control_id": "C08",
+          "control_name": "GDPR Compliance",
+          "maturity_score": 4,
+          "maturity_label": "optimised",
+          "evidence_summary": "DPIA completed; DPA with deployers; per-engagement Qdrant isolation; EU data residency confirmed.",
+          "confidence": 0.9,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 10"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": true
+          },
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D3",
+      "domain_name": "Model Development and Testing",
+      "domain_score": 2.8,
+      "domain_eu_ai_act_articles": [
+        "Article 15"
+      ],
+      "controls": [
+        {
+          "control_id": "C14",
+          "control_name": "Model Testing",
+          "maturity_score": 3,
+          "maturity_label": "defined",
+          "evidence_summary": "RAGAS evaluation on golden eval set; citation verifier; NLI hallucination detector operational.",
+          "confidence": 0.82,
+          "source_frameworks": [
+            "ISO 42001"
+          ],
+          "eu_ai_act_articles": [
+            "Article 15"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": true
+          },
+          "gap_severity": null
+        },
+        {
+          "control_id": "C15",
+          "control_name": "Adversarial Robustness",
+          "maturity_score": 2,
+          "maturity_label": "developing",
+          "evidence_summary": "Prompt injection detection present but formal red-team methodology not yet documented.",
+          "confidence": 0.65,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 15"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": false
+          },
+          "gap_severity": "minor"
+        }
+      ]
+    },
+    {
+      "domain_id": "D4",
+      "domain_name": "Transparency and Explainability",
+      "domain_score": 2.9,
+      "domain_eu_ai_act_articles": [
+        "Article 13"
+      ],
+      "controls": [
+        {
+          "control_id": "C20",
+          "control_name": "Model Card",
+          "maturity_score": 3,
+          "maturity_label": "defined",
+          "evidence_summary": "Model card covers Mistral-7B base, LoRA fine-tune, intended purpose, limitations.",
+          "confidence": 0.84,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 13"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": true
+          },
+          "gap_severity": null
+        },
+        {
+          "control_id": "C21",
+          "control_name": "Explainability to Deployers",
+          "maturity_score": 2,
+          "maturity_label": "developing",
+          "evidence_summary": "Citation verifier present; attribution chain not fully exposed in deployer dashboard.",
+          "confidence": 0.7,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 13"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": false
+          },
+          "gap_severity": "minor"
+        }
+      ]
+    },
+    {
+      "domain_id": "D5",
+      "domain_name": "Human Oversight and Accountability",
+      "domain_score": 3.6,
+      "domain_eu_ai_act_articles": [
+        "Article 14"
+      ],
+      "controls": [
+        {
+          "control_id": "C26",
+          "control_name": "Human Oversight Roles",
+          "maturity_score": 4,
+          "maturity_label": "optimised",
+          "evidence_summary": "All responses require qualified solicitor review; disclaimer enforced in system prompt.",
+          "confidence": 0.91,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 14"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": true
+          },
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D6",
+      "domain_name": "Monitoring and Incident Response",
+      "domain_score": 3.2,
+      "domain_eu_ai_act_articles": [
+        "Article 17",
+        "Article 72"
+      ],
+      "controls": [
+        {
+          "control_id": "C30",
+          "control_name": "Incident Response",
+          "maturity_score": 3,
+          "maturity_label": "defined",
+          "evidence_summary": "IR runbook with 72h DPC reporting SLA; triggered on confirmed hallucination.",
+          "confidence": 0.85,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 72"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": true
+          },
+          "gap_severity": null
+        },
+        {
+          "control_id": "C31",
+          "control_name": "Automated Monitoring",
+          "maturity_score": 4,
+          "maturity_label": "optimised",
+          "evidence_summary": "Weekly citation pass rate; monthly RAGAS; quarterly red-team fully scheduled.",
+          "confidence": 0.88,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 72"
+          ],
+          "hard_constraint": {
+            "applicable": false,
+            "threshold_score": null,
+            "satisfied": true
+          },
+          "gap_severity": null
+        }
+      ]
+    }
+  ],
+  "eu_ai_act_compliance_matrix": {
+    "article_9": {
+      "article_reference": "Article 9",
+      "article_title": "Risk management",
+      "status": "satisfied",
+      "controls_mapped": [
+        "C01"
+      ],
+      "controls_satisfied": [
+        "C01"
+      ],
+      "coverage_pct": 100.0,
+      "hard_constraints_violated": [],
+      "article_summary": "Five risks with documented mitigations including hallucination and prompt injection."
+    },
+    "article_10": {
+      "article_reference": "Article 10",
+      "article_title": "Data governance",
+      "status": "satisfied",
+      "controls_mapped": [
+        "C07",
+        "C08"
+      ],
+      "controls_satisfied": [
+        "C07",
+        "C08"
+      ],
+      "coverage_pct": 100.0,
+      "hard_constraints_violated": [],
+      "article_summary": "Public training data; DPIA completed; per-engagement isolation; EU residency."
+    },
+    "article_13": {
+      "article_reference": "Article 13",
+      "article_title": "Transparency",
+      "status": "partially_satisfied",
+      "controls_mapped": [
+        "C20",
+        "C21"
+      ],
+      "controls_satisfied": [
+        "C20"
+      ],
+      "coverage_pct": 50.0,
+      "hard_constraints_violated": [],
+      "article_summary": "Model card present; attribution chain not surfaced to deployers."
+    },
+    "article_14": {
+      "article_reference": "Article 14",
+      "article_title": "Human oversight",
+      "status": "satisfied",
+      "controls_mapped": [
+        "C26"
+      ],
+      "controls_satisfied": [
+        "C26"
+      ],
+      "coverage_pct": 100.0,
+      "hard_constraints_violated": [],
+      "article_summary": "Solicitor review required for all outputs; disclaimer enforced."
+    },
+    "article_15": {
+      "article_reference": "Article 15",
+      "article_title": "Accuracy and robustness",
+      "status": "partially_satisfied",
+      "controls_mapped": [
+        "C14",
+        "C15"
+      ],
+      "controls_satisfied": [
+        "C14"
+      ],
+      "coverage_pct": 50.0,
+      "hard_constraints_violated": [],
+      "article_summary": "RAGAS evaluation in place; red-team methodology not formally documented."
+    },
+    "article_50": {
+      "article_reference": "Article 50",
+      "article_title": "Transparency obligations",
+      "status": "satisfied",
+      "controls_mapped": [
+        "C26"
+      ],
+      "controls_satisfied": [
+        "C26"
+      ],
+      "coverage_pct": 100.0,
+      "hard_constraints_violated": [],
+      "article_summary": "System identifies as AI in every response; disclaimer enforced."
+    }
+  },
+  "hard_constraint_results": {
+    "csp_satisfiable": true,
+    "total_hard_constraints": 14,
+    "violated_constraints": [],
+    "satisfied_constraints": [
+      {
+        "control_id": "C01",
+        "control_name": "Risk Identification",
+        "required_score": 3,
+        "actual_score": 4,
+        "eu_ai_act_article": "Article 9"
+      },
+      {
+        "control_id": "C07",
+        "control_name": "Data Quality",
+        "required_score": 3,
+        "actual_score": 3,
+        "eu_ai_act_article": "Article 10 point 2"
+      },
+      {
+        "control_id": "C26",
+        "control_name": "Human Oversight",
+        "required_score": 3,
+        "actual_score": 4,
+        "eu_ai_act_article": "Article 14"
+      },
+      {
+        "control_id": "C30",
+        "control_name": "Incident Response",
+        "required_score": 3,
+        "actual_score": 3,
+        "eu_ai_act_article": "Article 72"
+      }
+    ]
+  },
+  "remediation_roadmap": [
+    {
+      "rank": 1,
+      "control_id": "C15",
+      "control_name": "Adversarial Robustness",
+      "gap_severity": "minor",
+      "current_score": 2,
+      "target_score": 3,
+      "action": "Document formal red-team methodology covering prompt injection, jailbreak, and role-playing attack patterns per OWASP LLM Top 10.",
+      "eu_ai_act_article": "Article 15",
+      "effort_estimate": "medium",
+      "timeline_weeks": 6,
+      "priority_rationale": "Robustness framework partially implemented but not formally documented as required."
+    },
+    {
+      "rank": 2,
+      "control_id": "C21",
+      "control_name": "Explainability to Deployers",
+      "gap_severity": "minor",
+      "current_score": 2,
+      "target_score": 3,
+      "action": "Surface attribution chain (source documents, retrieval scores, verification status) in deployer dashboard.",
+      "eu_ai_act_article": "Article 13",
+      "effort_estimate": "low",
+      "timeline_weeks": 4,
+      "priority_rationale": "Art. 13 requires deployers to interpret outputs; attribution chain is essential for legal research."
+    }
+  ],
+  "aaa_phase5_handoff": {
+    "phase5_verdict": "PASS_WITH_OBSERVATIONS",
+    "phase5_narrative_summary": "CSP satisfiable. LexAI v2.0 demonstrates generally mature governance for a high-risk agentic LLM under Annex III para 8. Two minor observations: (1) adversarial red-team methodology not formally documented; (2) attribution chain not surfaced to deployers. EU AI Act coverage 82.0% above 80% threshold. GDPR compliance is strong. PrivacyAgent spawn recommended: special-category data + privileged legal communications.",
+    "blocking_findings_count": 0,
+    "blocking_findings": [],
+    "positive_findings": [
+      {
+        "control_id": "C01",
+        "control_name": "Risk Identification",
+        "maturity_score": 4,
+        "finding": "Legal hallucination and prompt injection risks explicitly documented with technical mitigations."
+      },
+      {
+        "control_id": "C08",
+        "control_name": "GDPR Compliance",
+        "maturity_score": 4,
+        "finding": "DPIA completed; DPA with deployers; per-engagement Qdrant isolation; EU data residency confirmed."
+      },
+      {
+        "control_id": "C26",
+        "control_name": "Human Oversight",
+        "maturity_score": 4,
+        "finding": "System prompt enforces solicitor review; disclaimer present in every response."
+      }
+    ],
+    "low_confidence_controls": [
+      {
+        "control_id": "C15",
+        "control_name": "Adversarial Robustness",
+        "confidence": 0.65,
+        "flag_reason": "Prompt injection detection present but formal red-team methodology and test results not in submitted evidence."
+      },
+      {
+        "control_id": "C21",
+        "control_name": "Explainability to Deployers",
+        "confidence": 0.7,
+        "flag_reason": "Citation verifier in guardrail config but deployer-facing attribution dashboard not evidenced."
+      }
+    ],
+    "aaa_recommended_follow_up": [
+      {
+        "recommendation": "Document formal red-team methodology (C15) before next quarterly cycle.",
+        "rationale": "Art. 15 requires documented robustness testing.",
+        "urgency": "recommended"
+      },
+      {
+        "recommendation": "Surface attribution chain in deployer dashboard (C21).",
+        "rationale": "Improves Art. 13 coverage and reduces hallucination risk for legal professionals.",
+        "urgency": "recommended"
+      },
+      {
+        "recommendation": "Privacy Agent: verify DPIA covers agentic tool-calling data flows.",
+        "rationale": "Tool-calling agents may process personal data outside the primary RAG pipeline.",
+        "urgency": "recommended"
+      }
+    ],
+    "cgsa_report_url": "https://cgsa.example/reports/legalmindd-lexai-001"
+  }
+}

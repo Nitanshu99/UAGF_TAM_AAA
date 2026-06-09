@@ -1,0 +1,45 @@
+{
+  "version": "2.0",
+  "input_guardrails": [
+    {
+      "name": "prompt_injection_detector",
+      "model": "deepset/prompt-injection-deberta-v3-base-injection",
+      "threshold": 0.85,
+      "action": "block_and_alert"
+    },
+    {
+      "name": "pii_detector",
+      "model": "presidio-analyzer",
+      "action": "flag_for_review"
+    }
+  ],
+  "output_guardrails": [
+    {
+      "name": "llama_guard",
+      "model": "meta-llama/LlamaGuard-7b",
+      "categories": [
+        "legal_advice",
+        "harmful_content"
+      ],
+      "action": "block_and_add_disclaimer"
+    },
+    {
+      "name": "citation_verifier",
+      "type": "rag_lookup",
+      "action": "append_verification_status"
+    },
+    {
+      "name": "hallucination_detector",
+      "type": "nli_model",
+      "model": "cross-encoder/nli-deberta-v3-small",
+      "threshold": 0.8,
+      "action": "add_confidence_warning"
+    }
+  ],
+  "disclaimer": "LexAI provides research assistance only. Not legal advice.",
+  "logging": {
+    "all_interactions": true,
+    "blocked_prompts": true,
+    "retention_days": 365
+  }
+}

@@ -1,0 +1,474 @@
+{
+  "schema_version": "1.0.0",
+  "metadata": {
+    "assessment_id": "harbourlogistik-harboursense-001",
+    "organisation_name": "HarbourLogistik GmbH",
+    "system_under_audit": "HarbourSense v1.4",
+    "cgsa_version": "1.0.0",
+    "assessment_timestamp": "2026-05-28T11:00:00Z",
+    "risk_tier": "high",
+    "document_sources": [
+      "risk_management_file.txt",
+      "eu_declaration_of_conformity.txt",
+      "post_market_monitoring_plan.txt"
+    ],
+    "uagf_gmm_version": "1.0.0"
+  },
+  "overall_scores": {
+    "composite_maturity_score": 2.2,
+    "composite_maturity_label": "initial",
+    "eu_ai_act_coverage_pct": 52.0,
+    "csp_satisfiable": false,
+    "governance_verdict": "non_compliant",
+    "controls_assessed": 38,
+    "controls_meeting_threshold": 14,
+    "controls_below_threshold": 24
+  },
+  "domains": [
+    {
+      "domain_id": "D1",
+      "domain_name": "Risk Management",
+      "domain_score": 2.5,
+      "domain_eu_ai_act_articles": [
+        "Article 9"
+      ],
+      "controls": [
+        {
+          "control_id": "C01",
+          "control_name": "Risk Identification",
+          "maturity_score": 3,
+          "maturity_label": "defined",
+          "evidence_summary": "Four risks identified; mitigation steps partially documented.",
+          "confidence": 0.8,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 9"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": true
+          },
+          "gap_severity": null
+        },
+        {
+          "control_id": "C02",
+          "control_name": "Risk Sign-off",
+          "maturity_score": 1,
+          "maturity_label": "initial",
+          "evidence_summary": "RMF marked DRAFT; no CRMO formal sign-off.",
+          "confidence": 0.85,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 9"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": false
+          },
+          "gap_severity": "major"
+        }
+      ]
+    },
+    {
+      "domain_id": "D2",
+      "domain_name": "Data Governance",
+      "domain_score": 1.5,
+      "domain_eu_ai_act_articles": [
+        "Article 10"
+      ],
+      "controls": [
+        {
+          "control_id": "C07",
+          "control_name": "Data Quality Management",
+          "maturity_score": 1,
+          "maturity_label": "initial",
+          "evidence_summary": "No formal data validation pipeline. Range checks only. Critical gap for Art. 10.",
+          "confidence": 0.9,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 10 point 2"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": false
+          },
+          "gap_severity": "critical"
+        }
+      ]
+    },
+    {
+      "domain_id": "D3",
+      "domain_name": "Model Development and Testing",
+      "domain_score": 2.5,
+      "domain_eu_ai_act_articles": [
+        "Article 15"
+      ],
+      "controls": [
+        {
+          "control_id": "C14",
+          "control_name": "Model Testing",
+          "maturity_score": 3,
+          "maturity_label": "defined",
+          "evidence_summary": "Threshold tuned on historical alerts; false-positive rate tracked.",
+          "confidence": 0.75,
+          "source_frameworks": [
+            "ISO 42001"
+          ],
+          "eu_ai_act_articles": [
+            "Article 15"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": true
+          },
+          "gap_severity": null
+        },
+        {
+          "control_id": "C15",
+          "control_name": "Adversarial Robustness",
+          "maturity_score": 1,
+          "maturity_label": "initial",
+          "evidence_summary": "No adversarial robustness framework implemented. Critical for OT/ICS.",
+          "confidence": 0.88,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 15"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": false
+          },
+          "gap_severity": "critical"
+        }
+      ]
+    },
+    {
+      "domain_id": "D4",
+      "domain_name": "Transparency and Explainability",
+      "domain_score": 2.0,
+      "domain_eu_ai_act_articles": [
+        "Article 13"
+      ],
+      "controls": [
+        {
+          "control_id": "C20",
+          "control_name": "Model Card",
+          "maturity_score": 2,
+          "maturity_label": "developing",
+          "evidence_summary": "Partial model card in DRAFT RMF; not published to deployer.",
+          "confidence": 0.72,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 13"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": false
+          },
+          "gap_severity": "major"
+        }
+      ]
+    },
+    {
+      "domain_id": "D5",
+      "domain_name": "Human Oversight and Accountability",
+      "domain_score": 2.8,
+      "domain_eu_ai_act_articles": [
+        "Article 14"
+      ],
+      "controls": [
+        {
+          "control_id": "C26",
+          "control_name": "Human Oversight Roles",
+          "maturity_score": 3,
+          "maturity_label": "defined",
+          "evidence_summary": "Operator confirmation required before shutdown; roles documented.",
+          "confidence": 0.82,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 14"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": true
+          },
+          "gap_severity": null
+        }
+      ]
+    },
+    {
+      "domain_id": "D6",
+      "domain_name": "Monitoring and Incident Response",
+      "domain_score": 2.0,
+      "domain_eu_ai_act_articles": [
+        "Article 72"
+      ],
+      "controls": [
+        {
+          "control_id": "C30",
+          "control_name": "Incident Response Procedures",
+          "maturity_score": 1,
+          "maturity_label": "initial",
+          "evidence_summary": "No formal IR runbook. Ad-hoc escalation only. Critical for critical infra.",
+          "confidence": 0.88,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 72"
+          ],
+          "hard_constraint": {
+            "applicable": true,
+            "threshold_score": 3,
+            "satisfied": false
+          },
+          "gap_severity": "critical"
+        },
+        {
+          "control_id": "C31",
+          "control_name": "Post-Market Monitoring",
+          "maturity_score": 2,
+          "maturity_label": "developing",
+          "evidence_summary": "Daily dashboard operational; monthly review not yet scheduled.",
+          "confidence": 0.8,
+          "source_frameworks": [
+            "EU AI Act"
+          ],
+          "eu_ai_act_articles": [
+            "Article 72"
+          ],
+          "hard_constraint": {
+            "applicable": false,
+            "threshold_score": null,
+            "satisfied": true
+          },
+          "gap_severity": null
+        }
+      ]
+    }
+  ],
+  "eu_ai_act_compliance_matrix": {
+    "article_9": {
+      "article_reference": "Article 9",
+      "article_title": "Risk management system",
+      "status": "partially_satisfied",
+      "controls_mapped": [
+        "C01",
+        "C02"
+      ],
+      "controls_satisfied": [
+        "C01"
+      ],
+      "coverage_pct": 50.0,
+      "hard_constraints_violated": [
+        "C02"
+      ],
+      "article_summary": "Risk identification present but RMF in DRAFT; no formal sign-off."
+    },
+    "article_10": {
+      "article_reference": "Article 10",
+      "article_title": "Data and data governance",
+      "status": "not_satisfied",
+      "controls_mapped": [
+        "C07"
+      ],
+      "controls_satisfied": [],
+      "coverage_pct": 0.0,
+      "hard_constraints_violated": [
+        "C07"
+      ],
+      "article_summary": "No formal data validation pipeline. Hard constraint violated."
+    },
+    "article_15": {
+      "article_reference": "Article 15",
+      "article_title": "Accuracy and robustness",
+      "status": "not_satisfied",
+      "controls_mapped": [
+        "C14",
+        "C15"
+      ],
+      "controls_satisfied": [
+        "C14"
+      ],
+      "coverage_pct": 50.0,
+      "hard_constraints_violated": [
+        "C15"
+      ],
+      "article_summary": "Adversarial robustness not implemented for critical infrastructure system."
+    },
+    "article_72": {
+      "article_reference": "Article 72",
+      "article_title": "Post-market monitoring",
+      "status": "not_satisfied",
+      "controls_mapped": [
+        "C30",
+        "C31"
+      ],
+      "controls_satisfied": [],
+      "coverage_pct": 0.0,
+      "hard_constraints_violated": [
+        "C30"
+      ],
+      "article_summary": "No formal IR runbook. Monthly review not operational."
+    }
+  },
+  "hard_constraint_results": {
+    "csp_satisfiable": false,
+    "total_hard_constraints": 18,
+    "violated_constraints": [
+      {
+        "control_id": "C07",
+        "control_name": "Data Quality Management",
+        "required_score": 3,
+        "actual_score": 1,
+        "score_delta": 2,
+        "eu_ai_act_article": "Article 10 point 2",
+        "violation_description": "No formal data validation pipeline. Only basic range checks implemented."
+      },
+      {
+        "control_id": "C15",
+        "control_name": "Adversarial Robustness",
+        "required_score": 3,
+        "actual_score": 1,
+        "score_delta": 2,
+        "eu_ai_act_article": "Article 15",
+        "violation_description": "No adversarial robustness framework for OT/ICS system on critical infrastructure."
+      },
+      {
+        "control_id": "C30",
+        "control_name": "Incident Response",
+        "required_score": 3,
+        "actual_score": 1,
+        "score_delta": 2,
+        "eu_ai_act_article": "Article 72",
+        "violation_description": "No formal incident response runbook for critical infrastructure system."
+      }
+    ],
+    "satisfied_constraints": [
+      {
+        "control_id": "C01",
+        "control_name": "Risk Identification",
+        "required_score": 3,
+        "actual_score": 3,
+        "eu_ai_act_article": "Article 9"
+      },
+      {
+        "control_id": "C26",
+        "control_name": "Human Oversight Roles",
+        "required_score": 3,
+        "actual_score": 3,
+        "eu_ai_act_article": "Article 14"
+      }
+    ]
+  },
+  "remediation_roadmap": [
+    {
+      "rank": 1,
+      "control_id": "C07",
+      "control_name": "Data Quality Management",
+      "gap_severity": "critical",
+      "current_score": 1,
+      "target_score": 3,
+      "action": "Implement formal data validation pipeline with range, completeness, and provenance checks per Art. 10.",
+      "eu_ai_act_article": "Article 10 point 2",
+      "effort_estimate": "high",
+      "timeline_weeks": 8,
+      "priority_rationale": "Hard constraint violation. No compliant deployment possible without data governance."
+    },
+    {
+      "rank": 2,
+      "control_id": "C30",
+      "control_name": "Incident Response",
+      "gap_severity": "critical",
+      "current_score": 1,
+      "target_score": 3,
+      "action": "Create and test formal IR runbook with escalation contacts, SLA, and BSI/BSH reporting procedures.",
+      "eu_ai_act_article": "Article 72",
+      "effort_estimate": "medium",
+      "timeline_weeks": 6,
+      "priority_rationale": "Critical infrastructure system with no formal incident response is unacceptable."
+    },
+    {
+      "rank": 3,
+      "control_id": "C15",
+      "control_name": "Adversarial Robustness",
+      "gap_severity": "critical",
+      "current_score": 1,
+      "target_score": 3,
+      "action": "Implement adversarial robustness framework: sensor spoofing tests, FGSM probes, anomaly detection on inputs per Art. 15.",
+      "eu_ai_act_article": "Article 15",
+      "effort_estimate": "high",
+      "timeline_weeks": 12,
+      "priority_rationale": "OT/ICS systems on critical infrastructure require adversarial robustness under EU AI Act Art. 15."
+    }
+  ],
+  "aaa_phase5_handoff": {
+    "phase5_verdict": "FAIL",
+    "phase5_narrative_summary": "CSP NOT satisfiable: 3 hard constraints violated (C07 data governance, C15 adversarial robustness, C30 incident response). EU AI Act coverage 52.0% is well below the 80% threshold. HarbourSense v1.4 cannot be placed on the EU market or continue operation in its current form. Three critical remediation actions required before any re-assessment. CyberAgent spawn recommended due to Art. 15 violation on critical infrastructure.",
+    "blocking_findings_count": 3,
+    "blocking_findings": [
+      {
+        "control_id": "C07",
+        "control_name": "Data Quality Management",
+        "finding": "No formal data validation pipeline. Art. 10 para 2(b) requires documented data governance for high-risk AI systems.",
+        "eu_ai_act_article": "Article 10 point 2",
+        "remediation_action": "Implement formal data validation with provenance tracking (8 weeks)."
+      },
+      {
+        "control_id": "C30",
+        "control_name": "Incident Response Procedures",
+        "finding": "No formal IR runbook for a system on critical infrastructure. Art. 72 requires documented post-market monitoring and incident response.",
+        "eu_ai_act_article": "Article 72",
+        "remediation_action": "Create and test IR runbook with BSI/BSH reporting SLA (6 weeks)."
+      },
+      {
+        "control_id": "C15",
+        "control_name": "Adversarial Robustness",
+        "finding": "No adversarial robustness testing for an OT/ICS system on Annex III para 2 critical infrastructure. Art. 15 requires robustness against cyber attacks.",
+        "eu_ai_act_article": "Article 15",
+        "remediation_action": "Implement adversarial robustness framework including sensor-spoofing tests (12 weeks)."
+      }
+    ],
+    "positive_findings": [
+      {
+        "control_id": "C26",
+        "control_name": "Human Oversight Roles",
+        "maturity_score": 3,
+        "finding": "Operator confirmation required before shutdown; roles clearly documented."
+      }
+    ],
+    "low_confidence_controls": [],
+    "aaa_recommended_follow_up": [
+      {
+        "recommendation": "Engage IEC 62443 consultant to complete OT cybersecurity gap analysis.",
+        "rationale": "Three Art. 15 gaps require ICS-specific expertise.",
+        "urgency": "required_before_report_completion"
+      },
+      {
+        "recommendation": "Formally sign off RMF before re-assessment.",
+        "rationale": "DRAFT status means Art. 9 para 2 obligations not formally discharged.",
+        "urgency": "required_before_report_completion"
+      }
+    ],
+    "cgsa_report_url": "https://cgsa.example/reports/harbourlogistik-harboursense-001"
+  }
+}

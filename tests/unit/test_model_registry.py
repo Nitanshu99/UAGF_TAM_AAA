@@ -35,12 +35,14 @@ _EXPECTED_AGENTS = {
     "UAGF-TAM-L",
     "CyberSecurityAgent",
     "PrivacyDPOAgent",
+    "DocIntelligenceAgent",  # added in extended roster
 }
 
 
-def test_registry_contains_all_twelve_agents():
+def test_registry_contains_all_agents():
+    """All registered agents must be present in AGENT_MODELS."""
     assert set(AGENT_MODELS.keys()) == _EXPECTED_AGENTS
-    assert len(AGENT_MODELS) == 12
+    assert len(AGENT_MODELS) == len(_EXPECTED_AGENTS)
 
 
 def test_flex_agents_set_matches_non_interactive_roster():

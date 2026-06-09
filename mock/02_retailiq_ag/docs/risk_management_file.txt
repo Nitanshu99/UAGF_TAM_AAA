@@ -1,0 +1,26 @@
+RetailIQ AG -- DemandPulse v3.0
+RISK MANAGEMENT FILE  |  Ref: RMF-DP-v3.0-2026
+Pursuant to EU AI Act Article 9 (LIMITED risk system)
+Date: 2026-02-01  |  Approved by: CEO, RetailIQ AG
+
+1. SCOPE
+DemandPulse v3.0 is a demand-forecasting model fine-tuned on top of the
+Amazon Chronos-T5-Tiny foundation model (amazon/chronos-t5-tiny, HuggingFace).
+Deployed as a B2B API to Coop Schweiz AG, Migros, and 12 other EU grocery chains.
+Risk tier: LIMITED -- not listed in Annex III; voluntary transparency measures applied.
+
+2. IDENTIFIED RISKS
+R-001  Forecast bias leading to overstock / stockout events     MEDIUM
+R-002  Distribution shift from seasonal or economic shocks      MEDIUM
+R-003  Integration failure with customer ERP systems            LOW
+
+3. MITIGATION MEASURES
+R-001: Weekly WAPE/MASE monitoring; retraining trigger at MASE > 1.15.
+R-002: Rolling 8-week retraining window; anomaly detection on input features.
+R-003: SLA-backed API contract; circuit-breaker pattern in SDK.
+
+4. HARMONISED STANDARDS
+ISO/IEC 42001:2023 (voluntary) | ISO/IEC 23894:2023 (voluntary)
+
+Note: As a limited-risk system, full Annex IV documentation is not mandatory.
+RetailIQ AG voluntarily applies Art. 50 transparency requirements.

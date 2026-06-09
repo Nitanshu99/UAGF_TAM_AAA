@@ -28,6 +28,10 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from aaa.platform.env_bootstrap import load_repo_dotenv  # noqa: E402
+
+load_repo_dotenv(REPO_ROOT)
+
 import streamlit as st  # noqa: E402
 
 from aaa.agents.base import IntakeDispatch  # noqa: E402

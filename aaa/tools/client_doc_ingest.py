@@ -21,6 +21,7 @@ from typing import Any
 from xml.etree import ElementTree
 
 from aaa.platform.evidence import EvidenceStore
+from aaa.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,14 @@ _OVERLAP_CHARS = 200
 _EMBED_BATCH = 64
 _UPSERT_BATCH = 128
 _OFFLINE = os.environ.get("AAA_OFFLINE_MODE", "false").lower() == "true"
+
+
+def _openai_api_key() -> str:
+    return os.environ.get("OPENAI_API_KEY") or settings.openai_api_key
+
+
+def _embeddings_available() -> bool:
+    return bool(_openai_api_key())
 
 
 def _collection_name(engagement_id: str) -> str:
@@ -225,7 +234,7 @@ def _source_exists(client: Any, collection: str, source_uri: str) -> bool:
 def _embed(texts: list[str]) -> list[list[float]]:
     import openai
 
-    client = openai.OpenAI()
+    client = openai.OpenAI(api_key=_openai_api_key())
     vectors: list[list[float]] = []
     for start in range(0, len(texts), _EMBED_BATCH):
         batch = texts[start:start + _EMBED_BATCH]
@@ -249,7 +258,12 @@ def client_doc_ingest(
     collection = _collection_name(engagement_id)
     if not doc_uris:
         return {"collection_name": collection, "chunks_indexed": 0, "sources": []}
-    if _OFFLINE:
+    if _OFFLINE or not _embeddings_available():
+        if doc_uris and not _OFFLINE:
+            logger.info(
+                "Skipping client_doc_ingest for %s because OPENAI_API_KEY is not configured.",
+                engagement_id,
+            )
         return {"collection_name": collection, "chunks_indexed": 0, "sources": []}
 
     client = _qdrant_client()
@@ -314,7 +328,7 @@ def _hit(point: Any) -> dict[str, Any]:
 
 def client_doc_search(engagement_id: str, query: str, top_k: int = 3) -> list[dict[str, Any]]:
     """Search an engagement's client-document collection; return [] if unavailable."""
-    if _OFFLINE:
+    if _OFFLINE or not _embeddings_available():
         return []
     collection = _collection_name(engagement_id)
     try:

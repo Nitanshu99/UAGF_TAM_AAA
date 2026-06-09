@@ -1,6 +1,11 @@
 import json
+import time
 from typing import TypedDict, Any, Literal, Optional
 from abc import ABC, abstractmethod
+
+import structlog
+
+_logger = structlog.get_logger(__name__)
 
 class IntakeDispatch(TypedDict):
     engagement_id: str
@@ -44,20 +49,82 @@ class BaseAgent(ABC):
         return kw
 
     async def acompletion(self, **kwargs) -> Any:
-        """Async LiteLLM call with Flex-aware retry and standard-tier fallback.
+        """Async LiteLLM call with Flex-aware retry, standard-tier fallback, and full audit logging.
 
-        Merges ``self._litellm_kwargs()`` with any extra *kwargs* and delegates
-        to :func:`aaa.platform.flex_retry.flex_acompletion`, which applies:
-
-        * A 600 s timeout when ``service_tier="flex"`` is set.
-        * Exponential backoff on ``429 / RateLimitError`` (up to
-          ``FLEX_MAX_RETRIES`` attempts).
-        * Automatic fallback to the standard tier if Flex is persistently
-          unavailable, so audits are never silently stalled.
+        Merges ``self._litellm_kwargs()`` with any extra *kwargs*, delegates
+        to :func:`aaa.platform.flex_retry.flex_acompletion`, and records the
+        full request/response/cost to the LLM audit trail.
         """
         from aaa.platform.flex_retry import flex_acompletion
+        from aaa.observability.metrics import (
+            LLM_CALL_COUNTER,
+            LLM_LATENCY_HISTOGRAM,
+            LLM_TOKEN_COUNTER,
+            LLM_COST_COUNTER,
+        )
+        import uuid, json as _json
+        from pathlib import Path
+
         call_kwargs = {**self._litellm_kwargs(), **kwargs}
-        return await flex_acompletion(**call_kwargs)
+        model = call_kwargs.get("model", self.model)
+        messages = call_kwargs.get("messages", [])
+        call_id = str(uuid.uuid4())
+        t0 = time.perf_counter()
+
+        # ── Write audit record ────────────────────────────────────────────
+        def _write_audit(response: Any = None, error: BaseException | None = None) -> None:
+            elapsed_ms = round((time.perf_counter() - t0) * 1000, 1)
+            record: dict[str, Any] = {
+                "call_id": call_id,
+                "agent": self.name,
+                "model": model,
+                "messages": messages,
+                "latency_ms": elapsed_ms,
+                "status": "ok" if error is None else "error",
+            }
+            if response is not None:
+                try:
+                    record["response_text"] = response.choices[0].message.content or ""
+                    u = response.usage
+                    record["prompt_tokens"] = getattr(u, "prompt_tokens", 0) or 0
+                    record["completion_tokens"] = getattr(u, "completion_tokens", 0) or 0
+                    record["total_tokens"] = getattr(u, "total_tokens", 0) or 0
+                except Exception:
+                    pass
+                try:
+                    import litellm as _ll  # type: ignore
+                    record["estimated_cost_usd"] = _ll.completion_cost(completion_response=response)
+                except Exception:
+                    record["estimated_cost_usd"] = None
+            if error is not None:
+                record["error"] = repr(error)
+
+            audit_path = Path("logs/audit/llm_audit.jsonl")
+            audit_path.parent.mkdir(parents=True, exist_ok=True)
+            with audit_path.open("a", encoding="utf-8") as fh:
+                fh.write(_json.dumps(record, default=str) + "\n")
+
+            status = "ok" if error is None else "error"
+            LLM_CALL_COUNTER.labels(agent=self.name, model=model, status=status).inc()
+            LLM_LATENCY_HISTOGRAM.labels(agent=self.name, model=model).observe(
+                (time.perf_counter() - t0)
+            )
+            if response is not None:
+                for tok_type in ("prompt_tokens", "completion_tokens"):
+                    LLM_TOKEN_COUNTER.labels(
+                        agent=self.name, model=model, token_type=tok_type
+                    ).inc(record.get(tok_type, 0))
+                cost = record.get("estimated_cost_usd") or 0.0
+                LLM_COST_COUNTER.labels(agent=self.name, model=model).inc(cost)
+
+        response = None
+        try:
+            response = await flex_acompletion(**call_kwargs)
+            _write_audit(response=response)
+            return response
+        except Exception as exc:
+            _write_audit(error=exc)
+            raise
 
     async def acompletion_json(self, prompt_name: str, user_payload: Any, **kwargs) -> dict[str, Any]:
         """Run a prompt-registry-backed completion and parse a JSON response."""

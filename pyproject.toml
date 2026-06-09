@@ -9,8 +9,25 @@ dependencies = [] # managed via requirements.txt
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 markers = [
     "e2e: end-to-end tests requiring a running Docker Compose stack",
     "contract: contract tests against live or fixture S4 payloads",
     "golden: golden-output regression tests against out/ reference files",
 ]
+
+[tool.dagster]
+module_name = "aaa.dagster.definitions"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N"]
+ignore = ["E501", "N802", "N803", "N806"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_return_any = false

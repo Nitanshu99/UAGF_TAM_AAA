@@ -1,0 +1,36 @@
+{
+  "general_description": "DemandPulse v3.0 is a demand forecasting system based on Amazon Chronos-T5-Tiny (amazon/chronos-t5-tiny, HuggingFace) fine-tuned on 3 years of EU grocery sales data, with a RandomForestRegressor wrapper for per-feature explainability. Produces 4-week ahead sales forecasts at SKU/store granularity.",
+  "model_type": "time_series_transformer_chronos_tiny_rf_wrapper",
+  "design_process": "Foundation model: amazon/chronos-t5-tiny fine-tuned on 36-month EU grocery dataset (50M+ rows). RF wrapper trained on lag features for Phase 3 explainability. Rolling 8-week retraining cadence in production.",
+  "training_data_description": "Aggregated weekly sales data from 5 EU grocery chains, 2022-2025. Features: lag_1, lag_7, lag_28, rolling_mean_7/28, sell_price, snap, event_type, store_id, dept_id. No personal data.",
+  "data_governance_measures": "All training data is aggregate-level only; no individual customer data. GDPR not applicable. Data retention: 5 years. Access: Data Science team only.",
+  "monitoring_measures": "Weekly WAPE and MASE dashboards per customer; Grafana alerts if MASE > 1.15; quarterly retraining evaluation.",
+  "logging_capabilities": "Per-prediction log: timestamp, store_id, dept_id, forecast_horizon, predicted_values, model_version. Retained 2 years.",
+  "accuracy_metrics": {
+    "mae": 1.116,
+    "wape_target": 0.25,
+    "mase_alert_threshold": 1.15
+  },
+  "robustness_metrics": {
+    "out_of_distribution_test": "hold-out seasonal period 2024-Q4",
+    "mase_ood": 1.08
+  },
+  "risk_management_file_uri": "mock/02_retailiq_ag/docs/risk_management_file.txt",
+  "lifecycle_change_log": [
+    "v2.0 StatsForecast-based 2024-03-01",
+    "v3.0 Chronos foundation model upgrade 2025-12-01"
+  ],
+  "harmonised_standards": [
+    "ISO/IEC 42001:2023"
+  ],
+  "other_standards": [
+    "ISO/IEC 23894:2023"
+  ],
+  "eu_doc_uri": "mock/02_retailiq_ag/docs/eu_declaration_of_conformity.txt",
+  "post_market_plan_uri": "mock/02_retailiq_ag/docs/post_market_monitoring_plan.txt",
+  "system_prompt_uri": null,
+  "rag_manifest_uri": null,
+  "tool_inventory": null,
+  "guardrail_config_uri": null,
+  "golden_set_uri": null
+}
