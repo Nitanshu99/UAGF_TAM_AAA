@@ -100,7 +100,7 @@ class IntakeValidator(BaseAgent):
             )
 
         # Halt engagement if scope gate raises a red flag (prohibited/excluded).
-        gate = triage_result.rendered.get("scope_gate", {})
+        gate = (triage_result.rendered or {}).get("scope_gate", {})
         if gate.get("halt_engagement"):
             raise IntakeValidatorError(
                 stage="A",
