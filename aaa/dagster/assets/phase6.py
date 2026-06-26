@@ -6,7 +6,6 @@ This is the terminal phase asset.  It:
 2. Runs ReportArchitect to produce T17/T18.
 3. Surfaces key KPIs as Dagster metadata.
 """
-from __future__ import annotations
 import asyncio, time
 from typing import Any
 from dagster import AssetExecutionContext, MetadataValue, asset

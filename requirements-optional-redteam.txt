@@ -1,0 +1,6 @@
+# Optional red-team tooling for a dedicated probing environment.
+#
+# `garak` currently conflicts with the default `ragas`/`datasets>=4` stack, so
+# keep it out of the main app environment and install it only in an isolated
+# red-team environment when active garak-based probing is needed.
+garak>=0.10.2

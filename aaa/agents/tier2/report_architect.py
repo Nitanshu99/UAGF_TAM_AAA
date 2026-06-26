@@ -121,23 +121,38 @@ def _auditor_opinion(decl: dict[str, Any], final_verdict: str) -> dict[str, str]
         for f in findings
         if f.get("materiality") in {"material", "possibly_material"}
     ]
+    observations = [
+        f for f in findings if f.get("materiality") in {"possibly_material", "observation"}
+    ]
+    obs_summary = "; ".join(
+        f"{f.get('finding_id', 'finding')}: {f.get('description', '')}" for f in observations[:5]
+    )
+    insufficient_articles = sorted(
+        a for a, v in (decl.get("compliance_matrix", {}) or {}).items()
+        if v == "INSUFFICIENT_EVIDENCE"
+    )
+
+    # FAIL (confirmed non-conformity) → adverse; unverifiable mandatory requirement
+    # → disclaimer; otherwise unqualified / qualified by findings.
     if decl.get("hitl_required") and not final_verdict:
         opinion_type = "disclaimer_of_opinion"
     elif final_verdict == "FAIL":
         opinion_type = "adverse"
-    elif final_verdict == "PASS" and material_count == 0:
+    elif decl.get("opinion_disclaimer"):
+        opinion_type = "disclaimer_of_opinion"
+    elif final_verdict == "PASS" and material_count == 0 and not material_ids:
         opinion_type = "unqualified"
     else:
         opinion_type = "qualified"
 
-    system_name = (decl.get("stage_a") or {}).get("system_name", "the AI system")
+    system_name = (decl.get("stage_a") or {}).get("system_name") or "the AI system"
     if opinion_type == "unqualified":
         opinion = (
             f"In our opinion, based on the procedures performed, {system_name} was, "
             "in all material respects, designed and documented in conformity with the "
             "applicable EU AI Act requirements assessed by UAGF-TAM."
         )
-        basis = "No material findings were identified from admitted evidence."
+        basis = "No material findings were identified from independently verified evidence."
     elif opinion_type == "qualified":
         opinion = (
             f"Except for the matters described in the Basis for Conclusion, {system_name} "
@@ -145,8 +160,8 @@ def _auditor_opinion(decl: dict[str, Any], final_verdict: str) -> dict[str, str]
             "requirements assessed by UAGF-TAM."
         )
         basis = (
-            "Qualified matters include material or possibly material findings: "
-            f"{', '.join(material_ids) if material_ids else 'see findings register'}."
+            "Qualified matters: "
+            f"{obs_summary or (', '.join(material_ids) if material_ids else 'see findings register')}."
         )
     elif opinion_type == "adverse":
         opinion = (
@@ -154,13 +169,23 @@ def _auditor_opinion(decl: dict[str, Any], final_verdict: str) -> dict[str, str]
             f"Basis for Conclusion, {system_name} is not in conformity with the applicable "
             "EU AI Act requirements assessed by UAGF-TAM."
         )
-        basis = "The final audit verdict is FAIL and unresolved blocking matters remain."
+        fail_articles = sorted(
+            a for a, v in (decl.get("compliance_matrix", {}) or {}).items() if v == "FAIL"
+        )
+        basis = (
+            "The final audit verdict is FAIL. Confirmed non-conformities on: "
+            f"{', '.join(fail_articles) or 'see findings register'}."
+        )
     else:
         opinion = (
-            "We do not express an assurance conclusion because sufficient appropriate "
-            "evidence was not available to form an opinion."
+            f"We do not express an assurance conclusion on {system_name} because sufficient "
+            "appropriate evidence was not available to verify mandatory high-risk requirements."
         )
-        basis = str(decl.get("hitl_reason") or "Critical evidence remains unresolved.")
+        basis = (
+            "Independent verification could not be performed for: "
+            f"{', '.join(insufficient_articles) or 'core high-risk requirements'}. "
+            + str(decl.get("hitl_reason") or "")
+        ).strip()
 
     scope = (
         "The assessment covered admitted intake artefacts, phase reports, verifier "
@@ -215,19 +240,20 @@ class ReportArchitect(BaseAgent):
         t18 = self._build_t18(engagement_id, decl, t17_ref, now)
         heatmap_tmp = os.path.join(tempfile.gettempdir(), f"heatmap_{engagement_id}.png")
         try:
-            t18["risk_heatmap_uri"] = risk_heatmap_render(
+            local = risk_heatmap_render(
                 findings=t18.get("blocking_findings", []),
                 output_path=heatmap_tmp,
             )
+            t18["risk_heatmap_uri"] = self._persist_png(engagement_id, local, "risk_heatmap")
         except Exception as exc:
             logger.warning("risk_heatmap_render failed (%s); continuing without heatmap.", exc)
             t18["risk_heatmap_uri"] = None
         radar_tmp = os.path.join(tempfile.gettempdir(), f"radar_{engagement_id}.png")
         domain_scores = decl.get("cgsa_domain_scores", {}) or {}
         try:
+            local_radar = maturity_radar_render(domain_scores, radar_tmp) if domain_scores else None
             t18["maturity_radar_uri"] = (
-                maturity_radar_render(domain_scores, radar_tmp)
-                if domain_scores else None
+                self._persist_png(engagement_id, local_radar, "maturity_radar") if local_radar else None
             )
         except Exception as exc:
             logger.warning("maturity_radar_render failed (%s); continuing without radar.", exc)
@@ -307,49 +333,60 @@ class ReportArchitect(BaseAgent):
         )
 
     # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _persist_png(self, engagement_id: str, local_path: str | None, kind: str) -> str | None:
+        """Persist a rendered PNG to the evidence store; return a stable URI.
+
+        The renderers write to a temp path that vanishes on reboot. We store the
+        bytes so the report is durable and reviewable offline, falling back to the
+        local path only if persistence fails.
+        """
+        if not local_path or not os.path.exists(local_path):
+            return local_path
+        try:
+            with open(local_path, "rb") as handle:
+                data = handle.read()
+            return self.store.store_file(
+                engagement_id=engagement_id,
+                phase="phase_6",
+                artefact_type=kind,
+                filename=f"{kind}.png",
+                content_type="image/png",
+                data=data,
+                agent_name=self.name,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to persist %s PNG (%s); using local path.", kind, exc)
+            return local_path
+
+    # ------------------------------------------------------------------
     # T17 builder
     # ------------------------------------------------------------------
 
     def _build_t17(self, engagement_id: str, decl: dict, now: str) -> dict[str, Any]:
         compliance_matrix: dict[str, str] = decl.get("compliance_matrix", {}) or {}
         blocking_findings: list[dict] = decl.get("blocking_findings", []) or []
-        phase_artefacts: dict[str, Any] = decl.get("phase_artefacts", {}) or {}
-        verifier_critiques: dict[str, Any] = decl.get("verifier_critiques", {}) or {}
+        article_evidence: dict[str, Any] = decl.get("article_evidence", {}) or {}
         risk_tier: str = decl.get("risk_tier", "high")
         is_llm: bool = bool(decl.get("is_llm_or_agentic", False))
 
-        blocking_article_ids: set[str] = set()
-        for f in blocking_findings:
-            for a in (f.get("eu_ai_act_articles") or [f.get("article", "")]):
-                blocking_article_ids.add(str(a))
-
         articles_list: list[dict[str, Any]] = []
         for article, verdict in compliance_matrix.items():
-            evidence_uris = [
-                ref.get("uri", "") for ref in phase_artefacts.values()
-                if isinstance(ref, dict) and ref.get("uri", "")
-            ]
-            supporting_tids = [
-                tid for tid, crit in verifier_critiques.items()
-                if article in (crit.get("article_citations") or [])
-                and crit.get("verdict") in {"accept", "accept_with_notes"}
-            ]
+            ev = article_evidence.get(article, {}) or {}
             source = _ARTICLE_PHASE.get(article, "ORCH")
             if source not in _VALID_PHASES:
                 source = "ORCH"
-            blocking_ids = [
-                str(f.get("finding_id", f.get("control_id", "")))
-                for f in blocking_findings
-                if article in (f.get("eu_ai_act_articles") or [f.get("article", "")])
-            ]
             articles_list.append({
-                "article": article, "verdict": verdict,
-                "evidence_uris": evidence_uris[:5],
-                "supporting_template_ids": supporting_tids,
+                "article": article,
+                "verdict": verdict,
+                "evidence_uris": (ev.get("evidence_uris") or [])[:5],
+                "supporting_template_ids": ev.get("supporting_template_ids", []),
                 "source_phase": source,
-                "rationale": None,
-                "cgsa_control_ids": [],
-                "blocking_findings": blocking_ids,
+                "rationale": ev.get("rationale"),
+                "cgsa_control_ids": ev.get("cgsa_control_ids", []),
+                "blocking_findings": ev.get("finding_ids", []),
             })
 
         final_verdict = decl.get("final_verdict") or "PASS_WITH_OBSERVATIONS"

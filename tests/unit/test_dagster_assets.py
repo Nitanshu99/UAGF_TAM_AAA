@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock
 
 import pytest
 
@@ -77,6 +77,22 @@ def test_llm_cost_summary_skips_bad_json(tmp_path):
     assert len(result) == 2  # bad line skipped
 
 
+def test_llm_cost_summary_empty_asset_emits_float_metadata(tmp_path):
+    """Empty audit logs should still produce float-safe Dagster metadata."""
+    import aaa.dagster.assets.llm_cost as mod
+
+    orig = mod._AUDIT_JSONL
+    mod._AUDIT_JSONL = tmp_path / "nonexistent.jsonl"
+
+    ctx = MagicMock()
+    result = mod.llm_cost_summary_asset.op.compute_fn.decorated_fn(ctx)
+
+    mod._AUDIT_JSONL = orig
+
+    assert result["estimated_total_cost_usd"] == 0.0
+    ctx.add_output_metadata.assert_called_once()
+
+
 # ---------------------------------------------------------------------------
 # Dagster resources
 # ---------------------------------------------------------------------------
@@ -97,3 +113,64 @@ def test_aaa_settings_resource_returns_settings():
     resource = AAASettingsResource()
     cfg = resource.get_settings()
     assert isinstance(cfg, AAASettings)
+
+
+def test_intake_validation_uses_engagement_id_config_and_store_payload():
+    import aaa.dagster.assets.intake as mod
+    from aaa.api.store import INTAKE_PAYLOADS
+    from aaa.platform.evidence import EvidenceStore
+
+    payload = {
+        "stage_a": {"provider_name": "Acme", "declared_modality": "ml"},
+        "stage_b": {"general_description": "Test system", "model_type": "xgboost"},
+    }
+    original = dict(INTAKE_PAYLOADS)
+    INTAKE_PAYLOADS.clear()
+    INTAKE_PAYLOADS["eng-test"] = payload
+
+    ctx = MagicMock()
+    ctx.resources.evidence_store = EvidenceStore()
+    ctx.op_execution_context.op_config = {"engagement_id": "eng-test"}
+    fake_state = {
+        "engagement_id": "eng-test",
+        "intake_completeness_score": 1.0,
+        "declared_risk_tier": "high",
+    }
+
+    try:
+        with patch("aaa.agents.intake_validator.IntakeValidator") as validator_cls:
+            validator_cls.return_value.process = AsyncMock(return_value=fake_state)
+            result = mod.intake_validation_asset.op.compute_fn.decorated_fn(ctx)
+    finally:
+        INTAKE_PAYLOADS.clear()
+        INTAKE_PAYLOADS.update(original)
+
+    assert result["engagement_id"] == "eng-test"
+    assert result["declared_risk_tier"] == "high"
+
+
+def test_load_engagement_payload_falls_back_to_persisted_intake():
+    import aaa.dagster.assets.intake as mod
+    from aaa.api.store import INTAKE_PAYLOADS
+
+    original = dict(INTAKE_PAYLOADS)
+    INTAKE_PAYLOADS.clear()
+
+    try:
+        with patch("aaa.data.reader.load_intake", return_value={"stage_a": {}, "stage_b": {}}):
+            payload = mod._load_engagement_payload("eng-saved")
+    finally:
+        INTAKE_PAYLOADS.clear()
+        INTAKE_PAYLOADS.update(original)
+
+    assert payload["engagement_id"] == "eng-saved"
+    assert payload["stage_a"] == {}
+
+
+def test_dagster_definitions_are_loadable():
+    """Dagster code location should validate before `dagster dev` starts."""
+    from dagster import Definitions
+
+    from aaa.dagster.definitions import defs
+
+    Definitions.validate_loadable(defs)

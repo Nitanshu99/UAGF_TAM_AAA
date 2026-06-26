@@ -152,7 +152,7 @@
             "threshold_score": 3,
             "satisfied": false
           },
-          "gap_severity": "minor"
+          "gap_severity": "medium"
         }
       ]
     },
@@ -202,7 +202,7 @@
             "threshold_score": 3,
             "satisfied": false
           },
-          "gap_severity": "minor"
+          "gap_severity": "medium"
         }
       ]
     },
@@ -418,7 +418,7 @@
       "rank": 1,
       "control_id": "C15",
       "control_name": "Adversarial Robustness",
-      "gap_severity": "minor",
+      "gap_severity": "medium",
       "current_score": 2,
       "target_score": 3,
       "action": "Document formal red-team methodology covering prompt injection, jailbreak, and role-playing attack patterns per OWASP LLM Top 10.",
@@ -431,7 +431,7 @@
       "rank": 2,
       "control_id": "C21",
       "control_name": "Explainability to Deployers",
-      "gap_severity": "minor",
+      "gap_severity": "medium",
       "current_score": 2,
       "target_score": 3,
       "action": "Surface attribution chain (source documents, retrieval scores, verification status) in deployer dashboard.",

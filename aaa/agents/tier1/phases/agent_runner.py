@@ -42,6 +42,16 @@ async def _invoke(agent: Any, dispatch: Any, timeout: int) -> Any:
         return await agent.process(dispatch)
 
 
+# Keys whose phase deltas must ACCUMULATE across phases rather than overwrite —
+# each phase contributes its own findings; clobbering would erase prior phases'.
+_ACCUMULATE_KEYS = {
+    "blocking_findings",
+    "positive_findings",
+    "remediation_roadmap",
+    "insufficient_evidence_articles",
+}
+
+
 def _apply_delta(state: dict, delta: dict) -> None:
     """Merge a declaration_verification_delta onto the mutable AuditState."""
     for key, value in delta.items():
@@ -49,6 +59,11 @@ def _apply_delta(state: dict, delta: dict) -> None:
             state["phase_artefacts"].update(value or {})
         elif key in {"hitl_required", "hitl_reason"}:
             continue
+        elif key in _ACCUMULATE_KEYS and isinstance(value, list):
+            existing = state.get(key)
+            if not isinstance(existing, list):
+                existing = []
+            state[key] = existing + value
         else:
             state[key] = value
     if delta.get("hitl_required"):

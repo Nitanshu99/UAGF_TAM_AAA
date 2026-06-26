@@ -33,7 +33,7 @@
   "art2_exclusion": "none",
   "art5_prohibited_practices": [],
   "art50_transparency_triggers": [
-    "automated_decision_support"
+    "none"
   ],
   "is_public_body_or_public_service": false
 }

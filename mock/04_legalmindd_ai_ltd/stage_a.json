@@ -35,8 +35,8 @@
   "art2_exclusion": "none",
   "art5_prohibited_practices": [],
   "art50_transparency_triggers": [
-    "interacts_with_natural_persons",
-    "generates_content"
+    "direct_interaction_with_persons",
+    "synthetic_content_generation"
   ],
   "is_public_body_or_public_service": false
 }

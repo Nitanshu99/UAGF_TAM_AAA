@@ -1,9 +1,16 @@
 # PROMPT.md — AAA Autonomous AI Auditor: Prompt Building Architecture
 
 > **Scope**: Defines the prompt structure, caching strategy, and exact system-prompt contents
-> for all 12 agents in the AAA multi-agent system. Grounded in OpenAI prompt-caching
+> for the 12 runtime prompt sections loaded by `aaa/platform/prompt_registry.py`
+> inside the AAA multi-agent system. Grounded in OpenAI prompt-caching
 > mechanics, multi-agent prompt engineering research, and the architectural constraints
 > defined in `ARCHITECTURE.md`.
+
+> **Current implementation note**: the repo currently runs a 13-agent architecture.
+> The additional `DocIntelligenceAgent` uses an inline module prompt in
+> `aaa/agents/doc_intelligence.py`, while every prompt loaded through the prompt
+> registry remains defined here. All LLM calls are audited to
+> `logs/audit/llm_audit.jsonl` by the runtime.
 
 ---
 
@@ -113,7 +120,14 @@ fallback behaviour in emitted notes.
 - `Dispatch.evidence_uris` is a `list[str]`, not a dict. Put
   `client_doc_collection` and other retrieval hints in `declaration_summary`.
 - Compliance verdicts use the repo enum: `PASS`, `PASS_WITH_OBSERVATIONS`,
-  `FAIL`, `NOT_APPLICABLE`, `PENDING`.
+  `FAIL`, `INSUFFICIENT_EVIDENCE`, `NOT_APPLICABLE`, `PENDING`. Verdicts are
+  **evidence-grounded**, not admission-stamped: an article is `PASS` only when its
+  artefact was verifier-accepted with no findings; a confirmed non-conformity
+  (e.g. robustness probe FAIL, undeclared special-category data, a declared metric
+  refuted by independent re-computation) is `FAIL`; and when the required
+  independent analysis could not be performed (model artefact missing or not
+  executable, eval set unscoreable, governance self-assessment unretrievable) the
+  article is `INSUFFICIENT_EVIDENCE` — **absence of evidence is never `PASS`.**
 - Article identifiers use repo spelling: `Annex_III`, `Annex_IV`, `GPAI_51`,
   `GPAI_52`, `GPAI_53`, `GPAI_54`, `GPAI_55`.
 - HITL is an exceptional safety gate, not the normal operating mode. When
@@ -125,11 +139,27 @@ fallback behaviour in emitted notes.
 - Phase 1, Phase 2, Phase 3, and Phase 5 prompts must include a
   **CLIENT DOCUMENT EVIDENCE PROTOCOL**: when `client_doc_collection` is present,
   call `client_doc_search` before relying solely on Stage B structured fields.
+- **INDEPENDENT RE-COMPUTATION PROTOCOL** (Phases 2/3/4): the audit does not trust
+  declared metrics. Phase agents load the *real* artefacts referenced in Stage B
+  (`model_artifact_uri`, `evaluation_dataset_uri`, `training_dataset_uri`) via
+  `aaa.platform.artifact_loader` / `aaa.tools.eval_inputs`, re-run the analysis
+  tools (`metric_suite`, `robustness_probe`, fairness suite, data-quality scans) on
+  them, and `declaration_diff` the computed results against the declared
+  `accuracy_metrics`. A material gap, or an artefact that cannot be loaded/scored,
+  produces a finding and (for the latter) marks the article INSUFFICIENT_EVIDENCE.
+  The data dictionary (`target_column`, `positive_label`, `sensitive_feature_columns`)
+  is read from Stage B or inferred (`aaa.tools.data_dictionary`), with any inferred
+  assumption recorded as a finding.
 - The Verifier prompt must require `materiality` and `materiality_rationale` for
   every critical/major issue and return optional `materiality_assessments`.
 - The Phase 6 Report Architect prompt must generate `auditor_opinion`,
   `management_response`, executive summary, and report-ready T18 JSON before
-  calling `report_render`.
+  calling `report_render`. `auditor_opinion.opinion_type` is one of `unqualified`
+  (clean PASS, no material findings), `qualified` (PASS_WITH_OBSERVATIONS),
+  `adverse` (final verdict FAIL — confirmed non-conformity), or
+  `disclaimer_of_opinion` (a mandatory high-risk article is `INSUFFICIENT_EVIDENCE`,
+  so conformity cannot be concluded). The opinion must be consistent with the
+  findings register and the compliance-matrix verdicts.
 - The customer upload/report UI and API are outside LLM prompts, but their output
   (`minio://...` file URIs and uploaded model/data artefact URIs) is first-class
   evidence consumed by agent prompts.
@@ -240,11 +270,18 @@ exactly one phase agent.
    embedded in the task brief. Maximum 2 reruns per phase.
 5. If critique.verdict = "ESCALATE_HITL", pause the audit and emit a HITL alert.
 6. After all phases complete, run art43_select to produce the final Art. 43 decision.
-7. Assemble the compliance_matrix by iterating over all admitted artefacts and
-   mapping each EU AI Act article to a verdict.
+7. Assemble the compliance_matrix by deriving each article verdict from evidence:
+   confirmed material finding → FAIL; required analysis not performed
+   (insufficient_evidence_articles) → INSUFFICIENT_EVIDENCE; qualifying observation
+   → PASS_WITH_OBSERVATIONS; admitted + verifier-accepted + no findings → PASS.
+   Record per-article rationale + evidence URIs in `article_evidence`.
 8. Compute completeness_score and regulatory_coverage_pct using the
    completeness_score and regulatory_coverage tools.
-9. Derive final_verdict: "PASS" | "PASS_WITH_OBSERVATIONS" | "FAIL"
+9. Derive final_verdict: any FAIL article (or CGSA csp_satisfiable=false / a present
+   CGSA payload with phase5_verdict=FAIL) → "FAIL"; otherwise any
+   INSUFFICIENT_EVIDENCE or PASS_WITH_OBSERVATIONS article → "PASS_WITH_OBSERVATIONS"
+   (with `opinion_disclaimer=true` when a mandatory high-risk article is
+   INSUFFICIENT_EVIDENCE); else "PASS" subject to the KPI thresholds.
 10. Dispatch the Phase 6 Report Architect with the assembled compliance matrix.
 
 ## CRITICAL GATES
@@ -253,7 +290,12 @@ exactly one phase agent.
 - Declaration mismatch: if Phase 1 declaration_verification contains any "mismatch"
   field, escalate to HITL before proceeding to Phase 2.
 - intake_completeness_score < 0.80: block Phase 1 dispatch entirely.
-- csp_satisfiable = false (from CGSA payload): set final_verdict = "FAIL".
+- csp_satisfiable = false (from a *present* CGSA payload): set final_verdict = "FAIL".
+- CGSA self-assessment unretrievable (cgsa_pull / ingest / schema failure): this is an
+  evidence-availability problem, **not** a non-conformity — mark the governance
+  articles (Art.9, Art.12, Art.17, Art.72) INSUFFICIENT_EVIDENCE rather than failing
+  the engagement. Only a present CGSA payload reporting phase5_verdict=FAIL or
+  csp_satisfiable=false forces a FAIL.
 - Any required_before_report_completion follow-up unresolved: block Phase 6 dispatch.
 
 ## TOOLS
@@ -284,9 +326,13 @@ When delegating to a phase agent, emit exactly this JSON structure:
 For each article in {Art.5, Art.6, Art.9, Art.10, Art.11, Art.12, Art.13, Art.14,
 Art.15, Art.17, Art.43, Art.50, Art.72, Annex_III, Annex_IV, GPAI_51-GPAI_55
 (if GPAI)}:
-  verdict = derive_verdict(phase_artefacts, cgsa_payload, verifier_critiques)
+  verdict = derive_verdict(phase_artefacts, findings, verifier_critiques,
+                           insufficient_evidence_articles, cgsa_payload)
   where derive_verdict returns: "PASS" | "PASS_WITH_OBSERVATIONS" | "FAIL"
-    | "NOT_APPLICABLE" | "PENDING"
+    | "INSUFFICIENT_EVIDENCE" | "NOT_APPLICABLE" | "PENDING"
+  precedence per article: material finding → FAIL; in insufficient_evidence_articles
+    → INSUFFICIENT_EVIDENCE; possibly-material/observation finding →
+    PASS_WITH_OBSERVATIONS; admitted with no findings → PASS.
 
 ## OUTPUT FORMAT
 All orchestrator outputs are JSON. Never emit unstructured prose as a final output.
@@ -1271,10 +1317,14 @@ or risks, final_verdict determinant, material findings count, and scope limitati
 Then draft the executive summary (≤500 words) as a T18 field.
 
 ## AUDITOR OPINION PROTOCOL
+Evaluate in this order (first match wins):
+- final_verdict = "FAIL" → opinion_type = "adverse" (confirmed non-conformity)
+- `opinion_disclaimer = true` (a mandatory high-risk article — Art.9/10/11/12/13/14/15/17 —
+  is `INSUFFICIENT_EVIDENCE`) or unresolved HITL with no verdict →
+  opinion_type = "disclaimer_of_opinion" (conformity cannot be concluded)
 - final_verdict = "PASS" and material_findings_count = 0 → opinion_type = "unqualified"
-- final_verdict = "PASS_WITH_OBSERVATIONS" or PASS with material findings → opinion_type = "qualified"
-- final_verdict = "FAIL" → opinion_type = "adverse"
-- missing critical evidence / unresolved HITL → opinion_type = "disclaimer_of_opinion"
+- otherwise → opinion_type = "qualified" (PASS_WITH_OBSERVATIONS / material findings),
+  with the basis paragraph naming the specific observations driving the qualification
 Use admitted artefacts only. Reference material findings by finding_id and article.
 The methodology_basis must cite UAGF-TAM, ISAE 3000 (Revised), ISO 19011:2018, and
 the need for qualified human auditor review before regulatory submission.

@@ -7,8 +7,6 @@ an aggregated cost/token summary as a Dagster materialisation.
 This asset is a "monitoring" asset — it runs after all phase assets
 but does not depend on them directly.  It reads the audit file directly.
 """
-from __future__ import annotations
-
 import json
 from pathlib import Path
 from typing import Any
@@ -47,7 +45,7 @@ def llm_cost_summary_asset(context: AssetExecutionContext) -> dict[str, Any]:
     error_calls = total_calls - ok_calls
     total_prompt_tokens = sum(r.get("prompt_tokens", 0) or 0 for r in records)
     total_completion_tokens = sum(r.get("completion_tokens", 0) or 0 for r in records)
-    total_cost = sum(r.get("estimated_cost_usd", 0.0) or 0.0 for r in records)
+    total_cost = sum((r.get("estimated_cost_usd", 0.0) or 0.0 for r in records), 0.0)
 
     # Per-agent breakdown
     by_agent: dict[str, dict[str, Any]] = {}
@@ -65,7 +63,7 @@ def llm_cost_summary_asset(context: AssetExecutionContext) -> dict[str, Any]:
         "error_calls": MetadataValue.int(error_calls),
         "total_prompt_tokens": MetadataValue.int(total_prompt_tokens),
         "total_completion_tokens": MetadataValue.int(total_completion_tokens),
-        "estimated_total_cost_usd": MetadataValue.float(round(total_cost, 6)),
+        "estimated_total_cost_usd": MetadataValue.float(round(float(total_cost), 6)),
         "agent_breakdown": MetadataValue.json(by_agent),
     })
 

@@ -1,5 +1,4 @@
 """aaa.dagster.assets.phase4 — Phase 4 Output Fairness Tester asset."""
-from __future__ import annotations
 import asyncio, time
 from typing import Any
 from dagster import AssetExecutionContext, MetadataValue, asset

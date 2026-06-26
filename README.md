@@ -1,49 +1,64 @@
 # AAA — Autonomous AI Auditor
 
-An end-to-end **13-agent pipeline** for EU AI Act conformity assessment. Upload your AI system's documents, answer 8 guided questions, and receive a structured compliance audit with a final verdict, KPI scores, and a downloadable report.
+AAA is a modular EU AI Act audit system built around a **13-agent pipeline**, a
+FastAPI integration surface, a Streamlit demo UI, structured observability, and
+a lightweight file-based persistence layer for demo and thesis workflows.
 
 > **Python 3.12 is required.**
 
----
+## Current codebase snapshot
+
+The repository currently includes:
+
+- a modular FastAPI app in `aaa/api/` with route files for health, engagements,
+  workflow, reports, and persisted data access
+- a modular tier-1 orchestrator in `aaa/agents/tier1/phases/`
+- structured logs and LLM audit trails in `aaa/observability/`
+- a local JSON persistence layer in `aaa/data/` controlled by `AAA_DATA_DIR`
+- Dagster assets, jobs, and sensors in `aaa/dagster/`
+- unit, contract, golden, and placeholder e2e tests in `tests/`
+
+## Audit methodology — evidence-grounded, not rubber-stamped
+
+AAA performs an **independent** audit: it does not trust the provider's declared
+numbers. For each engagement it
+
+- **loads the real artefacts** uploaded in Stage B (the fitted model, the
+  training/evaluation datasets, the governance `.docx` documents) and **re-runs** the
+  analysis tools on them — performance metrics, robustness probes, the fairness suite,
+  data-quality/PII scans — then diffs the recomputed results against the declared
+  `accuracy_metrics`;
+- routes every phase artefact through an **independent Verifier** before it is admitted;
+- **grounds each article verdict in evidence** with a per-article rationale and evidence
+  URIs. Article verdicts are `PASS`, `PASS_WITH_OBSERVATIONS`, `FAIL`, or
+  `INSUFFICIENT_EVIDENCE` — **absence of evidence is never `PASS`**. A non-executable model
+  or an unretrievable governance self-assessment yields `INSUFFICIENT_EVIDENCE`, not a pass.
+- issues an ISAE-3000-style **auditor opinion**: `unqualified`, `qualified`, `adverse`
+  (confirmed non-conformity), or `disclaimer_of_opinion` (a mandatory high-risk requirement
+  could not be verified).
+
+See [ARCHITECTURE.md §3.2a](./ARCHITECTURE.md) for the full verdict ladder.
 
 ## Documentation
 
-| File | What it covers |
-|------|----------------|
-| [USER_MANUAL.md](./USER_MANUAL.md) | **Start here.** Step-by-step setup, offline and online run modes, wizard walkthrough, troubleshooting, quick-reference tables. Written for a complete beginner. |
-| [SETUP.md](./SETUP.md) | Technical quick-start — one-command setup, fastest run paths, environment variables. |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Full system design — 13-agent roster, data contracts, LangGraph state machine, artefact templates (T01a–T18), deployment notes. |
-| [PROMPT.md](./PROMPT.md) | Canonical LLM prompt specification loaded at runtime by `aaa/platform/prompt_registry.py`. |
-| [infra/runbook.md](./infra/runbook.md) | On-call playbook — incident response, service restart, data purge, schema drift procedures. |
-
----
-
-## How it works
-
-1. **You upload** your AI system's technical documents (model card, data sheet, risk assessment, etc.) and answer 8 short questions.
-2. **DocIntelligenceAgent** (agent #13) reads your documents and pre-fills the EU AI Act compliance form — Stage A triage and Stage B Annex IV dossier.
-3. **You review** the pre-filled form, edit any field, and confirm when intake completeness reaches ≥ 80%.
-4. **13 AI agents** run across 6 audit phases — scope verification, data governance, model validation, fairness testing, governance review, and report generation.
-5. **You receive** a final verdict (`PASS` / `PASS WITH OBSERVATIONS` / `FAIL`), a compliance matrix mapped to EU AI Act articles, and a downloadable audit report (PDF + JSON).
-
----
+| File | Purpose |
+|------|---------|
+| [USER_MANUAL.md](./USER_MANUAL.md) | End-user walkthrough for offline and online runs. |
+| [SETUP.md](./SETUP.md) | Technical quick-start, environment variables, and verification commands. |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Full system design and thesis-oriented architecture notes. |
+| [PROMPT.md](./PROMPT.md) | Canonical prompt source for the runtime prompt registry. |
+| [infra/runbook.md](./infra/runbook.md) | Current operational procedures for the implemented repo. |
 
 ## Quick start
 
-### 1. Install (one command)
+### 1. Bootstrap the environment
 
 ```bash
 python3.12 scripts/setup.py --no-docker --no-migrate
+source .venv/bin/activate
 ```
 
-### 2. Activate the virtual environment
-
-```bash
-source .venv/bin/activate        # Mac / Linux
-.venv\Scripts\activate           # Windows
-```
-
-### 3. Run the wizard (offline — no API key needed)
+### 2. Run the offline Streamlit demo
 
 ```bash
 AAA_OFFLINE_MODE=true \
@@ -51,106 +66,135 @@ CGSA_FIXTURE_DIR=scripts/fixtures/cgsa \
 streamlit run aaa/ui/app.py
 ```
 
-Open `http://localhost:8501` in your browser. Stop with `Ctrl + C`.
+Open `http://localhost:8501`.
 
-For the full setup guide including online mode, see [USER_MANUAL.md](./USER_MANUAL.md).
+### 3. Run the offline CLI smoke path
 
----
+```bash
+AAA_OFFLINE_MODE=true \
+python -m aaa.cli run \
+  --engagement-id eng-demo-001 \
+  --intake-dir scripts/fixtures/uci_german_credit \
+  --cgsa-fixture-dir scripts/fixtures/cgsa \
+  --offline
+```
 
-## Agents
+### 4. Run the API
 
-| # | Agent | Model | Role |
-|---|-------|-------|------|
-| 1 | Orchestrator | gpt-5.5 | Plans the audit, sequences phases, routes LLM/agentic systems |
-| 2 | Verifier | gpt-5.5 Flex | Independent critic — gates every phase artefact before it enters the compliance matrix |
-| 3 | Regulatory RAG | gpt-5.4-nano | Answers "what does Article X require?" from the 1 200-chunk corpus |
-| 4 | Scope Agent (P1) | gpt-5.4 | Verifies declared modality, risk tier, Annex III sections |
-| 5 | Data Auditor (P2) | gpt-5.4 | Data quality, governance, special-category data scan |
-| 6 | Model Validator (P3) | gpt-5.5 Flex | Performance metrics, explainability, robustness |
-| 7 | Output Fairness Tester (P4) | gpt-5.4-mini | Demographic parity, disparate impact, subgroup analysis |
-| 8 | Governance Agent (P5) | gpt-5.5 Flex | Ingests S4 CGSA findings, maps to compliance matrix |
-| 9 | Report Architect (P6) | gpt-5.4 Flex | Assembles T17 compliance matrix and T18 audit report |
-| 10 | UAGF-TAM-L | gpt-5.5 Flex | LLM/agentic branch — RAGAS, prompt injection, trajectory audit |
-| 11 | Cybersecurity Agent | gpt-5.4 | Adversarial robustness, Art. 15 evidence |
-| 12 | Privacy / DPO Agent | gpt-5.4 | GDPR Art. 9 lawful-basis, DPIA cross-reference |
-| 13 | DocIntelligenceAgent | gpt-5.4 | Pre-intake — reads uploaded documents and auto-fills the compliance form |
+```bash
+uvicorn aaa.api.main:app --reload --port 8000
+```
 
----
+Swagger UI: `http://localhost:8000/docs`
 
-## Entry points
+## Main surfaces
 
-| Surface | Command | Purpose |
-|---------|---------|---------|
-| Streamlit wizard | `streamlit run aaa/ui/app.py` | 5-step guided UI with document upload and auto-fill |
-| CLI | `python -m aaa.cli run --intake-dir scripts/fixtures/uci_german_credit --offline` | Fixture-based offline run |
-| FastAPI | `uvicorn aaa.api.main:app --reload --port 8000` | REST API — Swagger at `http://localhost:8000/docs` |
+| Surface | Command | Notes |
+|---------|---------|-------|
+| Streamlit UI | `streamlit run aaa/ui/app.py` | 5-step wizard for upload, intake, and results. |
+| CLI | `python -m aaa.cli run ...` | Smallest end-to-end smoke path. |
+| FastAPI | `uvicorn aaa.api.main:app --reload --port 8000` | REST API with health, workflow, report, and data endpoints. |
+| Dagster | `dagster dev -m aaa.dagster.definitions` | Monitoring and asset orchestration entry point. |
 
----
+## What is persisted locally
 
-## REST API
+By default, AAA writes repo-local JSON data under `data/`.
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| `POST` | `/api/v1/engagements` | Create engagement |
-| `POST` | `/api/v1/engagements/{id}/files` | Upload a customer file |
-| `POST` | `/api/v1/engagements/{id}/extract-triage` | Run DocIntelligenceAgent over uploaded files |
-| `POST` | `/api/v1/engagements/{id}/intake` | Submit Stage A / B / C payloads |
-| `POST` | `/api/v1/engagements/{id}/run` | Run full audit pipeline |
-| `GET` | `/api/v1/engagements/{id}/report` | Verdict, KPIs, report URIs |
-| `GET` | `/api/v1/engagements/{id}/report.pdf` | Rendered PDF report |
+| Path | Contents |
+|------|----------|
+| `data/index.json` | Master index of stored engagements |
+| `data/inputs/<engagement_id>/engagement.json` | Engagement creation metadata |
+| `data/inputs/<engagement_id>/intake.json` | Stage A/B/C payload submitted by the user |
+| `data/inputs/<engagement_id>/files.json` | Uploaded-file metadata list |
+| `data/results/<engagement_id>/audit_result.json` | Final verdict and KPI summary |
+| `data/results/<engagement_id>/artefacts.json` | Phase artefact references |
+| `data/results/<engagement_id>/findings.json` | Blocking and positive findings |
+| `data/results/<engagement_id>/compliance_matrix.json` | Article-by-article compliance output |
 
----
+Change the root with `AAA_DATA_DIR=/path/to/data-root`.
 
-## Regulatory corpus
+## Observability and monitoring
 
-1 200 chunks indexed in Qdrant across five sources:
+AAA now emits structured logs and explicit LLM audit records.
 
-| Source | Chunks |
-|--------|--------|
-| EU AI Act (2024/1689) | 339 |
-| GDPR | 288 |
-| ISO/IEC 42001:2023 | 88 |
-| ISAE 3000 (Revised) | 411 |
-| ISO 19011:2018 | 74 |
+| Path | Contents |
+|------|----------|
+| `logs/app/app.log` | Root application log |
+| `logs/api/api.log` | FastAPI route activity |
+| `logs/agents/agents.log` | Agent/runtime logs |
+| `logs/audit/llm_audit.log` | Structured audit log stream |
+| `logs/audit/llm_audit.jsonl` | One JSON record per LLM call: prompt, reply, tokens, latency, cost |
+| `logs/errors/*.jsonl` | Error records written by `capture_error(...)` |
+| `logs/dagster/dagster.log` | Dagster runtime logs |
 
-Run once to populate: `python3.12 scripts/ingest_regulatory_corpus.py` (requires Docker + OpenAI key). See [USER_MANUAL.md § Part 6](./USER_MANUAL.md) for step-by-step instructions.
+Prometheus metrics are exposed at `GET /metrics`.
 
----
+## REST API summary
+
+### Health and ops
+
+| Method | Path |
+|--------|------|
+| `GET` | `/healthz` |
+| `GET` | `/api/v1/schema-version` |
+| `GET` | `/metrics` |
+
+### Engagement workflow
+
+| Method | Path |
+|--------|------|
+| `GET` | `/api/v1/engagements` |
+| `POST` | `/api/v1/engagements` |
+| `GET` | `/api/v1/engagements/{engagement_id}` |
+| `POST` | `/api/v1/engagements/{engagement_id}/files` |
+| `POST` | `/api/v1/engagements/{engagement_id}/extract-triage` |
+| `POST` | `/api/v1/engagements/{engagement_id}/intake` |
+| `POST` | `/api/v1/engagements/{engagement_id}/run` |
+| `GET` | `/api/v1/engagements/{engagement_id}/report` |
+| `GET` | `/api/v1/engagements/{engagement_id}/report.pdf` |
+
+### Persistent data access
+
+| Method | Path |
+|--------|------|
+| `GET` | `/api/v1/data/engagements` |
+| `GET` | `/api/v1/data/results` |
+| `GET` | `/api/v1/data/engagements/{engagement_id}/input` |
+| `GET` | `/api/v1/data/engagements/{engagement_id}/result` |
 
 ## Repository layout
 
-```
+```text
 UAGF_TAM_AAA/
-├── README.md                        ← you are here
-├── USER_MANUAL.md                   ← start here for setup and usage
-├── SETUP.md                         ← technical quick-start
-├── ARCHITECTURE.md                  ← full system design
-├── PROMPT.md                        ← canonical agent prompts (runtime dependency)
 ├── aaa/
-│   ├── agents/
-│   │   ├── doc_intelligence.py      ← agent #13: pre-intake document extraction
-│   │   ├── intake_validator.py      ← Stage 0 validation + T01c
-│   │   ├── tier1/                   ← Orchestrator, Verifier, RegulatoryRAG
-│   │   ├── tier2/                   ← Phase 1–6 agents
-│   │   └── tier3/                   ← UAGF-TAM-L, Cyber, Privacy
-│   ├── api/main.py                  ← FastAPI endpoints
-│   ├── cli.py                       ← python -m aaa.cli run ...
-│   ├── platform/
-│   │   ├── evidence.py              ← EvidenceStore (MinIO-compatible)
-│   │   ├── model_registry.py        ← per-agent model + tier assignments
-│   │   ├── prompt_registry.py       ← loads prompts from PROMPT.md at runtime
-│   │   └── state.py                 ← AuditState, DocExtractionResult, all TypedDicts
-│   ├── tools/                       ← 40+ deterministic audit tools
-│   └── ui/app.py                    ← Streamlit 5-step wizard
-├── data/
-│   ├── eu_ai_act_compliance_checker.json   ← FLI questionnaire (scope gate)
-│   └── regulatory_corpus/           ← source PDFs / HTML for Qdrant ingestion
-├── scripts/
-│   ├── setup.py                     ← one-shot environment bootstrap
-│   ├── ingest_regulatory_corpus.py  ← loads 1 200 chunks into Qdrant
-│   └── fixtures/                    ← sample intake data for offline testing
-├── templates/                       ← T01a–T18 JSON Schema + Jinja2 templates
-├── infra/
-│   └── runbook.md                   ← on-call incident playbook
-└── tests/                           ← unit / contract / golden / e2e
+│   ├── agents/            # 13-agent system + orchestrator phase modules
+│   ├── api/               # FastAPI app, schemas, in-memory runtime store, routers
+│   ├── dagster/           # assets, jobs, sensors, definitions
+│   ├── data/              # file-based persistence layer
+│   ├── observability/     # logging, metrics, error capture, LLM audit
+│   ├── platform/          # prompt registry, evidence store, state, model registry
+│   ├── tools/             # deterministic audit tools
+│   └── ui/                # Streamlit wizard
+├── data/                  # persisted demo data + regulatory corpus + fixtures
+├── infra/                 # runbook + tofu infrastructure files
+├── packages/              # distributable schema package(s)
+├── scripts/               # setup, demo, ingestion, fixtures
+├── templates/             # canonical T01a–T18 schemas in repo root
+└── tests/                 # unit, contract, golden, e2e-placeholder tests
 ```
+
+## Regulatory corpus
+
+The repo ships the source materials under `data/regulatory_corpus/`. To enable
+live retrieval, start Docker services and run:
+
+```bash
+python3.12 scripts/ingest_regulatory_corpus.py --dry-run -v
+python3.12 scripts/ingest_regulatory_corpus.py \
+  --corpus data/regulatory_corpus \
+  --checker data/eu_ai_act_compliance_checker.json \
+  --collection regulatory_corpus \
+  --obligations-collection obligations_index
+```
+
+For more detail, see [SETUP.md](./SETUP.md) and [USER_MANUAL.md](./USER_MANUAL.md).

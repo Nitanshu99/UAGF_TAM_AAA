@@ -37,7 +37,7 @@ from aaa.tools.triage_render import triage_render
 from aaa.tools.annex_iv_validator import annex_iv_validator
 from aaa.tools.intake_completeness_calculator import intake_completeness_calculator
 from aaa.tools.art43_select import art43_select_from_state
-from aaa.tools.client_doc_ingest import client_doc_ingest
+from aaa.tools.client_doc_ingest import ClientDocIngestError, client_doc_ingest
 
 # Threshold defined in §9.1 and §6.2 constraint 7.
 COMPLETENESS_GATE = 0.80
@@ -195,7 +195,10 @@ class IntakeValidator(BaseAgent):
                     store=self.store,
                 )
                 client_doc_collection = ingest_result.get("collection_name")
-            except Exception as exc:
+            except ClientDocIngestError as exc:
+                # client_doc_ingest can raise a variety of implementation-specific
+                # errors internally; treat translated ingest failures as non-fatal
+                # for intake processing and surface a warning in the T01c artefact.
                 client_doc_collection = None
                 t01c_content.setdefault("warnings", []).append(
                     f"client_doc_ingest failed: {exc}"

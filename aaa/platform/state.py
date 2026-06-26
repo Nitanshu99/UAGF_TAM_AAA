@@ -70,6 +70,18 @@ class AnnexIVDossier(TypedDict):
     tool_inventory: list[str] | None
     guardrail_config_uri: str | None
     golden_set_uri: str | None
+    # ── Independent-analysis inputs (populated by UI upload flow / fixtures) ─────
+    # URIs to the real artefacts the audit re-runs against, and a minimal data
+    # dictionary so agents can split X/y and scope protected-attribute fairness
+    # testing. All NotRequired for backward compatibility with legacy fixtures.
+    model_artifact_uri: NotRequired[str | None]
+    training_dataset_uri: NotRequired[str | None]
+    evaluation_dataset_uri: NotRequired[str | None]
+    target_column: NotRequired[str | None]
+    positive_label: NotRequired[Any]
+    sensitive_feature_columns: NotRequired[list[str] | None]
+    feature_columns: NotRequired[list[str] | None]
+    data_dictionary: NotRequired[dict[str, Any] | None]
 
 class StageCAccess(TypedDict):
     """Scoped live-system access credentials granted in Stage C."""
@@ -197,7 +209,10 @@ class CGSAPayload(TypedDict):
 # ──────────────────────────────────────────────────────────────────────────────
 
 Article = str   # e.g. "Art.9", "Art.43", "Annex_III"
-Verdict = Literal["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_APPLICABLE", "PENDING"]
+Verdict = Literal[
+    "PASS", "PASS_WITH_OBSERVATIONS", "FAIL",
+    "INSUFFICIENT_EVIDENCE", "NOT_APPLICABLE", "PENDING",
+]
 
 class Finding(TypedDict, total=False):
     finding_id: str
@@ -278,6 +293,10 @@ class AuditState(TypedDict):
     remediation_roadmap: list[RemediationItem]
     material_findings_count: Optional[int]
     possibly_material_findings_count: Optional[int]
+    # Articles whose required independent analysis could not be performed (missing
+    # artefact, unscored eval set, agent fallback). Accumulated across phases; the
+    # compliance matrix marks these INSUFFICIENT_EVIDENCE (never PASS). (§WS5/WS8)
+    insufficient_evidence_articles: NotRequired[list[str]]
 
     # --- verification & verdict ---
     verifier_critiques: dict[str, dict[str, Any]]

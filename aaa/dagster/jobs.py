@@ -13,8 +13,6 @@ cost_monitoring_job
 
 Schedules / sensors are defined in ``aaa.dagster.sensors``.
 """
-from __future__ import annotations
-
 from dagster import define_asset_job, AssetSelection
 
 from aaa.dagster.assets import (

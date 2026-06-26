@@ -34,11 +34,19 @@ from aaa.platform.evidence import EvidenceStore
 from aaa.tools.cgsa_ingest import CGSAIngestError, IngestResult, cgsa_ingest
 from aaa.tools.cgsa_pull import CGSAPullError, cgsa_pull
 from aaa.tools.client_doc_ingest import client_doc_search
+from aaa.tools.findings import make_finding
 
 logger = logging.getLogger(__name__)
 
 _OFFLINE = os.environ.get("AAA_OFFLINE_MODE", "false").lower() == "true"
 _PROMPT_NAME = "phase5_governance"
+
+# Governance articles evidenced by the Phase 5 artefacts: T14 → Art.9 (risk
+# management) / Art.17 (QMS); T15 → Art.12 (record-keeping) / Art.72 (post-market
+# monitoring). When the CGSA self-assessment cannot be retrieved or validated, these
+# are the articles the auditor can no longer conclude on — they become
+# INSUFFICIENT_EVIDENCE (→ disclaimer), not a confirmed non-conformity.
+_GOVERNANCE_INSUFFICIENT_ARTICLES = ["Art.9", "Art.12", "Art.17", "Art.72"]
 
 
 class GovernanceAgentError(Exception):
@@ -213,6 +221,15 @@ class GovernanceAgent(BaseAgent):
             "T15_monitoring_logging_review": {
                 "uri": t15_uri, "sha256": "", "template_id": "T15_monitoring_logging_review"},
         }
+
+        # Treat the client's CGSA self-assessment as a claim to be tested, not as
+        # evidence: reconcile its internal consistency and raise findings on gaps.
+        recon_findings = self._reconcile_cgsa(payload)
+        if recon_findings:
+            delta["blocking_findings"] = recon_findings
+            hitl_required = hitl_required or any(
+                f.get("materiality") == "material" for f in recon_findings
+            )
         if spawn["cyber_spawn"]:
             delta["spawn_cyber_subagent"] = True
             delta["cyber_spawn_rationale"] = spawn["cyber_rationale"]
@@ -271,6 +288,70 @@ class GovernanceAgent(BaseAgent):
             elif "general_description" in content or "model_type" in content:
                 t01b = content
         return t01a, t01b
+
+    def _reconcile_cgsa(self, payload: Any) -> list[dict[str, Any]]:
+        """Reconcile the CGSA self-assessment's internal consistency.
+
+        A real auditor does not accept a maturity scorecard at face value. We check
+        that the headline control counts match the detailed control list and that any
+        below-threshold control is actually identified — raising findings on gaps.
+        """
+        if not isinstance(payload, dict):
+            return []
+        findings: list[dict[str, Any]] = []
+        scores = payload.get("overall_scores", {}) or {}
+        domains = payload.get("domains", []) or []
+
+        detailed = [
+            c for d in domains for c in (d.get("controls", []) or [])
+        ]
+        n_detailed = len(detailed)
+        assessed = scores.get("controls_assessed")
+        meeting = scores.get("controls_meeting_threshold")
+        if meeting is None:
+            meeting = scores.get("controls_meeting")
+        below = scores.get("controls_below_threshold")
+
+        if isinstance(assessed, int) and assessed != n_detailed:
+            findings.append(make_finding(
+                finding_id="P5-CGSA-COUNT",
+                description=(
+                    f"CGSA self-assessment reports {assessed} controls assessed but only "
+                    f"{n_detailed} are detailed in the domain breakdown; the remaining "
+                    f"{assessed - n_detailed} are unverifiable."
+                ),
+                materiality="possibly_material",
+                articles=["Art.17"],
+                source_phase="P5",
+                recommendation="Provide the full per-control evidence behind the headline counts.",
+                declared=assessed,
+                observed=n_detailed,
+            ))
+
+        # Identify below-threshold controls in the detail (score < hard-constraint
+        # threshold, defaulting to maturity 3).
+        def _below(ctrl: dict) -> bool:
+            score = ctrl.get("maturity_score")
+            thr = (ctrl.get("hard_constraint", {}) or {}).get("threshold_score") or 3
+            return isinstance(score, (int, float)) and score < thr
+
+        identified_below = [c for c in detailed if _below(c)]
+        if isinstance(below, int) and below > 0 and len(identified_below) < below:
+            findings.append(make_finding(
+                finding_id="P5-CGSA-BELOW",
+                description=(
+                    f"CGSA reports {below} control(s) below threshold but the detailed "
+                    f"breakdown identifies only {len(identified_below)}; the unidentified "
+                    "below-threshold control(s) cannot be assessed."
+                ),
+                materiality="possibly_material",
+                articles=["Art.17"],
+                source_phase="P5",
+                recommendation="Name each below-threshold control and its remediation plan.",
+                declared=below,
+                observed=len(identified_below),
+            ))
+        return findings
 
     def _decide_tier3_spawns(
         self,
@@ -424,12 +505,23 @@ class GovernanceAgent(BaseAgent):
         reason: str,
         details: dict[str, Any] | None = None,
     ) -> Report:
-        """Build a Report that flips Phase 5 into HITL escalation."""
+        """Build a Report that flips Phase 5 into HITL escalation.
+
+        A failure to *retrieve or validate* the CGSA self-assessment (pull failed,
+        no fixture, service down, schema invalid) is an evidence-availability
+        problem — it does **not** establish that governance is non-conformant.
+        Conflating the two would let infrastructure flakiness issue a blanket
+        adverse FAIL. So we mark the governance articles INSUFFICIENT_EVIDENCE
+        (the compliance matrix downgrades the opinion to a disclaimer for them)
+        instead of forcing ``cgsa_phase5_verdict="FAIL"``. A genuine FAIL is only
+        ever raised from a CGSA payload that is present *and* reports
+        ``phase5_verdict="FAIL"`` / ``csp_satisfiable=False`` (see ``cgsa_ingest``).
+        """
         logger.warning("[GovernanceAgent] escalating: %s (%s)", reason, details)
         delta: dict[str, Any] = {
             "hitl_required": True,
             "hitl_reason": reason,
-            "cgsa_phase5_verdict": "FAIL",
+            "insufficient_evidence_articles": list(_GOVERNANCE_INSUFFICIENT_ARTICLES),
             "phase_artefacts": {},
         }
         if details:
@@ -437,7 +529,11 @@ class GovernanceAgent(BaseAgent):
         return Report(
             phase_id="P5",
             artefact_uri="",
-            summary=f"Phase 5 escalated to HITL — {reason}",
+            summary=(
+                f"Phase 5 escalated to HITL — {reason}. CGSA self-assessment "
+                "unavailable; governance articles (Art.9/Art.12/Art.17/Art.72) "
+                "marked INSUFFICIENT_EVIDENCE (disclaimer), not FAIL."
+            ),
             confidence=0.2,
             tool_calls=[{"tool": "cgsa_pull_or_ingest", "result": reason}],
             declaration_verification_delta=delta,

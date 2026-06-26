@@ -4,8 +4,6 @@ aaa.dagster.assets.phase1 — Dagster asset for Phase 1 (Scope & Declaration Ver
 Depends on ``intake_validation`` asset output.
 Runs ScopeAgent and materialises T02–T05 artefacts.
 """
-from __future__ import annotations
-
 import asyncio
 from typing import Any
 

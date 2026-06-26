@@ -35,6 +35,14 @@ _UPSERT_BATCH = 128
 _OFFLINE = os.environ.get("AAA_OFFLINE_MODE", "false").lower() == "true"
 
 
+class ClientDocIngestError(Exception):
+    """Raised when client-document ingestion fails unexpectedly."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(f"[client_doc_ingest] {reason}")
+
+
 def _openai_api_key() -> str:
     return os.environ.get("OPENAI_API_KEY") or settings.openai_api_key
 
@@ -266,42 +274,53 @@ def client_doc_ingest(
             )
         return {"collection_name": collection, "chunks_indexed": 0, "sources": []}
 
-    client = _qdrant_client()
-    _ensure_collection(client, collection)
-    chunks: list[dict[str, Any]] = []
-    sources: list[str] = []
-    for uri in doc_uris:
-        if _source_exists(client, collection, uri):
-            sources.append(uri)
-            continue
-        data = _load_document(uri, store)
-        if data is None:
-            logger.warning("Client document not found for ingestion: %s", uri)
-            continue
-        doc_chunks = _chunks_for_document(uri, data)
-        chunks.extend(doc_chunks)
-        if doc_chunks:
-            sources.append(uri)
+    try:
+        client = _qdrant_client()
+        _ensure_collection(client, collection)
+        chunks: list[dict[str, Any]] = []
+        sources: list[str] = []
+        for uri in doc_uris:
+            if _source_exists(client, collection, uri):
+                sources.append(uri)
+                continue
+            data = _load_document(uri, store)
+            if data is None:
+                logger.warning("Client document not found for ingestion: %s", uri)
+                continue
+            doc_chunks = _chunks_for_document(uri, data)
+            chunks.extend(doc_chunks)
+            if doc_chunks:
+                sources.append(uri)
 
-    if not chunks:
-        return {"collection_name": collection, "chunks_indexed": 0, "sources": sources}
+        if not chunks:
+            return {
+                "collection_name": collection,
+                "chunks_indexed": 0,
+                "sources": sources,
+            }
 
-    from qdrant_client import models as qmodels
+        from qdrant_client import models as qmodels
 
-    vectors = _embed([chunk["text"] for chunk in chunks])
-    written = 0
-    for start in range(0, len(chunks), _UPSERT_BATCH):
-        batch = chunks[start:start + _UPSERT_BATCH]
-        batch_vectors = vectors[start:start + _UPSERT_BATCH]
-        points = [
-            qmodels.PointStruct(
-                id=_point_id(chunk), payload=chunk, vector={_VECTOR_NAME: vector},
-            )
-            for chunk, vector in zip(batch, batch_vectors, strict=True)
-        ]
-        client.upsert(collection_name=collection, points=points, wait=True)
-        written += len(points)
-    return {"collection_name": collection, "chunks_indexed": written, "sources": sources}
+        vectors = _embed([chunk["text"] for chunk in chunks])
+        written = 0
+        for start in range(0, len(chunks), _UPSERT_BATCH):
+            batch = chunks[start:start + _UPSERT_BATCH]
+            batch_vectors = vectors[start:start + _UPSERT_BATCH]
+            points = [
+                qmodels.PointStruct(
+                    id=_point_id(chunk), payload=chunk, vector={_VECTOR_NAME: vector},
+                )
+                for chunk, vector in zip(batch, batch_vectors, strict=True)
+            ]
+            client.upsert(collection_name=collection, points=points, wait=True)
+            written += len(points)
+        return {
+            "collection_name": collection,
+            "chunks_indexed": written,
+            "sources": sources,
+        }
+    except Exception as exc:  # noqa: BLE001
+        raise ClientDocIngestError(str(exc)) from exc
 
 
 def _collection_exists(client: Any, collection: str) -> bool:
@@ -349,4 +368,4 @@ def client_doc_search(engagement_id: str, query: str, top_k: int = 3) -> list[di
         return []
 
 
-__all__ = ["client_doc_ingest", "client_doc_search"]
+__all__ = ["ClientDocIngestError", "client_doc_ingest", "client_doc_search"]

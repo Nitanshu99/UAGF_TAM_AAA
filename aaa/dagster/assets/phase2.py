@@ -1,5 +1,4 @@
 """aaa.dagster.assets.phase2 — Phase 2 Data Governance Auditor asset."""
-from __future__ import annotations
 import asyncio, time
 from typing import Any
 from dagster import AssetExecutionContext, MetadataValue, asset

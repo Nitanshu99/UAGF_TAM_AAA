@@ -1,115 +1,149 @@
-# AAA — Operational Runbook (§14.9)
+# AAA — Operational Runbook
 
-This document is the on-call playbook for the AAA platform. It mirrors the
-incident table in `ARCHITECTURE.md §14.9` and provides the exact commands to
-run for each scenario. Keep it in sync with the architecture document; the
-table below is authoritative.
+This runbook documents the **currently implemented** operational procedures for
+the repository. Where the architecture discusses future production components,
+this file only describes what exists in the codebase today.
 
 ## Incident response matrix
 
 | Incident | Detection | First action | Escalation |
 |---|---|---|---|
-| Engagement stuck > 2 h | Cost dashboard SLA breach | `python -m aaa.cli resume --engagement {id}` (uses LangGraph checkpoint) | HITL review if 3 reruns fail |
-| `cgsa_pull` 5xx > 5 min | Langfuse alert on `cgsa_pull_error_rate` | Check S4 status page; flip engagement to HITL pause via `aaa.cli pause --engagement {id}` | Email supervisor; open S5↔S4 ticket |
-| Schema drift on nightly contract | GitHub issue auto-opened by `s4_contract.yml` | Inspect diff; if non-breaking, bump `CGSA_SCHEMA_VERSION` + PR; if breaking, freeze new audits | Joint S4↔S5 sync meeting |
-| MinIO disk > 80 % | Grafana alert | `restic forget --keep-last 30 --prune` on backup repo; expand volume | On-call rota |
-| LLM provider outage | LiteLLM auto-fallback engaged | Verify fallback model in Langfuse; downgrade audit confidence flag | If all fallbacks down, pause new engagements |
-| Verifier `escalate_hitl` spike | Langfuse anomaly on `verifier_escalation_rate` | Inspect last 10 critiques; if prompt regression, roll back agent prompt version | Notify prompt owner |
-| Client right-to-erasure request | GDPR ticket | `python -m aaa.cli purge --engagement {id}` (drops Postgres schema + MinIO prefix + Langfuse trace) | Log in DPA register |
+| API unhealthy | `GET /healthz` fails or non-200 | inspect `logs/app/app.log` and `logs/api/api.log`; restart `uvicorn aaa.api.main:app --reload --port 8000` | if reproducible, capture `logs/errors/*.jsonl` and open issue |
+| Audit request failed | `POST /run` returns 4xx/5xx or engagement status stalls | inspect `logs/errors/*.jsonl`, `logs/audit/llm_audit.jsonl`, and `data/inputs/<id>/` | if model/provider-related, switch to offline/demo path and notify maintainer |
+| Persisted result missing | `/api/v1/data/...` or `/report` returns 404 after run | inspect `data/index.json`, `data/results/<id>/`, and runtime logs | if reproducible, open bug against `aaa/data/` or `aaa/api/routes/` |
+| Error spike | new files appear under `logs/errors/` or Dagster `error_log_sensor` fires | inspect newest JSONL record and correlate with API/agent log timestamps | escalate if repeated across engagements |
+| LLM audit anomaly | abnormal cost/token growth in `logs/audit/llm_audit.jsonl` or Dagster cost summary | inspect agent/model distribution and recent prompt changes | escalate to prompt/model owner |
+| Schema version mismatch | `/api/v1/schema-version` differs from expected pinned schema | review `CGSA_SCHEMA_VERSION`, `aaa/settings.py`, and vendored schema files | coordinate schema update before new online runs |
+| Rendered PDF unavailable | `/report` returns summary but `/report.pdf` returns 404 | use JSON report as source of truth and inspect report rendering logs | escalate only if PDF is required for deliverable |
+
+> **Not incidents — expected audit outcomes.** A `FAIL` / `adverse` verdict, an
+> `INSUFFICIENT_EVIDENCE` article, or a `disclaimer_of_opinion` are legitimate results of an
+> evidence-grounded audit, not system errors. `INSUFFICIENT_EVIDENCE` usually means a real
+> artefact was missing or unusable (no runnable model, unreadable dataset, or — for the
+> governance articles Art.9/12/17/72 — an unreachable CGSA self-assessment; check
+> `CGSA_FIXTURE_DIR`). Only treat `/run` as an incident when it returns 4xx/5xx or stalls.
 
 ## Standard procedures
 
-### S1. Bring the stack up (clean host)
+### S1. Bring up the offline/dev path
 
 ```bash
-cp .env.example .env                 # fill in real secrets
-docker compose pull
-docker compose up -d
-alembic upgrade head                 # runs the initial migration
+python3.12 scripts/setup.py --no-docker --no-migrate
+source .venv/bin/activate
+AAA_OFFLINE_MODE=true python -m pytest tests/unit -q
+```
+
+### S2. Start the API and verify it
+
+```bash
+uvicorn aaa.api.main:app --reload --port 8000
 curl -sf http://localhost:8000/healthz
+curl -sf http://localhost:8000/api/v1/schema-version
+curl -sf http://localhost:8000/metrics > /dev/null
 ```
 
-**macOS only — pre-warm heavy imports before running the ingestion pipeline.**
-On the first run after a fresh install, macOS Gatekeeper must verify every native `.so` extension (qdrant_client, sklearn, nltk, numpy). The ingestion script does this automatically at startup, but if you are scripting the pipeline non-interactively you can also trigger it manually to avoid any timeout issues:
+### S3. Start the optional local service stack
+
+Use this only when you want online retrieval or to exercise the broader local
+infrastructure.
 
 ```bash
-.venv/bin/python -c "import numpy, sklearn, nltk, qdrant_client; print('warm-up OK')"
+docker compose up -d
+python -m alembic upgrade head
+docker compose ps
 ```
 
-Run this once after installing dependencies; subsequent runs skip Gatekeeper verification.
-
-### S2. Promote staging → prod
+### S4. Run the current smoke tests
 
 ```bash
-tofu -chdir=infra/tofu workspace select prod
-tofu -chdir=infra/tofu apply
-ssh root@<prod-host> 'cd /opt/aaa && \
-  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d'
+AAA_OFFLINE_MODE=true python -m pytest tests/unit/test_prompt_registry.py tests/unit/test_prompt_snapshots.py -q
+AAA_OFFLINE_MODE=true python -m pytest tests/unit/test_api_routes.py tests/unit/test_data_store.py tests/unit/test_data_api_routes.py -q
 ```
 
-### S3. OpenBao seal/unseal
+### S5. Inspect persisted engagement data
 
-OpenBao starts sealed on production hosts. To unseal:
+Default file layout:
+
+```text
+data/
+  index.json
+  inputs/<engagement_id>/
+  results/<engagement_id>/
+```
+
+Useful checks:
 
 ```bash
-ssh root@<host>
-docker exec -it openbao bao operator unseal <key-shard-1>
-docker exec -it openbao bao operator unseal <key-shard-2>
-docker exec -it openbao bao operator unseal <key-shard-3>
-docker exec -it openbao bao status
+python - <<'PY'
+import json, pathlib
+path = pathlib.Path('data/index.json')
+print(json.loads(path.read_text()) if path.exists() else {'engagements': []})
+PY
 ```
 
-Key shards live in three separate offline locations (see §11). Never store
-shards together.
-
-### S4. Backup / restore (MinIO + Postgres)
-
-Backups run nightly via `restic` to an off-site S3 bucket:
+Or via API:
 
 ```bash
-# manual backup
-restic -r s3:https://<backup-endpoint>/<bucket> backup \
-  /var/lib/docker/volumes/postgres_data \
-  /var/lib/docker/volumes/minio_data
-
-# restore (point-in-time)
-restic -r s3:https://<backup-endpoint>/<bucket> snapshots
-restic -r s3:https://<backup-endpoint>/<bucket> restore <snapshot-id> \
-  --target /restore
+curl -sf http://localhost:8000/api/v1/data/engagements
+curl -sf http://localhost:8000/api/v1/data/results
 ```
 
-### S5. Schema-drift response
-
-1. Review the issue opened by `s4_contract.yml`.
-2. Inspect the `schema_drift.json` artefact attached to the run.
-3. **Non-breaking (added optional field):** bump `CGSA_SCHEMA_VERSION` in
-   `.env` and `aaa/settings.py`; vendor the new schema under
-   `schemas/cgsa/v1.0.1/`; open PR.
-4. **Breaking (removed/renamed required field):** stop scheduling new
-   engagements (`aaa.cli pause --all`); convene S4↔S5 sync; either S4 reverts
-   or AAA writes a migration shim in `aaa/tools/cgsa_ingest.py`.
-
-### S6. Right-to-erasure (GDPR Art. 17)
+### S6. Inspect logs and LLM audit trail
 
 ```bash
-python -m aaa.cli purge --engagement <id> --confirm
-# Verifies cascade delete of:
-#   - Postgres rows (engagements, evidence_artefacts, langgraph_checkpoints)
-#   - MinIO prefix engagements/<id>/
-#   - Langfuse traces tagged engagement=<id>
+tail -n 50 logs/app/app.log
+tail -n 50 logs/api/api.log
+tail -n 20 logs/audit/llm_audit.jsonl
+ls logs/errors
 ```
 
-The command exits non-zero if any object remains; log the run-id in the DPA
-register.
+### S7. Dagster monitoring
+
+```bash
+dagster dev -m aaa.dagster.definitions
+```
+
+Current Dagster monitoring components:
+
+- `full_audit_job`
+- `cost_monitoring_job`
+- `intake_only_job`
+- `phase1_only_job`
+- `error_log_sensor`
+- `new_engagement_sensor`
+
+## Backup / restore guidance
+
+The implemented repo persists demo/runtime data locally in `data/` and logs in
+`logs/`. For local backup, copy both directories together.
+
+```bash
+tar -czf aaa-local-backup.tgz data logs
+```
+
+Restore by unpacking into the repo root on a compatible checkout.
+
+## Right-to-erasure / engagement deletion
+
+There is **no built-in purge CLI command in the current repository**.
+
+Current manual procedure:
+
+1. remove the engagement's directories under `data/inputs/<id>/` and `data/results/<id>/`
+2. remove the corresponding row from `data/index.json`
+3. review `logs/` for engagement-specific references if policy requires cleanup
+4. record the maintenance action externally
+
+Because this is manual today, treat deletion as a controlled maintenance task.
 
 ## Contacts
 
-- **On-call rota:** see `#aaa-oncall` channel.
-- **Schema/contract:** S4 maintainers (see UAGF_TAM_S4 repo).
-- **Supervisor:** thesis supervisor (DPA agreement signatory).
+- **Schema/contract questions:** S4 maintainers
+- **Repository/runtime issues:** AAA maintainers
+- **Supervisor approvals:** thesis supervisor / project owner
 
 ## See also
 
-- `ARCHITECTURE.md §11` — Security & multi-tenancy
-- `ARCHITECTURE.md §14.4` — Local Docker Compose stack
-- `ARCHITECTURE.md §14.8` — Production topology
+- `README.md`
+- `SETUP.md`
+- `ARCHITECTURE.md §14`

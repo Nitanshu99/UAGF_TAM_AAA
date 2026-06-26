@@ -12,8 +12,6 @@ Or point ``pyproject.toml`` at this module::
 
 Everything — assets, jobs, resources, sensors, schedules — is registered here.
 """
-from __future__ import annotations
-
 from dagster import (
     Definitions,
     ScheduleDefinition,

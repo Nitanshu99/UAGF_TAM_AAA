@@ -1,0 +1,462 @@
+{
+  "engagement_id": "eng-fdb3a0fd",
+  "client_doc_collection": "client_docs_eng_fdb3a0fd",
+  "client_submission": {
+    "stage_a": {
+      "provider_name": "HarbourLogistik GmbH",
+      "system_name": "HarbourSense",
+      "version": "1.4",
+      "intended_purpose": "Anomaly detection in port crane and container-handling sensor data; detects anomalies in sensor telemetry from Hamburg Harbour cranes and container-handling equipment, deployed by Hamburger Hafen und Logistik AG (HHLA).",
+      "declared_modality": "tabular",
+      "declared_risk_tier": "high",
+      "declared_annex_iii_sections": [
+        "2"
+      ],
+      "deployment_context": "public_sector",
+      "provider_elects_third_party": false,
+      "gdpr_overlap": true,
+      "gpai_general_purpose": false,
+      "special_category_data": false,
+      "art43_preview": "annex_vi_internal_control",
+      "cgsa_assessment_id": "harbourlogistik-harboursense-001",
+      "entity_type": [
+        "provider",
+        "deployer"
+      ],
+      "territorial_scope": [
+        "placed_on_eu_market",
+        "established_in_eu"
+      ],
+      "art25_status_change": [],
+      "annex_i_section_a": [],
+      "annex_i_section_b": [],
+      "third_party_ca_legally_required": false,
+      "art6_derogation_claimed": false,
+      "art6_derogation_rationale": null,
+      "gpai_systemic_risk": false,
+      "art2_exclusion": null,
+      "art5_prohibited_practices": [],
+      "art50_transparency_triggers": [],
+      "is_public_body_or_public_service": true
+    },
+    "stage_b": {
+      "general_description": "IsolationForest anomaly detection model trained on 5000 sensor readings from 12 port cranes. Features: vibration, temperature, hydraulic pressure, load, speed, power, and operational metadata. Output: anomaly score and alert flag. Industry-standard approach for OT/ICS anomaly detection.",
+      "model_type": "isolation_forest_anomaly_detection",
+      "design_process": "IsolationForest with contamination=0.05 trained on normal operating data. No labelled anomaly data available at training time (unsupervised). Threshold tuned on 3-month historical alert validation.",
+      "training_data_description": "5000 sensor readings from 12 Hamburg Harbour cranes, 2025-Q4. Features: vibration_hz, temperature_c, load_kn, hydraulic_pressure_bar, speed_rpm, power_kw, and 6 additional operational metrics. Worker IDs are hashed.",
+      "data_governance_measures": "[DRAFT] Data validation pipeline under development. Current: basic range checks only. Worker operational logs pseudonymised. Art. 10 data governance framework not yet fully implemented.",
+      "monitoring_measures": "Daily anomaly count dashboard; weekly false-positive rate review. Monthly full review NOT yet operational.",
+      "logging_capabilities": "Per-alert log: timestamp, crane_id, score, alert_flag, operator_acknowledgement. Retained 3 years. Logging system operational.",
+      "accuracy_metrics": {
+        "false_negative_rate_target": 0.02,
+        "false_positive_rate_target": 0.1,
+        "sensor_data_completeness_target": 0.99
+      },
+      "lifecycle_change_log": [
+        "Expected completion of remediation: Q3 2026",
+        "Formal IR runbook planned by Q2 2026",
+        "Data validation pipeline under development / not operational (ETA Q3 2026)",
+        "Adversarial robustness framework not implemented (ETA Q4 2026)",
+        "Monthly full model performance review planned but not yet operational / not yet scheduled"
+      ],
+      "harmonised_standards": [
+        "ISO/IEC 42001:2023",
+        "IEC 62443 series"
+      ],
+      "other_standards": [],
+      "risk_management_file_uri": "minio://eng-fdb3a0fd/customer_uploads/risk_management_file_uri_51470c1d_risk_management_file.docx",
+      "eu_doc_uri": "minio://eng-fdb3a0fd/customer_uploads/eu_doc_uri_6f19397e_eu_declaration_of_conformity.docx",
+      "post_market_plan_uri": "minio://eng-fdb3a0fd/customer_uploads/post_market_plan_uri_9bd269b6_post_market_monitoring_plan.docx",
+      "training_dataset_uri": "minio://eng-fdb3a0fd/customer_uploads/training_dataset_uri_0f854c05_training_dataset.csv",
+      "evaluation_dataset_uri": "minio://eng-fdb3a0fd/customer_uploads/evaluation_dataset_uri_ce41b4b8_evaluation_dataset.csv",
+      "model_artifact_uri": "minio://eng-fdb3a0fd/customer_uploads/model_artifact_uri_7560c5cb_harboursense_v1.4.pkl"
+    },
+    "stage_c": {
+      "read_only_api_endpoint": null,
+      "credential_ref": "openbao://aaa/engagements/eng-uci-german-credit-001/stage_c_credential",
+      "access_scope": [
+        "read:predictions",
+        "read:model_metadata"
+      ],
+      "access_expiry_utc": "2030-12-31T23:59:59Z",
+      "revocation_webhook": null
+    },
+    "intake_completeness_score": 1.0
+  },
+  "scope_gate": {
+    "verdict": "in_scope",
+    "reasoning": [
+      "Public-law body / public service + high-risk system \u2192 Art. 27 FRIA required (FLI-R5)."
+    ],
+    "become_provider_under_art25": false,
+    "triggers_fria": true,
+    "triggers_art50_transparency": false,
+    "is_gpai_systemic": false,
+    "halt_engagement": false
+  },
+  "declared_modality": "tabular",
+  "declared_risk_tier": "high",
+  "declared_annex_iii_sections": [
+    "2"
+  ],
+  "risk_tier": "high",
+  "annex_iii_mapping": [
+    {
+      "annex_iii_section": "2",
+      "section_title": "Critical infrastructure (energy, water, traffic management)",
+      "use_case_marker": "critical infrastructure",
+      "confidence": 0.0,
+      "provenance": "phase1_rejected",
+      "derogation_claimed": false,
+      "derogation_rationale": null
+    }
+  ],
+  "modality": "tabular",
+  "deployment_context": "public_sector",
+  "is_llm_or_agentic": false,
+  "provider_elects_third_party": false,
+  "harmonised_standards_applied": false,
+  "declaration_verification": {
+    "deployment_context": "match",
+    "gdpr_overlap": "match",
+    "gpai_general_purpose": "match",
+    "is_llm_or_agentic": "match",
+    "modality": "match",
+    "provider_elects_third_party": "match",
+    "risk_tier": "match",
+    "special_category_data": "match",
+    "annex_iii_\u00a72": "mismatch"
+  },
+  "art43_decision": {
+    "procedure": "annex_vi_internal_control",
+    "rationale": "High-risk AI system with harmonised standards applied in full; internal control procedure permitted by Art. 43 \u00a72."
+  },
+  "phase_artefacts": {
+    "T01a_stage_a_triage": {
+      "uri": "minio://eng-fdb3a0fd/stage_a/T01a_stage_a_triage_1d22899f.json",
+      "sha256": "",
+      "template_id": "T01a_stage_a_triage"
+    },
+    "T01b_annex_iv_dossier": {
+      "uri": "minio://eng-fdb3a0fd/stage_b/T01b_annex_iv_dossier_23bc365f.json",
+      "sha256": "",
+      "template_id": "T01b_annex_iv_dossier"
+    },
+    "T01c_intake_completeness_report": {
+      "uri": "minio://eng-fdb3a0fd/stage_b/T01c_intake_completeness_report_3ad0fb71.json",
+      "sha256": "",
+      "template_id": "T01c_intake_completeness_report"
+    },
+    "T02_system_card": {
+      "uri": "minio://eng-fdb3a0fd/phase_1/T02_system_card_d2f6edef.json",
+      "sha256": "",
+      "template_id": "T02_system_card"
+    },
+    "T03_annex_iii_mapping": {
+      "uri": "minio://eng-fdb3a0fd/phase_1/T03_annex_iii_mapping_fdd2c291.json",
+      "sha256": "",
+      "template_id": "T03_annex_iii_mapping"
+    },
+    "T04_risk_tier_decision": {
+      "uri": "minio://eng-fdb3a0fd/phase_1/T04_risk_tier_decision_4b630a29.json",
+      "sha256": "",
+      "template_id": "T04_risk_tier_decision"
+    },
+    "T05_art43_decision": {
+      "uri": "minio://eng-fdb3a0fd/phase_1/T05_art43_decision_2b1819fa.json",
+      "sha256": "",
+      "template_id": "T05_art43_decision"
+    },
+    "T06_datasheet_for_datasets": {
+      "uri": "minio://eng-fdb3a0fd/phase_2/T06_datasheet_for_datasets_37a0484f.json",
+      "sha256": "",
+      "template_id": "T06_datasheet_for_datasets"
+    },
+    "T07_data_quality_report": {
+      "uri": "minio://eng-fdb3a0fd/phase_2/T07_data_quality_report_c4037584.json",
+      "sha256": "",
+      "template_id": "T07_data_quality_report"
+    },
+    "T08_special_category_data_log": {
+      "uri": "minio://eng-fdb3a0fd/phase_2/T08_special_category_data_log_5974a9c2.json",
+      "sha256": "",
+      "template_id": "T08_special_category_data_log"
+    },
+    "T09_model_card": {
+      "uri": "minio://eng-fdb3a0fd/phase_3/T09_model_card_cdf8c0ac.json",
+      "sha256": "",
+      "template_id": "T09_model_card"
+    },
+    "T10_explainability_report": {
+      "uri": "minio://eng-fdb3a0fd/phase_3/T10_explainability_report_f94b6bc2.json",
+      "sha256": "",
+      "template_id": "T10_explainability_report"
+    },
+    "T11_robustness_report": {
+      "uri": "minio://eng-fdb3a0fd/phase_3/T11_robustness_report_e1ee0848.json",
+      "sha256": "",
+      "template_id": "T11_robustness_report"
+    },
+    "T12_output_fairness_report": {
+      "uri": "minio://eng-fdb3a0fd/phase_4/T12_output_fairness_report_6e684439.json",
+      "sha256": "",
+      "template_id": "T12_output_fairness_report"
+    },
+    "T13_output_sampling_log": {
+      "uri": "minio://eng-fdb3a0fd/phase_4/T13_output_sampling_log_2c91c8ee.json",
+      "sha256": "",
+      "template_id": "T13_output_sampling_log"
+    }
+  },
+  "cgsa_payload": null,
+  "cgsa_schema_version": null,
+  "cgsa_composite_maturity_score": null,
+  "cgsa_composite_maturity_label": null,
+  "cgsa_domain_scores": null,
+  "cgsa_eu_ai_act_coverage_pct": null,
+  "cgsa_csp_satisfiable": null,
+  "cgsa_governance_verdict": null,
+  "cgsa_phase5_verdict": "FAIL",
+  "cgsa_phase5_narrative": null,
+  "cgsa_blocking_findings": [],
+  "cgsa_positive_findings": [],
+  "cgsa_low_confidence_controls": [],
+  "cgsa_recommended_follow_up": [],
+  "cgsa_report_url": null,
+  "cgsa_risk_tier_match": null,
+  "compliance_matrix": {
+    "Annex_III": "PASS",
+    "Art.15": "PASS",
+    "Art.10\u00a72(f)": "PASS",
+    "Art.10": "PASS",
+    "Art.43": "PASS",
+    "Art.13": "PASS",
+    "Art.15\u00a71": "PASS",
+    "Art.50": "PASS",
+    "Art.17": "PASS",
+    "Art.72": "PASS",
+    "Art.27": "PASS",
+    "Art.9": "PASS",
+    "Art.12": "PASS",
+    "Art.11": "PASS",
+    "Annex_IV": "PASS",
+    "Art.5": "PASS",
+    "Art.6": "PASS"
+  },
+  "blocking_findings": [],
+  "positive_findings": [],
+  "remediation_roadmap": [],
+  "material_findings_count": 0,
+  "possibly_material_findings_count": 0,
+  "verifier_critiques": {
+    "T02_system_card": {
+      "verdict": "accept",
+      "issues": [],
+      "notes": [
+        "Phase 1 ScopeAgent complete. confidence=0.65"
+      ],
+      "article_citations": [
+        "Art.6",
+        "Art.13",
+        "Art.43",
+        "Annex_III"
+      ],
+      "rerun_required": false
+    },
+    "T03_annex_iii_mapping": {
+      "verdict": "accept",
+      "issues": [],
+      "notes": [
+        "Phase 1 ScopeAgent complete. confidence=0.65"
+      ],
+      "article_citations": [
+        "Art.6",
+        "Art.13",
+        "Art.43",
+        "Annex_III"
+      ],
+      "rerun_required": false
+    },
+    "T04_risk_tier_decision": {
+      "verdict": "accept",
+      "issues": [],
+      "notes": [
+        "Phase 1 ScopeAgent complete. confidence=0.65"
+      ],
+      "article_citations": [
+        "Art.6",
+        "Art.13",
+        "Art.43",
+        "Annex_III"
+      ],
+      "rerun_required": false
+    },
+    "T05_art43_decision": {
+      "verdict": "accept",
+      "issues": [],
+      "notes": [
+        "Phase 1 ScopeAgent complete. confidence=0.65"
+      ],
+      "article_citations": [
+        "Art.6",
+        "Art.13",
+        "Art.43",
+        "Annex_III"
+      ],
+      "rerun_required": false
+    },
+    "T06_datasheet_for_datasets": {
+      "verdict": "accept",
+      "issues": [],
+      "notes": [
+        "Phase 2 DataAuditor complete. confidence=0.85"
+      ],
+      "article_citations": [
+        "Art.10"
+      ],
+      "rerun_required": false
+    },
+    "T07_data_quality_report": {
+      "verdict": "accept",
+      "issues": [],
+      "notes": [
+        "Phase 2 DataAuditor complete. confidence=0.85"
+      ],
+      "article_citations": [
+        "Art.10"
+      ],
+      "rerun_required": false
+    },
+    "T08_special_category_data_log": {
+      "verdict": "accept",
+      "issues": [],
+      "notes": [
+        "Phase 2 DataAuditor complete. confidence=0.85"
+      ],
+      "article_citations": [
+        "Art.10"
+      ],
+      "rerun_required": false
+    },
+    "T09_model_card": {
+      "verdict": "accept",
+      "issues": [],
+      "notes": [
+        "Phase 3 ModelValidator complete. confidence=0.85"
+      ],
+      "article_citations": [
+        "Art.13",
+        "Art.15"
+      ],
+      "rerun_required": false
+    },
+    "T10_explainability_report": {
+      "verdict": "accept",
+      "issues": [],
+      "notes": [
+        "Phase 3 ModelValidator complete. confidence=0.85"
+      ],
+      "article_citations": [
+        "Art.13"
+      ],
+      "rerun_required": false
+    },
+    "T11_robustness_report": {
+      "verdict": "accept",
+      "issues": [],
+      "notes": [
+        "Phase 3 ModelValidator complete. confidence=0.85"
+      ],
+      "article_citations": [
+        "Art.15"
+      ],
+      "rerun_required": false
+    },
+    "T12_output_fairness_report": {
+      "verdict": "accept",
+      "issues": [],
+      "notes": [
+        "Phase 4 OutputFairnessTester complete. confidence=0.85"
+      ],
+      "article_citations": [
+        "Art.10\u00a72(f)",
+        "Art.15\u00a71"
+      ],
+      "rerun_required": false
+    },
+    "T13_output_sampling_log": {
+      "verdict": "accept",
+      "issues": [],
+      "notes": [
+        "Phase 4 OutputFairnessTester complete. confidence=0.85"
+      ],
+      "article_citations": [
+        "Art.15\u00a71"
+      ],
+      "rerun_required": false
+    },
+    "T14_governance_findings": {
+      "verdict": "accept",
+      "issues": [],
+      "notes": [
+        "Phase 5 GovernanceAgent complete. confidence=0.20"
+      ],
+      "article_citations": [
+        "Art.9",
+        "Art.17",
+        "Art.72"
+      ],
+      "rerun_required": false
+    },
+    "T15_monitoring_logging_review": {
+      "verdict": "accept",
+      "issues": [],
+      "notes": [
+        "Phase 5 GovernanceAgent complete. confidence=0.20"
+      ],
+      "article_citations": [
+        "Art.9",
+        "Art.17",
+        "Art.72"
+      ],
+      "rerun_required": false
+    }
+  },
+  "intake_completeness_score": 1.0,
+  "completeness_score": 0.75,
+  "regulatory_coverage_pct": 93.3,
+  "final_verdict": "FAIL",
+  "auditor_opinion": null,
+  "phase_status": {
+    "T14_governance_findings": "M",
+    "T15_monitoring_logging_review": "M",
+    "T06_datasheet_for_datasets": "M",
+    "T07_data_quality_report": "M",
+    "T08_special_category_data_log": "M",
+    "T09_model_card": "M",
+    "T10_explainability_report": "M",
+    "T11_robustness_report": "M",
+    "T12_output_fairness_report": "M",
+    "T13_output_sampling_log": "M",
+    "T16_uagf_tam_l_evidence": "S",
+    "T02_system_card": "M",
+    "T03_annex_iii_mapping": "M",
+    "T04_risk_tier_decision": "M",
+    "T05_art43_decision": "M",
+    "T17_compliance_matrix": "M",
+    "T18_audit_report": "M"
+  },
+  "verified_modality": "tabular",
+  "verified_risk_tier": "high",
+  "art43_delta": false,
+  "hitl_required": true,
+  "hitl_reason": "cgsa_ingest schema validation failed",
+  "_branch": "standard",
+  "cgsa_ingest_details": {
+    "errors": [
+      "domains/0/controls/1/gap_severity: 'major' is not one of ['critical', 'high', 'medium', 'low', None]",
+      "domains/3/controls/0/gap_severity: 'major' is not one of ['critical', 'high', 'medium', 'low', None]",
+      "eu_ai_act_compliance_matrix: 'article_13' is a required property"
+    ]
+  }
+}

@@ -14,8 +14,6 @@ Usage in assets::
         store = context.resources.evidence_store
         cfg = context.resources.aaa_settings
 """
-from __future__ import annotations
-
 from dagster import ConfigurableResource, InitResourceContext, resource
 from pydantic import Field
 

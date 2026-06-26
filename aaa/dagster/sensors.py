@@ -13,8 +13,6 @@ new_engagement_sensor
     store when offline) for engagements whose status is ``intake_submitted``
     and triggers a ``full_audit_job`` run for each.
 """
-from __future__ import annotations
-
 import json
 import os
 from pathlib import Path

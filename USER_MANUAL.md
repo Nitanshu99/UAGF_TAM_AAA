@@ -1,8 +1,11 @@
 # User Manual — EU AI Act Compliance Audit System
 
-**Who this is for:** Someone who has cloned this repository and wants to run the system.
-No prior experience with Python virtual environments, Docker, or AI frameworks is assumed.
-Every step is spelled out exactly.
+**Who this is for:** Someone who has cloned this repository and wants to run the
+current implementation successfully.
+
+This manual now reflects the codebase as it exists today: modular FastAPI routes,
+file-based persistence under `data/`, structured logs under `logs/`, and optional
+Dagster monitoring.
 
 ---
 
@@ -11,8 +14,24 @@ Every step is spelled out exactly.
 In plain English: you upload your AI system's technical documents, answer 8 short questions,
 and this system automatically checks whether your AI system complies with the EU AI Act.
 It reads your documents, fills in a compliance form, runs 13 AI agents behind the scenes,
-and gives you a final verdict: **PASS**, **PASS WITH OBSERVATIONS**, or **FAIL** — along
-with a detailed report you can download.
+and gives you a detailed report you can download.
+
+Crucially, this is an **independent** audit — it does **not** just take your declared
+numbers at face value. If you upload your trained model and evaluation dataset, the system
+re-runs the accuracy, robustness, and fairness tests **itself** and compares the results to
+what you declared. Each EU AI Act article gets one of four verdicts:
+
+- **PASS** — verified, no issues.
+- **PASS WITH OBSERVATIONS** — verified, minor things to note.
+- **FAIL** — a confirmed problem (e.g. the model fails a fairness test, or the data
+  contains undeclared special-category personal data).
+- **INSUFFICIENT EVIDENCE** — the system *could not verify* a requirement because, for
+  example, the model file wasn't a real runnable model. This is **not** a pass.
+
+The report also states a formal **auditor opinion**: *unqualified* (clean), *qualified*
+(pass with observations), *adverse* (fail), or *disclaimer of opinion* (a mandatory
+high-risk requirement could not be independently verified, so conformity cannot be
+concluded).
 
 ---
 
@@ -23,9 +42,9 @@ with a detailed report you can download.
 | **Offline mode** | Just Python + the repo | Learning the system, testing, demo |
 | **Online mode** | Python + Docker + OpenAI API key | Real compliance audits with AI analysis |
 
-**If this is your first time — start with offline mode.** It works without any API keys,
-without Docker, and gives you the full wizard experience. Online mode adds the AI agents
-that actually read your documents and write the report.
+**If this is your first time — start with offline mode.** It works without API keys,
+without Docker, and exercises the current Streamlit/CLI/API workflow safely.
+Online mode adds live retrieval and provider-backed LLM execution.
 
 ---
 
@@ -194,7 +213,8 @@ You should see `Successfully installed pip-XX.X`.
 pip install -r requirements-dev.txt
 ```
 
-This downloads and installs all the Python libraries the project needs. It takes 2–5 minutes.
+This installs the runtime stack plus development tooling used for local work.
+It can take several minutes because the dependency set is intentionally broad.
 You will see many lines scrolling — this is normal. Wait for the `Successfully installed ...` line at the end.
 
 **Step B.5 — Create your configuration file**
@@ -300,10 +320,10 @@ Save and close the file.
 
 ## Part 5 — Running in offline mode (no API key needed)
 
-Offline mode uses pre-built fixture data to demonstrate the full pipeline. The AI agents
-run in rule-based mode (no LLM calls). The wizard works fully — you can upload documents
-and fill the form — but the DocIntelligenceAgent will not auto-read your documents
-(it needs Qdrant for that, which requires Docker).
+Offline mode is the safest way to learn the system. It avoids external-service
+dependencies, uses the bundled fixtures, and still lets you walk through the full
+intake → audit → report workflow. In offline mode, document auto-extraction is
+limited and you should expect to fill most intake fields manually.
 
 ### Method 1 — Streamlit wizard (easiest, point-and-click)
 
@@ -347,9 +367,9 @@ http://localhost:8501
 **Step 1 — Upload Documents:**
 - You see three upload zones
 - **Technical documents**: Upload any PDF, Word doc, or text file that describes your AI system (model card, data sheet, technical specification, risk assessment). If you have none, you can skip and click Continue
-- **Model artefact** (optional): Upload your trained model file if you have one
-- **Datasets** (optional): Upload training or evaluation dataset files
-- In offline mode: the system stores your files but cannot read them automatically (that requires online mode)
+- **Model artefact**: Upload your **trained model file** (`.joblib` / `.pkl`). This is what lets the audit *independently* re-run accuracy, robustness, and fairness tests instead of trusting your declared numbers. If you don't upload a runnable model — or the file isn't a real model — the relevant Article 15 / fairness checks come back **INSUFFICIENT EVIDENCE**, not PASS.
+- **Datasets**: Upload your **training and evaluation datasets** (CSV/Parquet). The evaluation set is re-scored to verify performance and fairness; the training set is re-scanned for data quality and undeclared personal data (Article 10). Without a dataset, those checks are INSUFFICIENT EVIDENCE.
+- *Tip:* the audit needs to know which column is the prediction target and which columns are protected attributes (e.g. age, sex). You can declare these in Stage B (`target_column`, `positive_label`, `sensitive_feature_columns`); if you don't, the system infers them and records the assumption as an observation.
 - Click **Continue without documents** (if you have no files) or **Analyse Documents** (if you uploaded files)
 
 **Step 2 — Quick Questions:**
@@ -453,6 +473,7 @@ Online mode enables the full AI pipeline:
 - All 13 AI agents run with real LLM calls
 - The Regulatory RAG agent searches the full EU AI Act, GDPR, and ISO standards corpus
 - The final report is generated with real AI-written analysis
+- LLM calls are written to `logs/audit/llm_audit.jsonl`
 
 ### Step 6.1 — Install Docker Desktop (if you do not have it)
 
@@ -481,7 +502,7 @@ Save the file.
 
 ### Step 6.3 — Start the required background services
 
-This starts the database and vector search services the system needs:
+This starts the optional local services used for the broader online stack:
 
 ```
 docker compose up -d
@@ -500,10 +521,10 @@ You should see these services all showing `healthy` or `running` (not `exiting`)
 
 | Service | What it does |
 |---------|-------------|
-| `postgres` | Stores engagement data |
-| `qdrant` | Vector search for document retrieval |
-| `minio` | Stores uploaded files and audit artefacts |
-| `valkey` | Background job queue |
+| `postgres` | Optional production-style relational backend and migration target |
+| `qdrant` | Vector search for regulatory and document retrieval |
+| `minio` | Planned production object-store backend |
+| `valkey` | Reserved local stack component for future queue/cache usage |
 
 If any service shows `exiting`, see Part 7 Troubleshooting.
 
@@ -591,7 +612,46 @@ In Step 4 (Results):
 
 ---
 
-### Step 6.7 — Stopping everything (online mode)
+### Step 6.7 — Where your inputs, results, and logs are stored
+
+By default, the repository writes persisted JSON files under `data/`.
+
+You will find:
+
+- `data/index.json` — master engagement index
+- `data/inputs/<engagement_id>/engagement.json` — engagement creation data
+- `data/inputs/<engagement_id>/intake.json` — Stage A/B/C payload you submitted
+- `data/inputs/<engagement_id>/files.json` — uploaded-file metadata
+- `data/results/<engagement_id>/audit_result.json` — verdict + KPIs
+- `data/results/<engagement_id>/artefacts.json` — artefact reference map
+- `data/results/<engagement_id>/findings.json` — findings and remediation roadmap
+- `data/results/<engagement_id>/compliance_matrix.json` — article-level output
+
+You can move this storage root by setting:
+
+```
+AAA_DATA_DIR=/path/to/another/data/root
+```
+
+Logs are written under `logs/`:
+
+- `logs/app/app.log`
+- `logs/api/api.log`
+- `logs/agents/agents.log`
+- `logs/audit/llm_audit.jsonl`
+- `logs/errors/*.jsonl`
+- `logs/dagster/dagster.log`
+
+The API also exposes the persisted data through read-only endpoints such as:
+
+- `GET /api/v1/data/engagements`
+- `GET /api/v1/data/results`
+- `GET /api/v1/data/engagements/<id>/input`
+- `GET /api/v1/data/engagements/<id>/result`
+
+---
+
+### Step 6.8 — Stopping everything (online mode)
 
 When you are done working, stop each running component in this order:
 
@@ -677,10 +737,10 @@ the repository root folder (the one containing `aaa/`, `requirements.txt`, etc.)
 
 Run:
 ```
-pip install streamlit
+python3.12 scripts/setup.py --no-docker --no-migrate
 ```
 
-Or reinstall all packages:
+Or reinstall all packages manually:
 ```
 pip install -r requirements-dev.txt
 ```
@@ -741,6 +801,27 @@ In offline mode, agents run in rule-based mode and may return conservative resul
 incomplete evidence. This is expected. Switch to online mode with real documents for
 meaningful results.
 
+### I want to inspect exactly what was persisted for an engagement
+
+Look at the engagement directory under `data/` or call the API:
+
+```
+curl http://localhost:8000/api/v1/data/engagements
+curl http://localhost:8000/api/v1/data/engagements/<id>/input
+curl http://localhost:8000/api/v1/data/engagements/<id>/result
+```
+
+### I want to inspect the LLM audit trail
+
+Open:
+
+```
+logs/audit/llm_audit.jsonl
+```
+
+Each line is one JSON record containing the request messages, response text,
+token counts, latency, and estimated cost when available.
+
 ### Resetting everything to start fresh
 
 To completely start over (removes the virtual environment and .env):
@@ -766,9 +847,16 @@ When the audit finishes, you see:
 
 | Verdict | What it means |
 |---------|--------------|
-| **PASS** | All critical EU AI Act requirements are met. Full evidence provided. Regulatory coverage ≥ 90%. |
-| **PASS WITH OBSERVATIONS** | Mostly compliant, but some gaps exist (e.g. regulatory coverage 70–89%). Minor improvements recommended. |
-| **FAIL** | One or more critical requirements are not met, or intake completeness < 80%, or critical articles are unaddressed. |
+| **PASS** | All critical EU AI Act requirements are met and **independently verified**. Regulatory coverage ≥ 90%. |
+| **PASS WITH OBSERVATIONS** | Verified, but with observations — minor gaps, or some requirements could not be independently verified (see below). |
+| **FAIL** | A **confirmed** non-conformity: e.g. the model fails a fairness/robustness test, the dataset contains undeclared special-category data, or a declared metric is refuted by re-computation. |
+
+Individual articles in the compliance matrix can also be marked **INSUFFICIENT EVIDENCE** —
+the audit could not verify that requirement (e.g. the uploaded model wasn't runnable, or the
+governance self-assessment couldn't be retrieved). This is **not** a pass; when it hits a
+mandatory high-risk article the overall **auditor opinion** becomes a *disclaimer of opinion*
+(conformity cannot be concluded). The report's `auditor_opinion.opinion_type` is one of
+*unqualified*, *qualified*, *adverse*, or *disclaimer_of_opinion*.
 
 ### KPI scores
 
@@ -780,7 +868,7 @@ When the audit finishes, you see:
 
 ### Downloads
 
-- **T17 Compliance Matrix (JSON)** — A table mapping each EU AI Act article to a verdict (PASS/FAIL/N/A) with evidence links
+- **T17 Compliance Matrix (JSON)** — A table mapping each EU AI Act article to a verdict (PASS / PASS_WITH_OBSERVATIONS / FAIL / INSUFFICIENT_EVIDENCE) with a per-article rationale and evidence links
 - **T18 Audit Report (JSON)** — The full audit report including executive summary, findings, and remediation roadmap
 - **Audit Report (PDF)** — The same report as a formatted PDF (available when the Report Architect agent successfully renders it)
 
@@ -806,6 +894,9 @@ identifies what is missing and what action is needed.
 | Start Streamlit wizard (online) | `CGSA_FIXTURE_DIR=scripts/fixtures/cgsa streamlit run aaa/ui/app.py` |
 | Run CLI demo with sample data | `make intake-demo` |
 | **Stop CLI** mid-run | `Ctrl + C` |
+| Start FastAPI | `uvicorn aaa.api.main:app --reload --port 8000` |
+| View Prometheus metrics | `http://localhost:8000/metrics` |
+| Start Dagster | `dagster dev -m aaa.dagster.definitions` |
 | Start Docker services | `docker compose up -d` |
 | **Stop Docker** services (keeps data) | `docker compose down` |
 | **Stop Docker** + delete all data | `docker compose down -v` |
@@ -819,11 +910,16 @@ identifies what is missing and what action is needed.
 |------|-----------|
 | `.env` | Your configuration file — API keys and mode settings go here |
 | `aaa/ui/app.py` | The Streamlit wizard |
+| `aaa/api/main.py` | The FastAPI application |
+| `aaa/data/` | The persistence layer implementation |
+| `aaa/observability/` | Logging, metrics, error capture, LLM audit |
 | `scripts/fixtures/uci_german_credit/` | Sample audit data for testing |
 | `data/eu_ai_act_compliance_checker.json` | The EU AI Act questionnaire used for scoping |
 | `data/regulatory_corpus/` | Source documents for the regulatory corpus (EU AI Act, GDPR, etc.) |
+| `data/index.json` | Index of persisted engagements |
+| `logs/audit/llm_audit.jsonl` | Per-call LLM audit trail |
 | `requirements.txt` | Full ML/production dependencies |
-| `requirements-dev.txt` | Development dependencies (lighter, faster to install) |
+| `requirements-dev.txt` | Runtime + development dependencies for local work |
 | `SETUP.md` | Technical quick-start guide |
 | `ARCHITECTURE.md` | How the system is designed |
 
@@ -835,3 +931,5 @@ identifies what is missing and what action is needed.
 | `OPENAI_API_KEY` | Your OpenAI key for AI agents | not needed | `sk-your-key` |
 | `CGSA_FIXTURE_DIR` | Where the sample CGSA data lives | `scripts/fixtures/cgsa` | `scripts/fixtures/cgsa` |
 | `AAA_LOG_LEVEL` | How much log output you see | `WARNING` | `INFO` for debugging |
+| `AAA_DATA_DIR` | Where persisted engagement JSON is written | `data` | `data` or custom path |
+| `AAA_LOG_DIR` | Where log files are written | `logs` | `logs` or custom path |

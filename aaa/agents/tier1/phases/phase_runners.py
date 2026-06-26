@@ -18,6 +18,7 @@ from typing import Any
 
 from aaa.agents.base import Dispatch
 from aaa.agents.tier1.phases.agent_runner import run_agent_on_state, _evidence_uris
+from aaa.agents.tier1.phases.verification import run_phase_with_verification
 from aaa.agents.tier1.phases.node_stubs import (
     node_phase1_stub,
     node_parallel_phases_stub,
@@ -47,18 +48,19 @@ async def run_phase_1(agent: Any, state: dict) -> dict:
             "deployment_context": state.get("deployment_context", ""),
         },
     )
-    report, state = await run_agent_on_state(agent, dispatch, state, timeout=120)
+    report, state = await run_phase_with_verification(
+        agent, dispatch, state,
+        tid_articles={
+            "T02_system_card": ["Art.5", "Art.13"],
+            "T03_annex_iii_mapping": ["Art.6", "Annex_III"],
+            "T04_risk_tier_decision": ["Art.5", "Art.6"],
+            "T05_art43_decision": ["Art.43"],
+        },
+        phase_label="Phase 1 ScopeAgent", timeout=120, default_confidence=0.9,
+    )
     if report is None:
         return node_phase1_stub(state)
-    confidence = report.get("confidence", 0.9)
-    for tid in ["T02_system_card", "T03_annex_iii_mapping", "T04_risk_tier_decision", "T05_art43_decision"]:
-        state["verifier_critiques"][tid] = {
-            "verdict": "accept", "issues": [],
-            "notes": [f"Phase 1 ScopeAgent complete. confidence={confidence:.2f}"],
-            "article_citations": ["Art.6", "Art.13", "Art.43", "Annex_III"],
-            "rerun_required": False,
-        }
-    logger.info("Engagement %s: Phase 1 complete. confidence=%.2f", eng, confidence)
+    logger.info("Engagement %s: Phase 1 complete.", eng)
     return state
 
 
@@ -67,6 +69,8 @@ async def run_phase_2(agent: Any, state: dict) -> dict:
     if agent is None:
         return node_parallel_phases_stub(state)
     eng = state["engagement_id"]
+    stage_a = state.get("client_submission", {}).get("stage_a", {}) or {}
+    stage_b = state.get("client_submission", {}).get("stage_b", {}) or {}
     dispatch = Dispatch(
         phase_id="P2",
         task_brief="Audit training data quality and governance for Art. 10 compliance.",
@@ -77,19 +81,24 @@ async def run_phase_2(agent: Any, state: dict) -> dict:
             "client_doc_collection": state.get("client_doc_collection"),
             "modality": state.get("modality", ""),
             "risk_tier": state.get("risk_tier", ""),
+            "special_category_data": stage_a.get("special_category_data", False),
+            "gdpr_overlap": stage_a.get("gdpr_overlap", False),
+            "target_column": stage_b.get("target_column"),
+            "stage_b": stage_b,
         },
     )
-    report, state = await run_agent_on_state(agent, dispatch, state, timeout=180)
+    report, state = await run_phase_with_verification(
+        agent, dispatch, state,
+        tid_articles={
+            "T06_datasheet_for_datasets": ["Art.10"],
+            "T07_data_quality_report": ["Art.10"],
+            "T08_special_category_data_log": ["Art.10"],
+        },
+        phase_label="Phase 2 DataAuditor", timeout=180, default_confidence=0.85,
+    )
     if report is None:
         return state
-    confidence = report.get("confidence", 0.85)
-    for tid in ["T06_datasheet_for_datasets", "T07_data_quality_report", "T08_special_category_data_log"]:
-        state["verifier_critiques"][tid] = {
-            "verdict": "accept", "issues": [],
-            "notes": [f"Phase 2 DataAuditor complete. confidence={confidence:.2f}"],
-            "article_citations": ["Art.10"], "rerun_required": False,
-        }
-    logger.info("Engagement %s: Phase 2 complete. confidence=%.2f", eng, confidence)
+    logger.info("Engagement %s: Phase 2 complete.", eng)
     return state
 
 
@@ -98,28 +107,35 @@ async def run_phase_3(agent: Any, state: dict) -> dict:
     if agent is None:
         return state
     eng = state["engagement_id"]
+    stage_b = state.get("client_submission", {}).get("stage_b", {}) or {}
     dispatch = Dispatch(
         phase_id="P3",
         task_brief="Validate model performance, explainability, and robustness.",
         evidence_uris=_evidence_uris(state),
         output_contract="T09_model_card",
-        declaration_summary={"engagement_id": eng, "modality": state.get("modality", "")},
+        declaration_summary={
+            "engagement_id": eng,
+            "modality": state.get("modality", ""),
+            "client_doc_collection": state.get("client_doc_collection"),
+            # Real artefacts for independent re-computation (loaded by the agent).
+            "stage_b": stage_b,
+            "model_artifact_uri": stage_b.get("model_artifact_uri"),
+            "evaluation_dataset_uri": stage_b.get("evaluation_dataset_uri"),
+            "training_dataset_uri": stage_b.get("training_dataset_uri"),
+        },
     )
-    report, state = await run_agent_on_state(agent, dispatch, state, timeout=180)
+    report, state = await run_phase_with_verification(
+        agent, dispatch, state,
+        tid_articles={
+            "T09_model_card": ["Art.13", "Art.15"],
+            "T10_explainability_report": ["Art.13"],
+            "T11_robustness_report": ["Art.15"],
+        },
+        phase_label="Phase 3 ModelValidator", timeout=180, default_confidence=0.85,
+    )
     if report is None:
         return state
-    confidence = report.get("confidence", 0.85)
-    for tid, arts in {
-        "T09_model_card": ["Art.13", "Art.15"],
-        "T10_explainability_report": ["Art.13"],
-        "T11_robustness_report": ["Art.15"],
-    }.items():
-        state["verifier_critiques"][tid] = {
-            "verdict": "accept", "issues": [],
-            "notes": [f"Phase 3 ModelValidator complete. confidence={confidence:.2f}"],
-            "article_citations": arts, "rerun_required": False,
-        }
-    logger.info("Engagement %s: Phase 3 complete. confidence=%.2f", eng, confidence)
+    logger.info("Engagement %s: Phase 3 complete.", eng)
     return state
 
 
@@ -128,27 +144,30 @@ async def run_phase_4(agent: Any, state: dict) -> dict:
     if agent is None:
         return state
     eng = state["engagement_id"]
+    stage_b = state.get("client_submission", {}).get("stage_b", {}) or {}
     dispatch = Dispatch(
         phase_id="P4",
         task_brief="Test model outputs for fairness and discriminatory patterns.",
         evidence_uris=_evidence_uris(state),
         output_contract="T12_output_fairness_report",
-        declaration_summary={"engagement_id": eng, "modality": state.get("modality", "tabular")},
+        declaration_summary={
+            "engagement_id": eng,
+            "modality": state.get("modality", "tabular"),
+            "client_doc_collection": state.get("client_doc_collection"),
+            "stage_b": stage_b,
+        },
     )
-    report, state = await run_agent_on_state(agent, dispatch, state, timeout=180)
+    report, state = await run_phase_with_verification(
+        agent, dispatch, state,
+        tid_articles={
+            "T12_output_fairness_report": ["Art.10§2(f)", "Art.15§1"],
+            "T13_output_sampling_log": ["Art.15§1"],
+        },
+        phase_label="Phase 4 OutputFairnessTester", timeout=180, default_confidence=0.85,
+    )
     if report is None:
         return state
-    confidence = report.get("confidence", 0.85)
-    for tid, arts in {
-        "T12_output_fairness_report": ["Art.10§2(f)", "Art.15§1"],
-        "T13_output_sampling_log": ["Art.15§1"],
-    }.items():
-        state["verifier_critiques"][tid] = {
-            "verdict": "accept", "issues": [],
-            "notes": [f"Phase 4 OutputFairnessTester complete. confidence={confidence:.2f}"],
-            "article_citations": arts, "rerun_required": False,
-        }
-    logger.info("Engagement %s: Phase 4 complete. confidence=%.2f", eng, confidence)
+    logger.info("Engagement %s: Phase 4 complete.", eng)
     return state
 
 
@@ -172,17 +191,17 @@ async def run_phase_5(agent: Any, state: dict) -> dict:
             "special_category_data": stage_a.get("special_category_data", False),
         },
     )
-    report, state = await run_agent_on_state(agent, dispatch, state, timeout=180)
+    report, state = await run_phase_with_verification(
+        agent, dispatch, state,
+        tid_articles={
+            "T14_governance_findings": ["Art.9", "Art.17"],
+            "T15_monitoring_logging_review": ["Art.12", "Art.72"],
+        },
+        phase_label="Phase 5 GovernanceAgent", timeout=180, default_confidence=0.85,
+    )
     if report is None:
         return node_phase5_stub(state)
-    confidence = report.get("confidence", 0.85)
-    for tid in ["T14_governance_findings", "T15_monitoring_logging_review"]:
-        state["verifier_critiques"][tid] = {
-            "verdict": "accept", "issues": [],
-            "notes": [f"Phase 5 GovernanceAgent complete. confidence={confidence:.2f}"],
-            "article_citations": ["Art.9", "Art.17", "Art.72"], "rerun_required": False,
-        }
-    logger.info("Engagement %s: Phase 5 complete. confidence=%.2f", eng, confidence)
+    logger.info("Engagement %s: Phase 5 complete.", eng)
     return state
 
 
@@ -202,17 +221,18 @@ async def run_uagf_tam_l(agent: Any, state: dict) -> dict:
             "stage_b": state.get("client_submission", {}).get("stage_b", {}),
         },
     )
-    report, state = await run_agent_on_state(agent, dispatch, state, timeout=300)
+    report, state = await run_phase_with_verification(
+        agent, dispatch, state,
+        tid_articles={
+            "T16_uagf_tam_l_evidence": [
+                "Art.15", "Art.51", "Art.52", "Art.53", "Art.54", "Art.55",
+            ],
+        },
+        phase_label="L-branch UagfTamLBranch", timeout=300, default_confidence=0.9,
+    )
     if report is None:
         return node_parallel_phases_stub(state)
-    confidence = report.get("confidence", 0.9)
-    state["verifier_critiques"]["T16_uagf_tam_l_evidence"] = {
-        "verdict": "accept", "issues": [],
-        "notes": [f"L-branch UagfTamLBranch complete. confidence={confidence:.2f}"],
-        "article_citations": ["Art.15", "Art.51", "Art.52", "Art.53", "Art.54", "Art.55"],
-        "rerun_required": False,
-    }
-    logger.info("Engagement %s: L-branch complete. confidence=%.2f", eng, confidence)
+    logger.info("Engagement %s: L-branch complete.", eng)
     return state
 
 
@@ -221,6 +241,7 @@ async def run_phase_6(agent: Any, state: dict) -> dict:
     if agent is None:
         return node_phase6_stub(state)
     eng = state["engagement_id"]
+    stage_a = state.get("client_submission", {}).get("stage_a", {}) or {}
     dispatch = Dispatch(
         phase_id="P6",
         task_brief="Assemble compliance matrix and produce final audit report.",
@@ -232,21 +253,43 @@ async def run_phase_6(agent: Any, state: dict) -> dict:
         declaration_summary={
             "engagement_id": eng,
             "risk_tier": state.get("risk_tier", "high"),
+            "modality": state.get("modality", "tabular"),
+            "deployment_context": state.get("deployment_context", "b2b"),
+            "is_llm_or_agentic": state.get("is_llm_or_agentic", False),
             "final_verdict": state.get("final_verdict"),
             "compliance_matrix": state.get("compliance_matrix", {}),
+            # ── full evidence surface so the report is populated + traceable ──
+            "stage_a": stage_a,
+            "annex_iii_sections": state.get("declared_annex_iii_sections", []),
+            "art43_decision": state.get("art43_decision"),
+            "phase_artefacts": state.get("phase_artefacts", {}),
+            "verifier_critiques": state.get("verifier_critiques", {}),
+            "article_evidence": state.get("article_evidence", {}),
+            "blocking_findings": state.get("blocking_findings", []),
+            "positive_findings": state.get("positive_findings", []),
+            "remediation_roadmap": state.get("remediation_roadmap", []),
+            "material_findings_count": state.get("material_findings_count"),
+            "intake_completeness_score": state.get("intake_completeness_score"),
+            "completeness_score": state.get("completeness_score"),
+            "regulatory_coverage_pct": state.get("regulatory_coverage_pct"),
+            "opinion_disclaimer": state.get("opinion_disclaimer", False),
+            "hitl_required": state.get("hitl_required", False),
+            "hitl_reason": state.get("hitl_reason"),
+            "cgsa_domain_scores": state.get("cgsa_domain_scores", {}),
+            "cgsa_report_url": state.get("cgsa_report_url"),
         },
     )
-    report, state = await run_agent_on_state(agent, dispatch, state, timeout=180)
+    report, state = await run_phase_with_verification(
+        agent, dispatch, state,
+        tid_articles={
+            "T17_compliance_matrix": ["Art.17"],
+            "T18_audit_report": ["Art.43", "Annex_IV"],
+        },
+        phase_label="Phase 6 ReportArchitect", timeout=180, default_confidence=0.95,
+    )
     if report is None:
         return node_phase6_stub(state)
-    confidence = report.get("confidence", 0.95)
-    for tid in ["T17_compliance_matrix", "T18_audit_report"]:
-        state["verifier_critiques"][tid] = {
-            "verdict": "accept", "issues": [],
-            "notes": [f"Phase 6 ReportArchitect complete. confidence={confidence:.2f}"],
-            "article_citations": ["Art.17", "Art.43", "Annex_IV"], "rerun_required": False,
-        }
-    logger.info("Engagement %s: Phase 6 complete. confidence=%.2f", eng, confidence)
+    logger.info("Engagement %s: Phase 6 complete.", eng)
     return state
 
 

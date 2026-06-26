@@ -28,11 +28,14 @@ from datetime import datetime, timezone
 from typing import Any
 
 from aaa.agents.base import BaseAgent, Dispatch, Report
+from aaa.platform.artifact_loader import ArtifactUnavailable, load_artifact_from_uri
 from aaa.platform.evidence import EvidenceStore
-from aaa.tools.data_profile import data_profile
-from aaa.tools.missingness_scan import missingness_scan
 from aaa.tools.class_balance import class_balance
 from aaa.tools.client_doc_ingest import client_doc_search
+from aaa.tools.data_dictionary import resolve_data_dictionary
+from aaa.tools.data_profile import data_profile
+from aaa.tools.findings import make_finding
+from aaa.tools.missingness_scan import missingness_scan
 from aaa.tools.pii_scan import pii_scan
 
 logger = logging.getLogger(__name__)
@@ -99,24 +102,54 @@ class DataAuditor(BaseAgent):
         engagement_id: str = decl.get("engagement_id") or message["phase_id"]
         declared_special_cat: bool = bool(decl.get("special_category_data", False))
         target_col: str | None = decl.get("target_column")
+        stage_b: dict[str, Any] = decl.get("stage_b") or {}
 
-        # ── 1. Load intake bundle + dataset ──────────────────────────────────
+        findings: list[dict[str, Any]] = []
+        insufficient: set[str] = set()
+
+        # ── 1. Load intake bundle + the REAL dataset ─────────────────────────
         t01a, t01b = self._load_intake(message.get("evidence_uris", []))
-        df = self._load_dataset(t01b, decl)
+        df, dataset_finding = self._load_dataset(t01b, decl)
+        if dataset_finding:
+            findings.append(dataset_finding)
 
-        # ── 2–5. Run analysis tools ───────────────────────────────────────────
-        profile_result = data_profile(df, target_column=target_col)
-        miss_result = missingness_scan(df)
-        balance_result = class_balance(df, target_column=target_col)
-        pii_result = pii_scan(df)
+        data_available = df is not None and len(df) > 0
+        if data_available and not target_col:
+            # Resolve target silently; Phase 3 owns the data-dictionary findings.
+            target_col = resolve_data_dictionary(
+                stage_b or t01b, list(df.columns)
+            ).target_column
+
+        df_for_tools = df if df is not None else self._empty_frame()
+
+        # ── 2–5. Run analysis tools on the real data ─────────────────────────
+        profile_result = data_profile(df_for_tools, target_column=target_col)
+        miss_result = missingness_scan(df_for_tools)
+        balance_result = class_balance(df_for_tools, target_column=target_col)
+        pii_result = pii_scan(df_for_tools)
 
         # ── 6. Detect special-category override ───────────────────────────────
         pii_special_cat = pii_result.get("special_category_data_detected", False)
         effective_special_cat = declared_special_cat or pii_special_cat
         special_cat_delta = pii_special_cat and not declared_special_cat  # undeclared!
 
-        # ── 7. Determine overall quality verdict ──────────────────────────────
-        verdict = self._quality_verdict(miss_result, balance_result, pii_result)
+        # ── 7. Determine overall quality verdict (grounded in real data) ─────
+        if not data_available:
+            verdict = "INSUFFICIENT_EVIDENCE"
+            insufficient.update({"Art.10", "Art.10§2(f)"})
+        else:
+            verdict = self._quality_verdict(miss_result, balance_result, pii_result)
+            findings.extend(self._verdict_findings(verdict, miss_result, balance_result, pii_result))
+            findings.extend(self._diff_declared_data(stage_b or t01b, profile_result))
+        if special_cat_delta:
+            findings.append(make_finding(
+                finding_id="P2-SPECIAL-CAT",
+                description="PII scan detected undeclared special-category data in the dataset.",
+                materiality="material",
+                articles=["Art.10"],
+                source_phase="P2",
+                recommendation="Declare special-category data and document the Art. 10 §5 lawful basis.",
+            ))
 
         # ── 8. Build artefacts ────────────────────────────────────────────────
         now = datetime.now(timezone.utc).isoformat()
@@ -173,7 +206,8 @@ class DataAuditor(BaseAgent):
             engagement_id, "phase_2", "T08_special_category_data_log", t08, self.name)
 
         # ── 10. Emit Report ───────────────────────────────────────────────────
-        confidence = 0.85 if not special_cat_delta else 0.65
+        material = any(f.get("materiality") == "material" for f in findings)
+        confidence = 0.85 if not (special_cat_delta or material or insufficient) else 0.6
 
         delta: dict[str, Any] = {
             "phase_artefacts": {
@@ -185,14 +219,23 @@ class DataAuditor(BaseAgent):
                     "uri": t08_uri, "sha256": "", "template_id": "T08_special_category_data_log"},
             },
         }
+        if findings:
+            delta["blocking_findings"] = findings
+        if insufficient:
+            delta["insufficient_evidence_articles"] = sorted(insufficient)
         if special_cat_delta:
             delta["special_category_data"] = True
-            delta["hitl_required"] = True
-            delta["hitl_reason"] = (
-                "Phase 2 PII scan detected undeclared special-category data. "
-                "Privacy Tier-3 sub-agent will be spawned."
-            )
             delta["privacy_tier3_triggered"] = True
+        if special_cat_delta or material or insufficient:
+            reasons = []
+            if special_cat_delta:
+                reasons.append("undeclared special-category data detected (Privacy Tier-3 spawn)")
+            if material:
+                reasons.append("material data-governance finding(s) raised")
+            if insufficient:
+                reasons.append("dataset could not be independently verified: " + ", ".join(sorted(insufficient)))
+            delta["hitl_required"] = True
+            delta["hitl_reason"] = "Phase 2 — " + "; ".join(reasons) + "."
 
         return Report(
             phase_id="P2",
@@ -239,27 +282,48 @@ class DataAuditor(BaseAgent):
                 t01b = content
         return t01a, t01b
 
-    def _load_dataset(self, t01b: dict, decl: dict) -> Any:
-        """
-        Attempt to load the training dataset referenced in the dossier.
+    def _load_dataset(
+        self, t01b: dict, decl: dict
+    ) -> tuple[Any, dict[str, Any] | None]:
+        """Load the real training/evaluation dataset for independent analysis.
 
-        Falls back to an empty pandas DataFrame in offline/no-data mode.
+        Returns ``(dataframe_or_None, finding_or_None)``. Unlike the previous
+        implementation, a missing/unreadable dataset returns ``None`` plus a
+        finding — never a silent empty frame that would let the data-governance
+        checks pass on no evidence.
         """
+        stage_b = decl.get("stage_b") or t01b or {}
+        dataset_uri = (
+            t01b.get("training_dataset_uri")
+            or stage_b.get("training_dataset_uri")
+            or t01b.get("evaluation_dataset_uri")
+            or stage_b.get("evaluation_dataset_uri")
+            or decl.get("dataset_uri")
+        )
+        if not dataset_uri:
+            return None, make_finding(
+                finding_id="P2-DATA-MISSING",
+                description="No training/evaluation dataset URI supplied; data quality and "
+                            "governance could not be independently verified.",
+                materiality="possibly_material",
+                articles=["Art.10"],
+                source_phase="P2",
+                recommendation="Supply a dataset URI in the Annex IV dossier.",
+            )
         try:
-            import pandas as pd  # type: ignore
-
-            dataset_uri = t01b.get("training_dataset_uri") or decl.get("dataset_uri")
-            if dataset_uri and dataset_uri.startswith("file://"):
-                path = dataset_uri[len("file://"):]
-                if path.endswith(".csv"):
-                    return pd.read_csv(path)
-                if path.endswith(".parquet"):
-                    return pd.read_parquet(path)
-            # No accessible dataset — return empty frame
-            return pd.DataFrame()
-        except ImportError:
-            # Pandas not installed — return a duck-typed empty object
-            return _EmptyDataFrame()
+            kind = "parquet" if dataset_uri.lower().endswith(".parquet") else "csv"
+            df = load_artifact_from_uri(dataset_uri, self.store, kind)
+            return df, None
+        except ArtifactUnavailable as exc:
+            return None, make_finding(
+                finding_id="P2-DATA-LOAD",
+                description=f"Training/evaluation dataset could not be loaded for "
+                            f"independent verification: {exc.reason}.",
+                materiality="possibly_material",
+                articles=["Art.10"],
+                source_phase="P2",
+                recommendation="Provide a machine-readable dataset (CSV/Parquet).",
+            )
 
     def _quality_verdict(
         self,
@@ -283,6 +347,86 @@ class DataAuditor(BaseAgent):
         if not issues:
             return "PASS"
         return "PASS_WITH_OBSERVATIONS"
+
+    @staticmethod
+    def _empty_frame() -> Any:
+        """Return an empty DataFrame (or duck-typed stub) for tool calls."""
+        try:
+            import pandas as pd  # type: ignore
+            return pd.DataFrame()
+        except ImportError:
+            return _EmptyDataFrame()
+
+    def _verdict_findings(
+        self,
+        verdict: str,
+        miss_result: dict,
+        balance_result: dict,
+        pii_result: dict,
+    ) -> list[dict[str, Any]]:
+        """Translate the quality verdict into Art. 10 findings."""
+        if verdict == "FAIL":
+            return [make_finding(
+                finding_id="P2-DQ-FAIL",
+                description="Critical data-quality / PII issue detected in the training data.",
+                materiality="material",
+                articles=["Art.10"],
+                source_phase="P2",
+                recommendation="Remediate the dataset before the system can be considered compliant.",
+            )]
+        if verdict == "PASS_WITH_OBSERVATIONS":
+            issues = []
+            if miss_result.get("high_missingness_columns"):
+                issues.append("high missingness columns")
+            if balance_result.get("imbalance_severity") in {"moderate", "severe"}:
+                issues.append(f"class imbalance ({balance_result.get('imbalance_severity')})")
+            if any(e.get("severity") == "high" for e in pii_result.get("entities_found", [])):
+                issues.append("high-severity PII present")
+            return [make_finding(
+                finding_id="P2-DQ-OBS",
+                description="Data-quality observations: " + (", ".join(issues) or "minor issues") + ".",
+                materiality="possibly_material",
+                articles=["Art.10"],
+                source_phase="P2",
+                recommendation="Address the noted data-quality observations.",
+            )]
+        return []
+
+    def _diff_declared_data(
+        self,
+        dossier: dict,
+        profile_result: dict,
+    ) -> list[dict[str, Any]]:
+        """Light-touch diff of declared dataset description vs the real data.
+
+        Conservative on purpose: only the feature-count check, which is stable
+        across train/eval splits, to avoid false positives from row-count
+        differences between the training and evaluation partitions.
+        """
+        import re
+        desc = str(dossier.get("training_data_description") or "")
+        findings: list[dict[str, Any]] = []
+        num_cols = profile_result.get("num_columns")
+        m = re.search(r"(\d+)\s*attribute", desc, re.IGNORECASE)
+        if m and isinstance(num_cols, int) and num_cols > 0:
+            declared_attrs = int(m.group(1))
+            # The dataset includes the target column; features = columns - 1.
+            actual_features = max(num_cols - 1, 0)
+            if abs(declared_attrs - actual_features) > 1:
+                findings.append(make_finding(
+                    finding_id="P2-DATA-DIFF-ATTRS",
+                    description=(
+                        f"Declared {declared_attrs} attributes but the supplied dataset has "
+                        f"{actual_features} feature columns."
+                    ),
+                    materiality="possibly_material",
+                    articles=["Art.10", "Art.11"],
+                    source_phase="P2",
+                    recommendation="Reconcile the Annex IV dataset description with the supplied data.",
+                    declared=declared_attrs,
+                    observed=actual_features,
+                ))
+        return findings
 
     # ── Artefact builders ──────────────────────────────────────────────────
 

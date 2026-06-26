@@ -1,111 +1,73 @@
-# SETUP.md — Plain-English Setup Guide for AAA
+# SETUP.md — Technical Quick Start
 
-This guide is for someone who wants to **install AAA and run it successfully** without digging through the code first.
+This guide reflects the **current implemented repository**. Use it when you want
+the fastest path to get AAA installed, verified, and running.
 
-AAA can work in three modes:
+## 1. Prerequisites
 
-1. **Streamlit demo** — easiest, point-and-click
-2. **CLI demo** — fastest smoke test
-3. **FastAPI workflow** — best for integrations
+| Requirement | Needed for | Notes |
+|-------------|------------|-------|
+| Python 3.12 | everything | required by the repo |
+| git | cloning / updates | standard development tool |
+| Docker Desktop | online retrieval + full local stack | optional for offline/demo use |
 
-If you want the quickest success path, go straight to **Section 4**.
-
----
-
-## 1. What you need first
-
-| Tool | Required? | Why |
-|------|-----------|-----|
-| **Python 3.12** | Yes | The project requires it |
-| **git** | Yes | To clone the repository |
-| **Docker Desktop** | Optional | Needed only for online/full-service runs |
-
-Check Python:
+Verify Python:
 
 ```bash
 python3.12 --version
 ```
 
----
-
-## 2. What AAA expects as input
-
-AAA works with three intake stages:
-
-### Stage A — triage
-
-High-level information about the AI system, for example:
-
-- provider name
-- system name
-- declared modality
-- declared risk tier
-- declared Annex III sections
-- deployment context
-
-### Stage B — Annex IV dossier
-
-Technical and governance evidence, including text fields plus uploaded files such as:
-
-- risk-management file
-- EU declaration of conformity
-- post-market monitoring plan
-- for LLM/agentic systems: system prompt, RAG manifest, guardrail config, golden set
-- optional datasets and model artefacts
-
-### Stage C — optional scoped access
-
-Optional read-only live-system access metadata. In offline/demo mode this is usually omitted.
-
-### Ready-made sample input
-
-The repository already includes sample intake files in:
-
-```text
-scripts/fixtures/uci_german_credit/
-├── stage_a.json
-├── stage_b.json
-└── stage_c.json
-```
-
-These are the easiest way to test the system end-to-end.
-
----
-
-## 3. Install the project
+## 2. Fastest install path
 
 From the repository root:
+
+```bash
+python3.12 scripts/setup.py --no-docker --no-migrate
+source .venv/bin/activate
+```
+
+What `scripts/setup.py` does:
+
+1. creates `.venv`
+2. installs dependencies
+3. creates `.env` from `.env.example` if missing
+4. optionally starts Docker services
+5. optionally runs Alembic migrations
+6. runs an offline smoke test
+
+If you want the heavier online/full-stack bootstrap instead, run:
 
 ```bash
 python3.12 scripts/setup.py
 ```
 
-That script will:
+## 3. Verify the installation
 
-1. create `.venv`
-2. install dependencies
-3. create `.env` from `.env.example` if needed
-4. optionally start Docker services
-5. optionally run migrations
-6. run a smoke test
-
-If you want a lighter offline-only install:
+Run the small offline verification path (includes `tests/unit/test_real_auditor.py`,
+which locks in the evidence-grounded verdict ladder — FAIL / INSUFFICIENT_EVIDENCE /
+disclaimer):
 
 ```bash
-python3.12 scripts/setup.py --no-docker --no-migrate
+AAA_OFFLINE_MODE=true python -m pytest tests/unit -q
 ```
 
-Then activate the virtual environment:
+Then check the CLI help and API import path:
 
 ```bash
-source .venv/bin/activate
+python -m aaa.cli --help
+python -c "from aaa.api.main import app; print(app.title)"
 ```
 
----
+> **Independent verification inputs.** The audit re-runs analysis on the *real* artefacts
+> rather than trusting declared metrics. To exercise this, an engagement's Stage B should
+> carry `model_artifact_uri`, `evaluation_dataset_uri`, and `training_dataset_uri` (the UI
+> upload flow sets these), plus an optional data dictionary (`target_column`,
+> `positive_label`, `sensitive_feature_columns`). A missing/non-executable model or
+> unreadable dataset yields `INSUFFICIENT_EVIDENCE` for the affected articles — never PASS.
 
-## 4. Fastest ways to run AAA
+## 4. Run the repo
 
-### Option A — easiest: Streamlit demo
+### Streamlit demo
 
 ```bash
 AAA_OFFLINE_MODE=true \
@@ -113,116 +75,144 @@ CGSA_FIXTURE_DIR=scripts/fixtures/cgsa \
 streamlit run aaa/ui/app.py
 ```
 
-What you get — a 5-step guided wizard:
-
-1. **Start** — provide an engagement ID
-2. **Upload Documents** — drag-and-drop technical docs, model artefacts, datasets
-3. **Quick Questions** — 8 guided questions (role, deployment context, GDPR, Annex III categories, etc.)
-4. **Review & Confirm** — `DocIntelligenceAgent` (agent #13, `gpt-5.4`) reads your uploads and pre-fills every Stage A / Stage B field; each auto-filled field shows its source file and confidence score; you edit any field and see the live intake completeness score (gate ≥ 0.80) before confirming
-5. **Results** — final verdict, KPI metrics, remediation checklist, compliance matrix, download buttons for:
-   - audit report PDF
-   - T18 audit report JSON
-   - T17 compliance matrix JSON
-
-In offline mode (`AAA_OFFLINE_MODE=true`) the `DocIntelligenceAgent` skips Qdrant ingestion and returns an empty extraction — all fields show "please fill in manually". The wizard still works; you fill the form manually and the audit pipeline runs fully offline.
-
-### Option B — fastest smoke test: CLI
+### CLI smoke path
 
 ```bash
+AAA_OFFLINE_MODE=true \
 python -m aaa.cli run \
-  --engagement-id eng-uci-german-credit-001 \
+  --engagement-id eng-demo-001 \
   --intake-dir scripts/fixtures/uci_german_credit \
   --cgsa-fixture-dir scripts/fixtures/cgsa \
   --offline
 ```
 
-This prints a JSON summary with a final verdict.
-
-### Option C — integration-friendly: FastAPI
+### FastAPI
 
 ```bash
 uvicorn aaa.api.main:app --reload --port 8000
 ```
 
-Then open:
+Useful URLs:
+
+- Swagger UI: `http://localhost:8000/docs`
+- Health: `http://localhost:8000/healthz`
+- Metrics: `http://localhost:8000/metrics`
+
+### Dagster
+
+```bash
+dagster dev -m aaa.dagster.definitions
+```
+
+This loads the current assets, jobs, sensors, and schedules from `aaa/dagster/`.
+
+## 5. Current environment variables
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `AAA_OFFLINE_MODE` | disable external-service-dependent execution paths | `false` |
+| `AAA_LOG_LEVEL` | Python/structlog verbosity | `WARNING` |
+| `AAA_DATA_DIR` | root directory for persisted input/result JSON | `data` |
+| `AAA_LOG_DIR` | root directory for structured logs | `logs` |
+| `CGSA_FIXTURE_DIR` | offline CGSA fixture source. If unset/unreachable offline, the CGSA self-assessment can't be pulled and the governance articles (Art.9/12/17/72) are marked `INSUFFICIENT_EVIDENCE` (not a hard FAIL). | empty |
+| `CGSA_SCHEMA_VERSION` | pinned CGSA version exposed by the API | `1.0.0` |
+| `OPENAI_API_KEY` | online LLM execution | empty |
+| `QDRANT_URL` | vector store for regulatory/document retrieval | repo `.env` default |
+| `S4_CGSA_BASE_URL` | S4 integration base URL | `http://localhost:8001` |
+
+## 6. Current persistence layout
+
+AAA now persists user-entered inputs and audit results to a local JSON store.
 
 ```text
-http://localhost:8000/docs
+data/
+  index.json
+  inputs/
+    <engagement_id>/
+      engagement.json
+      intake.json
+      files.json
+  results/
+    <engagement_id>/
+      audit_result.json
+      artefacts.json
+      findings.json
+      compliance_matrix.json
 ```
 
----
+Notes:
 
-## 5. If you want to upload your own documents
+- `files.json` stores uploaded-file metadata, not raw file bytes
+- runtime engagement state in `aaa/api/store.py` is still in-memory for the live
+  FastAPI process
+- the EvidenceStore used for uploaded/report artefacts is still in-memory in the
+  current thesis/demo implementation
 
-### Easiest path
+## 7. Current observability layout
 
-Use the **Streamlit UI**. It already has upload controls for:
-
-- `risk_management_file_uri`
-- `eu_doc_uri`
-- `post_market_plan_uri`
-- `system_prompt_uri`
-- `rag_manifest_uri`
-- `guardrail_config_uri`
-- `golden_set_uri`
-- `training_dataset_uri`
-- `evaluation_dataset_uri`
-- `model_artifact_uri`
-- `model_metadata_uri`
-
-You do **not** need to manually create `minio://...` URIs. The UI stores files in the in-memory `EvidenceStore` for you.
-
-### API path
-
-Use this order:
-
-1. create engagement
-2. upload files
-3. submit intake JSON with returned URIs
-4. run engagement
-5. fetch report / report PDF
-
-Example endpoints:
-
-| Method | Path |
-|--------|------|
-| `POST` | `/api/v1/engagements` |
-| `POST` | `/api/v1/engagements/{engagement_id}/files` |
-| `POST` | `/api/v1/engagements/{engagement_id}/intake` |
-| `POST` | `/api/v1/engagements/{engagement_id}/run` |
-| `GET` | `/api/v1/engagements/{engagement_id}/report` |
-| `GET` | `/api/v1/engagements/{engagement_id}/report.pdf` |
-
----
-
-## 6. Optional: load the full regulatory corpus into Qdrant
-
-You only need this for **online / real retrieval mode**.
-
-### Start Qdrant
-
-```bash
-docker compose up -d qdrant
+```text
+logs/
+  app/app.log
+  api/api.log
+  agents/agents.log
+  audit/llm_audit.log
+  audit/llm_audit.jsonl
+  dagster/dagster.log
+  errors/*.jsonl
 ```
 
-### Dry run the ingestion first
+`logs/audit/llm_audit.jsonl` is the most important file for LLM accountability.
+Each record includes the request messages, response text, token usage, latency,
+and estimated cost when available.
+
+## 8. FastAPI route map
+
+### Core ops
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/healthz` | liveness + schema version |
+| `GET` | `/api/v1/schema-version` | pinned schema version |
+| `GET` | `/metrics` | Prometheus text exposition |
+
+### Engagement workflow
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/v1/engagements` | list engagements |
+| `POST` | `/api/v1/engagements` | create engagement |
+| `GET` | `/api/v1/engagements/{id}` | get engagement |
+| `POST` | `/api/v1/engagements/{id}/files` | upload file |
+| `POST` | `/api/v1/engagements/{id}/extract-triage` | run doc extraction |
+| `POST` | `/api/v1/engagements/{id}/intake` | submit intake payload |
+| `POST` | `/api/v1/engagements/{id}/run` | run pipeline |
+| `GET` | `/api/v1/engagements/{id}/report` | JSON result summary |
+| `GET` | `/api/v1/engagements/{id}/report.pdf` | rendered PDF if available |
+
+### Data-store routes
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/v1/data/engagements` | persisted engagement index |
+| `GET` | `/api/v1/data/results` | completed engagements |
+| `GET` | `/api/v1/data/engagements/{id}/input` | all stored input data |
+| `GET` | `/api/v1/data/engagements/{id}/result` | full stored result |
+
+## 9. Online mode extras
+
+If you want live retrieval and non-demo execution paths:
+
+1. start Docker services
+2. populate `.env` with the required provider keys
+3. run Alembic if you want the optional Postgres schema available
+4. ingest the regulatory corpus into Qdrant
+
+Commands:
 
 ```bash
+docker compose up -d
+python -m alembic upgrade head
 python3.12 scripts/ingest_regulatory_corpus.py --dry-run -v
-```
-
-Current dry-run totals:
-
-- EU AI Act: **339** chunks
-- GDPR: **288** chunks
-- ISO/IEC 42001: **88** chunks
-- ISAE 3000: **411** chunks
-- ISO 19011: **74** chunks
-- total corpus: **1200** chunks
-
-### Full ingestion
-
-```bash
 python3.12 scripts/ingest_regulatory_corpus.py \
   --corpus data/regulatory_corpus \
   --checker data/eu_ai_act_compliance_checker.json \
@@ -230,66 +220,15 @@ python3.12 scripts/ingest_regulatory_corpus.py \
   --obligations-collection obligations_index
 ```
 
-The script is idempotent: re-running it does not re-embed unchanged chunks.
+## 10. Troubleshooting quick hits
 
----
+| Problem | Recommended first step |
+|--------|-------------------------|
+| `python3.12` missing | install Python 3.12 |
+| `ModuleNotFoundError` | reactivate `.venv` |
+| API imports fail | run `source .venv/bin/activate` and retry |
+| No PDF returned | inspect `/api/v1/engagements/{id}/report`; JSON output may still be available |
+| Missing online retrieval | confirm Docker is running and corpus ingestion completed |
+| Need to inspect persisted outputs | look under `data/results/<engagement_id>/` or use `/api/v1/data/...` |
 
-## 7. Important settings in `.env`
-
-| Variable | What it controls |
-|----------|------------------|
-| `AAA_OFFLINE_MODE` | Set `true` for offline/demo mode |
-| `AAA_LOG_LEVEL` | Logging verbosity |
-| `OPENAI_API_KEY` / other LLM keys | Needed for online LLM execution |
-| `QDRANT_URL` | Qdrant server |
-| `CGSA_FIXTURE_DIR` | Offline CGSA fixtures |
-| `S4_CGSA_BASE_URL` | Online S4 endpoint |
-
-If you are unsure, leave the defaults and start with offline mode.
-
----
-
-## 8. What you receive at the end of a run
-
-AAA produces:
-
-- a **final verdict** (`PASS`, `PASS_WITH_OBSERVATIONS`, or `FAIL`)
-- KPI scores
-- compliance matrix (`T17`)
-- final audit report (`T18`)
-- a rendered **PDF report** when ReportLab output is available
-
-The final report includes the latest additions:
-
-- auditor opinion
-- management response shell
-- remediation roadmap with owners/priorities
-- risk heat-map
-- maturity radar
-
----
-
-## 9. If something goes wrong
-
-Try these in order:
-
-1. activate the virtual environment again
-2. re-run `python3.12 scripts/setup.py`
-3. force offline mode: `export AAA_OFFLINE_MODE=true`
-4. if using Docker, restart services:
-
-```bash
-docker compose down -v
-docker compose up -d
-```
-
-Common issues:
-
-| Problem | Fix |
-|--------|-----|
-| `python3.12: command not found` | Install Python 3.12 |
-| `ModuleNotFoundError` | Activate `.venv` |
-| Qdrant/OpenAI errors during corpus ingestion | Use offline mode first, or set the missing keys/services |
-| No PDF available | The JSON report is still produced; PDF rendering is best-effort |
-
-For the full developer/operator guide, read [`USER_MANUAL.md`](./USER_MANUAL.md).
+For the end-user walkthrough, see [`USER_MANUAL.md`](./USER_MANUAL.md).

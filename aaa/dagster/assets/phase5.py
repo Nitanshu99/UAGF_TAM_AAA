@@ -1,5 +1,4 @@
 """aaa.dagster.assets.phase5 — Phase 5 Governance Agent asset."""
-from __future__ import annotations
 import asyncio, time
 from typing import Any
 from dagster import AssetExecutionContext, MetadataValue, asset

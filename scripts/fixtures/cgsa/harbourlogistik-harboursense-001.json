@@ -71,7 +71,7 @@
             "threshold_score": 3,
             "satisfied": false
           },
-          "gap_severity": "major"
+          "gap_severity": "high"
         }
       ]
     },
@@ -181,7 +181,7 @@
             "threshold_score": 3,
             "satisfied": false
           },
-          "gap_severity": "major"
+          "gap_severity": "high"
         }
       ]
     },
@@ -297,6 +297,20 @@
         "C07"
       ],
       "article_summary": "No formal data validation pipeline. Hard constraint violated."
+    },
+    "article_13": {
+      "article_reference": "Article 13",
+      "article_title": "Transparency",
+      "status": "not_satisfied",
+      "controls_mapped": [
+        "C20"
+      ],
+      "controls_satisfied": [],
+      "coverage_pct": 0.0,
+      "hard_constraints_violated": [
+        "C20"
+      ],
+      "article_summary": "Model card remains in draft and has not been provided to the deployer."
     },
     "article_15": {
       "article_reference": "Article 15",

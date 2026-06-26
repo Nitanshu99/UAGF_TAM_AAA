@@ -1,0 +1,8 @@
+{
+  "deployment_wrapper": "RandomForestRegressor",
+  "wrapper_version": "3.0",
+  "foundation_model": "amazon/chronos-t5-tiny",
+  "fine_tuned_on": "EU grocery sales 2022-2025",
+  "training_rows": 1540,
+  "mae_eval": 1.116
+}

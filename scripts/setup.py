@@ -9,8 +9,9 @@ Usage::
 Steps (each is idempotent; skipped if already done):
   1. Verify Python >= 3.12 is invoking this script.
   2. Create ``.venv/`` (skipped if it already exists).
-  3. Upgrade pip + install ``requirements-dev.txt`` (or ``requirements.txt``
-     with ``--with-prod-deps``) inside the venv.
+  3. Upgrade pip + install ``requirements-dev.txt`` (runtime + dev tooling) or
+     ``requirements.txt`` with ``--with-prod-deps`` (runtime only) inside the
+     venv.
   4. Copy ``.env.example`` -> ``.env`` if ``.env`` is missing.
   5. (optional) ``docker compose up -d`` to start Postgres/MinIO/Valkey/...
   6. (optional) ``alembic upgrade head`` to apply DB migrations.
@@ -22,8 +23,8 @@ Flags:
   --no-docker        Skip ``docker compose up -d``.
   --no-migrate       Skip ``alembic upgrade head``.
   --no-tests         Skip the smoke-test pytest run.
-  --with-prod-deps   Install ``requirements.txt`` (heavy ML stack) instead of
-                     ``requirements-dev.txt``.
+  --with-prod-deps   Install ``requirements.txt`` (runtime only) instead of
+                     ``requirements-dev.txt`` (runtime + dev tooling).
   -h, --help         Show this help and exit.
 
 Exit codes:
@@ -220,8 +221,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--no-tests", action="store_true",
                    help="Skip the offline pytest smoke run.")
     p.add_argument("--with-prod-deps", action="store_true",
-                   help="Install requirements.txt (full ML stack) instead of "
-                        "requirements-dev.txt.")
+                   help="Install requirements.txt (runtime only) instead of "
+                        "requirements-dev.txt (runtime + dev tooling).")
     return p.parse_args(argv)
 
 

@@ -32,6 +32,8 @@ from typing import Any
 from aaa.agents.base import BaseAgent, Dispatch, Report
 from aaa.platform.evidence import EvidenceStore
 from aaa.tools.client_doc_ingest import client_doc_search
+from aaa.tools.eval_inputs import load_scored_evaluation
+from aaa.tools.findings import make_finding, make_positive_finding
 from aaa.tools.gradcam_explain import gradcam_explain
 from aaa.tools.lime_explain import lime_explain
 from aaa.tools.metric_suite import metric_suite
@@ -97,22 +99,69 @@ class ModelValidator(BaseAgent):
         modality: str = (decl.get("modality") or "tabular").lower()
         task: str = (decl.get("task") or "classification").lower()
 
-        # ── 1. Load intake bundle ────────────────────────────────────────────
+        # ── 1. Load intake bundle + the REAL model / eval artefacts ──────────
         t01a, t01b = self._load_intake(message.get("evidence_uris", []))
+        stage_b: dict[str, Any] = decl.get("stage_b") or t01b or {}
+
+        findings: list[dict[str, Any]] = []
+        positives: list[dict[str, Any]] = []
+        insufficient: set[str] = set()
+
+        # Direct injection (unit tests) wins; otherwise load from the store.
         trained_model = decl.get("trained_model")
         X_eval = decl.get("X_eval")
         y_eval = decl.get("y_eval")
         y_proba = decl.get("y_proba")
+        y_pred = decl.get("y_pred")
         feature_names = decl.get("feature_names")
         image_batch = decl.get("image_batch")
         image_ids = decl.get("image_ids")
         target_layer = decl.get("target_layer")
 
-        # ── 2. Metric suite ──────────────────────────────────────────────────
-        metrics_result = metric_suite(
-            y_true=y_eval, y_pred=decl.get("y_pred"),
-            y_proba=y_proba, task=task,
+        model_uri = (
+            t01b.get("model_artifact_uri")
+            or stage_b.get("model_artifact_uri")
+            or decl.get("model_artifact_uri")
         )
+        eval_uri = (
+            t01b.get("evaluation_dataset_uri")
+            or stage_b.get("evaluation_dataset_uri")
+            or t01b.get("training_dataset_uri")
+            or stage_b.get("training_dataset_uri")
+            or decl.get("evaluation_dataset_uri")
+        )
+
+        if modality != "cv" and trained_model is None and (model_uri or eval_uri):
+            scored = load_scored_evaluation(self.store, stage_b, t01b, source_phase="P3")
+            trained_model = scored.model
+            X_eval = scored.X_eval
+            y_eval = scored.y_true
+            y_pred = scored.y_pred
+            y_proba = scored.y_proba
+            if scored.data_dict:
+                feature_names = feature_names or scored.data_dict.feature_columns
+            findings.extend(scored.findings)
+
+        # Whether an independently-scored evaluation set is available for Art. 15.
+        eval_scored = (
+            y_eval is not None and y_pred is not None
+            and len(y_eval) > 0 and len(y_pred) == len(y_eval)
+        )
+        if modality != "cv" and not eval_scored:
+            insufficient.update({"Art.15", "Art.15§1"})
+
+        # ── 2. Metric suite (independent re-computation) ─────────────────────
+        metrics_result = metric_suite(
+            y_true=y_eval, y_pred=y_pred, y_proba=y_proba, task=task,
+        )
+
+        # ── 2b. Declaration diff: declared vs independently-computed metrics ──
+        if eval_scored:
+            diff_findings, diff_positives = self._diff_declared_metrics(
+                stage_b.get("accuracy_metrics") or {}, metrics_result,
+            )
+            findings.extend(diff_findings)
+            positives.extend(diff_positives)
 
         # ── 3. Explainability (route by modality) ────────────────────────────
         techniques: list[str] = []
@@ -208,7 +257,22 @@ class ModelValidator(BaseAgent):
 
         # ── 7. Emit Report ───────────────────────────────────────────────────
         robustness_verdict = t11["overall_robustness_verdict"]
-        hitl_required = robustness_verdict == "FAIL"
+        if robustness_verdict == "FAIL":
+            findings.append(make_finding(
+                finding_id="P3-ROBUST",
+                description=(
+                    "Independent adversarial robustness probe FAILED "
+                    f"(min adversarial accuracy {t11.get('min_adversarial_accuracy')})."
+                ),
+                materiality="material",
+                articles=["Art.15"],
+                source_phase="P3",
+                recommendation="Harden the model against perturbation; re-probe before deployment.",
+                evidence_uris=[t11_uri],
+            ))
+
+        material = any(f.get("materiality") == "material" for f in findings)
+        hitl_required = material or bool(insufficient)
         confidence = 0.85 if not hitl_required else 0.6
 
         delta: dict[str, Any] = {
@@ -222,13 +286,27 @@ class ModelValidator(BaseAgent):
                     "uri": t11_uri, "sha256": "", "template_id": "T11_robustness_report"},
             },
         }
+        if findings:
+            delta["blocking_findings"] = findings
+        if positives:
+            delta["positive_findings"] = positives
+        if insufficient:
+            delta["insufficient_evidence_articles"] = sorted(insufficient)
         if hitl_required:
+            reasons = []
+            if robustness_verdict == "FAIL":
+                reasons.append(
+                    f"robustness verdict FAIL (min_adversarial_accuracy={t11.get('min_adversarial_accuracy')})"
+                )
+            if material:
+                reasons.append("material model-validation finding(s) raised")
+            if insufficient:
+                reasons.append(
+                    "model/eval artefacts could not be independently verified: "
+                    + ", ".join(sorted(insufficient))
+                )
             delta["hitl_required"] = True
-            delta["hitl_reason"] = (
-                f"Phase 3 robustness verdict is FAIL "
-                f"(min_adversarial_accuracy={t11.get('min_adversarial_accuracy')}). "
-                "Cyber sub-agent escalation recommended."
-            )
+            delta["hitl_reason"] = "Phase 3 — " + "; ".join(reasons) + "."
 
         primary_value = metrics_result.get("primary_metric_value")
         primary_str = (
@@ -281,6 +359,71 @@ class ModelValidator(BaseAgent):
             elif "general_description" in content or "model_type" in content:
                 t01b = content
         return t01a, t01b
+
+    # ── Declaration diff (Phase-3 specific) ─────────────────────────────────
+
+    # Declared key → computed metrics-key + human label.
+    _METRIC_MAP = {
+        "accuracy": ("accuracy", "accuracy"),
+        "auc_roc": ("roc_auc", "AUC-ROC"),
+        "f1_score": ("f1_macro", "F1"),
+    }
+
+    def _diff_declared_metrics(
+        self,
+        declared: dict[str, Any],
+        metrics_result: dict[str, Any],
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        """Compare declared performance metrics vs independently-computed ones.
+
+        A real auditor does not take the provider's numbers on faith. Gaps beyond
+        tolerance become findings; corroborated metrics become positive findings.
+        """
+        findings: list[dict[str, Any]] = []
+        positives: list[dict[str, Any]] = []
+        computed = metrics_result.get("metrics", {}) or {}
+
+        for decl_key, (comp_key, label) in self._METRIC_MAP.items():
+            decl_val = declared.get(decl_key)
+            comp_val = computed.get(comp_key)
+            if not isinstance(decl_val, (int, float)) or not isinstance(comp_val, (int, float)):
+                continue
+            gap = abs(float(decl_val) - float(comp_val))
+            if gap > 0.10:
+                materiality = "material"
+            elif gap > 0.05:
+                materiality = "possibly_material"
+            else:
+                positives.append(make_positive_finding(
+                    finding_id=f"P3-METRIC-{comp_key.upper()}",
+                    description=(
+                        f"Declared {label} {decl_val:.3f} corroborated by independent "
+                        f"re-computation ({comp_val:.3f}; gap {gap:.3f})."
+                    ),
+                    articles=["Art.15"],
+                    source_phase="P3",
+                ))
+                continue
+            note = (
+                f"Declared {label} {decl_val:.3f} is not supported by independent "
+                f"re-computation on the evaluation set ({comp_val:.3f}; gap {gap:.3f})."
+            )
+            if decl_key == "auc_roc" and float(decl_val) >= 0.95 and gap > 0.10:
+                note += (
+                    " The declared near-perfect AUC combined with the large gap is a "
+                    "data-leakage / overfitting red flag warranting investigation."
+                )
+            findings.append(make_finding(
+                finding_id=f"P3-METRIC-{comp_key.upper()}",
+                description=note,
+                materiality=materiality,
+                articles=["Art.15"],
+                source_phase="P3",
+                recommendation="Reconcile the declared metric with an audited evaluation protocol.",
+                declared=float(decl_val),
+                observed=float(comp_val),
+            ))
+        return findings, positives
 
     # ── Artefact builders ──────────────────────────────────────────────────
 

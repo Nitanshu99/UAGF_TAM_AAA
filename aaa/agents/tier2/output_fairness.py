@@ -37,6 +37,8 @@ from aaa.platform.evidence import EvidenceStore
 from aaa.tools.demographic_parity import demographic_parity
 from aaa.tools.disparate_impact import disparate_impact
 from aaa.tools.equal_opportunity import equal_opportunity
+from aaa.tools.eval_inputs import load_scored_evaluation
+from aaa.tools.findings import make_finding
 from aaa.tools.subgroup_metrics import subgroup_metrics
 from aaa.tools.toxicity_classifier import toxicity_classifier
 
@@ -102,9 +104,11 @@ class OutputFairnessTester(BaseAgent):
 
         # ── 1. Load intake bundle + payload ──────────────────────────────────
         t01a, t01b = self._load_intake(message.get("evidence_uris", []))
+        stage_b: dict[str, Any] = decl.get("stage_b") or t01b or {}
         y_true = decl.get("y_true")
         y_pred = decl.get("y_pred")
         sensitive_features = decl.get("sensitive_features")
+        sensitive_map: dict[str, list[Any]] = decl.get("sensitive_features_map") or {}
         sensitive_feature_names = decl.get("sensitive_feature_names") or []
         privileged_group = decl.get("privileged_group")
         positive_label = decl.get("positive_label", 1)
@@ -112,46 +116,63 @@ class OutputFairnessTester(BaseAgent):
         prediction_ids = decl.get("prediction_ids")
         sampling_strategy = decl.get("sampling_strategy", "first_n")
 
-        # ── 2–5. Fairness tools ──────────────────────────────────────────────
-        dp_result = demographic_parity(
-            y_pred=y_pred, sensitive_features=sensitive_features,
-            positive_label=positive_label,
-        )
-        eo_result = equal_opportunity(
-            y_true=y_true, y_pred=y_pred, sensitive_features=sensitive_features,
-            positive_label=positive_label,
-        )
-        di_result = disparate_impact(
-            y_pred=y_pred, sensitive_features=sensitive_features,
-            privileged_group=privileged_group, positive_label=positive_label,
-        )
-        sg_result = subgroup_metrics(
-            y_true=y_true, y_pred=y_pred, sensitive_features=sensitive_features,
-            positive_label=positive_label,
+        findings: list[dict[str, Any]] = []
+        insufficient: set[str] = set()
+
+        # Independently score the real model on the eval set when predictions
+        # were not directly injected (tests). Load-level findings (missing/stub
+        # model) are owned by Phase 3 — we only consume the scored result here.
+        if y_pred is None and (modality or "tabular").lower() not in {"llm", "agentic", "gpai"}:
+            scored = load_scored_evaluation(
+                self.store, stage_b, t01b,
+                emit_load_findings=False, emit_datadict_findings=False, source_phase="P4",
+            )
+            if scored.scored:
+                y_true = scored.y_true
+                y_pred = scored.y_pred
+                sensitive_map = scored.sensitive_features
+                sensitive_feature_names = list(sensitive_map.keys())
+                if scored.data_dict is not None:
+                    positive_label = scored.data_dict.positive_label
+
+        # ── 2–6. Fairness suite per protected attribute ──────────────────────
+        (dp_result, eo_result, di_result, sg_result, overall_verdict,
+         sample_size, per_attribute) = self._run_fairness_suite(
+            y_true, y_pred, sensitive_features, sensitive_map,
+            privileged_group, positive_label,
         )
 
-        # ── 6. Toxicity probe over up to 200-prediction sample ───────────────
-        tox_input = prediction_texts if prediction_texts is not None else y_pred
+        # ── 6b. Toxicity probe (text modalities only) ────────────────────────
+        # Toxicity is meaningless for tabular numeric outputs; only run it for
+        # text predictions to avoid loading an NLP model for a credit scorer.
+        text_modality = (modality or "tabular").lower() in {"nlp", "llm", "agentic", "gpai"}
+        tox_input = prediction_texts if prediction_texts is not None else (
+            y_pred if text_modality else None
+        )
         tox_result = toxicity_classifier(
             predictions=tox_input,
             prediction_ids=prediction_ids,
             sample_size=_TOXICITY_SAMPLE_CAP,
         )
 
-        # ── 7. Derive overall verdict ────────────────────────────────────────
-        overall_verdict = self._aggregate_verdict(
-            [dp_result["verdict"], eo_result["verdict"],
-             di_result["verdict"], sg_result["verdict"]]
-        )
-        sample_size = max(
-            dp_result.get("sample_size", 0),
-            eo_result.get("sample_size", 0),
-            di_result.get("sample_size", 0),
-            sg_result.get("sample_size", 0),
-        ) or None
+        # ── 7. Translate verdict into findings / insufficient-evidence ───────
+        if overall_verdict == "NOT_TESTED":
+            insufficient.update({"Art.10§2(f)", "Art.15§1"})
+            findings.append(make_finding(
+                finding_id="P4-NOT-TESTED",
+                description="Output fairness could not be tested: model predictions or "
+                            "protected-attribute columns were unavailable (see Phase 3 for "
+                            "model/eval artefact status).",
+                materiality="possibly_material",
+                articles=["Art.10§2(f)", "Art.15§1"],
+                source_phase="P4",
+                recommendation="Provide a scorable model + labelled eval set with declared protected attributes.",
+            ))
+        else:
+            findings.extend(self._fairness_findings(per_attribute))
         skipped_reason = (
-            "No predictions or sensitive features provided — fairness suite "
-            "could not be executed offline."
+            "No predictions or protected-attribute columns available — fairness suite "
+            "could not be executed."
             if overall_verdict == "NOT_TESTED" else None
         )
 
@@ -205,7 +226,10 @@ class OutputFairnessTester(BaseAgent):
 
         # ── 10. Emit Report ──────────────────────────────────────────────────
         discriminatory_flag = t13["discriminatory_pattern_detected"]
-        hitl_required = (overall_verdict == "FAIL") or discriminatory_flag
+        material = any(f.get("materiality") == "material" for f in findings)
+        hitl_required = (
+            overall_verdict == "FAIL" or discriminatory_flag or material or bool(insufficient)
+        )
         confidence = 0.85 if not hitl_required else 0.6
 
         delta: dict[str, Any] = {
@@ -218,6 +242,10 @@ class OutputFairnessTester(BaseAgent):
                     "template_id": "T13_output_sampling_log"},
             },
         }
+        if findings:
+            delta["blocking_findings"] = findings
+        if insufficient:
+            delta["insufficient_evidence_articles"] = sorted(insufficient)
         if hitl_required:
             delta["hitl_required"] = True
             reasons = []
@@ -227,6 +255,10 @@ class OutputFairnessTester(BaseAgent):
                 reasons.append(
                     f"Discriminatory pattern flagged in output sample "
                     f"({t13['toxicity_results']['flagged_count']} entries)."
+                )
+            if insufficient:
+                reasons.append(
+                    "Fairness not independently verifiable: " + ", ".join(sorted(insufficient)) + "."
                 )
             delta["hitl_reason"] = " ".join(reasons) or "Phase 4 escalation."
 
@@ -290,6 +322,83 @@ class OutputFairnessTester(BaseAgent):
             return "NOT_TESTED"
         worst_idx = max(_FAIRNESS_VERDICT_ORDER.index(v) for v in ranked)
         return _FAIRNESS_VERDICT_ORDER[worst_idx]
+
+    def _run_fairness_suite(
+        self,
+        y_true: Any,
+        y_pred: Any,
+        sensitive_features: Any,
+        sensitive_map: dict[str, list[Any]],
+        privileged_group: Any,
+        positive_label: Any,
+    ) -> tuple[dict, dict, dict, dict, str, int | None, list[dict[str, Any]]]:
+        """Run the fairness suite once per protected attribute.
+
+        Tests *every* declared/inferred protected attribute (a real auditor does
+        not stop at one). Returns the worst-performing attribute's detailed
+        results for T12, the overall worst-band verdict, and a per-attribute
+        breakdown used to raise named findings.
+        """
+        # Build the set of (name, group_array) pairs to test.
+        attributes: list[tuple[str, Any]] = []
+        if sensitive_map:
+            attributes = [(name, vals) for name, vals in sensitive_map.items()]
+        elif sensitive_features is not None:
+            attributes = [("sensitive_feature", sensitive_features)]
+
+        per_attribute: list[dict[str, Any]] = []
+        for name, groups in attributes:
+            dp = demographic_parity(y_pred=y_pred, sensitive_features=groups, positive_label=positive_label)
+            eo = equal_opportunity(y_true=y_true, y_pred=y_pred, sensitive_features=groups, positive_label=positive_label)
+            di = disparate_impact(y_pred=y_pred, sensitive_features=groups, privileged_group=privileged_group, positive_label=positive_label)
+            sg = subgroup_metrics(y_true=y_true, y_pred=y_pred, sensitive_features=groups, positive_label=positive_label)
+            verdict = self._aggregate_verdict([dp["verdict"], eo["verdict"], di["verdict"], sg["verdict"]])
+            per_attribute.append({
+                "attribute": name, "verdict": verdict,
+                "dp": dp, "eo": eo, "di": di, "sg": sg,
+            })
+
+        if not per_attribute:
+            empty = demographic_parity()  # NOT_TESTED stub
+            empty_eo = equal_opportunity()
+            empty_di = disparate_impact()
+            empty_sg = subgroup_metrics()
+            return empty, empty_eo, empty_di, empty_sg, "NOT_TESTED", None, []
+
+        # Worst attribute drives the headline T12 detail + overall verdict.
+        worst = max(per_attribute, key=lambda a: _FAIRNESS_VERDICT_ORDER.index(a["verdict"]))
+        overall = worst["verdict"]
+        sample_size = max(
+            (a["dp"].get("sample_size", 0) for a in per_attribute), default=0
+        ) or None
+        return (worst["dp"], worst["eo"], worst["di"], worst["sg"],
+                overall, sample_size, per_attribute)
+
+    def _fairness_findings(self, per_attribute: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Raise a finding per protected attribute that fails or shows disparity."""
+        out: list[dict[str, Any]] = []
+        for a in per_attribute:
+            verdict = a["verdict"]
+            if verdict == "FAIL":
+                materiality = "material"
+            elif verdict == "PASS_WITH_OBSERVATIONS":
+                materiality = "possibly_material"
+            else:
+                continue
+            di_ratio = a["di"].get("ratio")
+            dp_diff = a["dp"].get("difference")
+            out.append(make_finding(
+                finding_id=f"P4-FAIR-{a['attribute'].upper()}",
+                description=(
+                    f"Output fairness across '{a['attribute']}' is {verdict} "
+                    f"(disparate-impact ratio={di_ratio}, demographic-parity diff={dp_diff})."
+                ),
+                materiality=materiality,
+                articles=["Art.10§2(f)", "Art.15§1"],
+                source_phase="P4",
+                recommendation="Investigate and mitigate the group disparity before deployment.",
+            ))
+        return out
 
     # ── Artefact builders ──────────────────────────────────────────────────
 

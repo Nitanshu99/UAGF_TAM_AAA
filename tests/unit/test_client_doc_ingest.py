@@ -56,3 +56,16 @@ def test_embeddings_available_uses_settings_fallback(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(client_doc_ingest, "settings", SimpleNamespace(openai_api_key="test-key"))
 
     assert client_doc_ingest._embeddings_available() is True
+
+
+def test_ingest_wraps_unexpected_errors(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(client_doc_ingest, "_OFFLINE", False)
+    monkeypatch.setattr(client_doc_ingest, "_embeddings_available", lambda: True)
+
+    def _boom():
+        raise RuntimeError("qdrant unavailable")
+
+    monkeypatch.setattr(client_doc_ingest, "_qdrant_client", _boom)
+
+    with pytest.raises(client_doc_ingest.ClientDocIngestError, match="qdrant unavailable"):
+        client_doc_ingest.client_doc_ingest("test-eng-001", ["minio://eng/doc.txt"])

@@ -173,6 +173,52 @@ def _confidence_label(score: float) -> str:
     return "low confidence"
 
 
+def _normalise_version(value: Any) -> str:
+    """Return a schema-compatible version string from UI/document text."""
+    text = str(value or "").strip()
+    if len(text) > 1 and text[0].lower() == "v" and text[1].isdigit():
+        return text[1:]
+    return text
+
+
+def _numeric_metrics(value: Any, *, bounded: bool) -> dict[str, float]:
+    """Keep only JSON-schema-compatible numeric metric entries."""
+    if not isinstance(value, dict):
+        return {}
+    metrics: dict[str, float] = {}
+    for key, raw in value.items():
+        if isinstance(raw, bool):
+            continue
+        if isinstance(raw, (int, float)):
+            num = float(raw)
+        elif isinstance(raw, str):
+            try:
+                num = float(raw)
+            except ValueError:
+                continue
+        else:
+            continue
+        if bounded and not 0 <= num <= 1:
+            continue
+        metrics[str(key)] = num
+    return metrics
+
+
+def _parse_stage_b_metrics(raw_metrics: str) -> tuple[dict[str, float], dict[str, float] | None]:
+    """Parse UI metrics JSON, accepting flat or fixture-style wrapped objects."""
+    try:
+        parsed: Any = json.loads(raw_metrics)
+    except json.JSONDecodeError:
+        return {}, None
+
+    if isinstance(parsed, dict) and isinstance(parsed.get("accuracy_metrics"), dict):
+        accuracy_metrics = _numeric_metrics(parsed["accuracy_metrics"], bounded=True)
+        robustness_metrics = _numeric_metrics(parsed.get("robustness_metrics"), bounded=False)
+        return accuracy_metrics, robustness_metrics or None
+
+    return _numeric_metrics(parsed, bounded=True), None
+
+
 # ---------------------------------------------------------------------------
 # Async pipeline wrappers
 # ---------------------------------------------------------------------------
@@ -233,7 +279,7 @@ def _collect_stage_a() -> dict:
     return {
         "provider_name": s.get("s3_a_provider_name", ""),
         "system_name": s.get("s3_a_system_name", ""),
-        "version": s.get("s3_a_version", "0.1.0"),
+        "version": _normalise_version(s.get("s3_a_version", "0.1.0")),
         "intended_purpose": s.get("s3_a_intended_purpose", ""),
         "declared_modality": s.get("s3_a_declared_modality", "tabular"),
         "declared_risk_tier": s.get("s3_a_declared_risk_tier", "limited"),
@@ -264,10 +310,7 @@ def _collect_stage_a() -> dict:
 def _collect_stage_b() -> dict:
     s = st.session_state
     raw_metrics = s.get("s3_b_accuracy_metrics_raw", '{"accuracy": 0.8}')
-    try:
-        accuracy_metrics: Any = json.loads(raw_metrics)
-    except json.JSONDecodeError:
-        accuracy_metrics = {}
+    accuracy_metrics, robustness_metrics = _parse_stage_b_metrics(raw_metrics)
     lifecycle_raw = s.get("s3_b_lifecycle_change_log_raw", "")
     lifecycle = [ln for ln in lifecycle_raw.splitlines() if ln.strip()]
     harmonised = [x.strip() for x in s.get("s3_b_harmonised_standards_raw", "").split(",") if x.strip()]
@@ -285,6 +328,8 @@ def _collect_stage_b() -> dict:
         "harmonised_standards": harmonised,
         "other_standards": other,
     }
+    if robustness_metrics is not None:
+        result["robustness_metrics"] = robustness_metrics
     for key in {**_DOC_UPLOAD_FIELDS, **_OPTIONAL_UPLOAD_FIELDS}:
         uri = (s.get("s3_b_uris") or {}).get(key)
         if uri:
@@ -574,6 +619,14 @@ def _render_step_3() -> None:
         _init_key("s3_a_art5_prohibited_practices", [])
         _init_key("s3_a_art50_transparency_triggers", [])
         _init_key("s3_a_is_public_body_or_public_service", False)
+        _init_key(
+            "_s3_annex_iii_labels",
+            [
+                _ANNEX_III_LABELS[k]
+                for k in st.session_state.get("s3_a_declared_annex_iii_sections", [])
+                if k in _ANNEX_III_LABELS
+            ],
+        )
         # Stage B
         _init_key("s3_b_general_description", stage_b_pre.get("general_description", ""))
         _init_key("s3_b_model_type", stage_b_pre.get("model_type", ""))
@@ -648,8 +701,11 @@ def _render_step_3() -> None:
         st.text_input(
             "Version",
             key="s3_a_version",
-            help="Semantic version number (major.minor or major.minor.patch). E.g. '1.0' or '2.3.1'",
-            placeholder="e.g. 1.0.0",
+            help=(
+                "Semantic version number (major.minor or major.minor.patch). "
+                "Acceptable: 2.1, 2.1.0, v2.1, V2.1.0 (leading 'v'/'V' is automatically removed)."
+            ),
+            placeholder="e.g. 2.1.0 or v2.1.0",
         )
         _field_caption("version", confidence, sources, missing)
 
@@ -665,11 +721,11 @@ def _render_step_3() -> None:
         modality_opts = schema_props.get("declared_modality", {}).get(
             "enum", ["tabular", "cv", "nlp", "time_series", "llm", "agentic", "gpai"])
         current_modality = st.session_state.get("s3_a_declared_modality", "tabular")
-        modality_idx = modality_opts.index(current_modality) if current_modality in modality_opts else 0
+        if current_modality not in modality_opts:
+            st.session_state["s3_a_declared_modality"] = modality_opts[0]
         st.selectbox(
             "AI modality",
             options=modality_opts,
-            index=modality_idx,
             key="s3_a_declared_modality",
             help=(
                 "Primary technical type of this AI system. "
@@ -687,11 +743,11 @@ def _render_step_3() -> None:
         tier_opts = schema_props.get("declared_risk_tier", {}).get(
             "enum", ["high", "limited", "minimal", "gpai"])
         current_tier = st.session_state.get("s3_a_declared_risk_tier", "limited")
-        tier_idx = tier_opts.index(current_tier) if current_tier in tier_opts else 0
+        if current_tier not in tier_opts:
+            st.session_state["s3_a_declared_risk_tier"] = tier_opts[0]
         st.selectbox(
             "Self-assessed risk tier",
             options=tier_opts,
-            index=tier_idx,
             key="s3_a_declared_risk_tier",
             help=(
                 "Art. 6 — Your own assessment of the risk tier. "
@@ -706,11 +762,6 @@ def _render_step_3() -> None:
         st.multiselect(
             "Annex III high-risk categories",
             options=list(_ANNEX_III_LABELS.values()),
-            default=[
-                _ANNEX_III_LABELS[k]
-                for k in st.session_state.get("s3_a_declared_annex_iii_sections", [])
-                if k in _ANNEX_III_LABELS
-            ],
             key="_s3_annex_iii_labels",
             help=(
                 "Art. 6 §2 — Select every Annex III category that applies to your system. "
@@ -725,11 +776,12 @@ def _render_step_3() -> None:
             for lbl in (st.session_state.get("_s3_annex_iii_labels") or [])
         ]
 
+        deployment_opts = ["b2b", "b2c", "public_sector", "internal"]
+        if st.session_state.get("s3_a_deployment_context") not in deployment_opts:
+            st.session_state["s3_a_deployment_context"] = deployment_opts[0]
         st.selectbox(
             "Deployment context",
-            options=["b2b", "b2c", "public_sector", "internal"],
-            index=["b2b", "b2c", "public_sector", "internal"].index(
-                st.session_state.get("s3_a_deployment_context", "b2b")),
+            options=deployment_opts,
             key="s3_a_deployment_context",
             help=(
                 "Who uses this system directly? "
@@ -776,7 +828,6 @@ def _render_step_3() -> None:
             st.multiselect(
                 "FLI-E2 · Art. 25 modifications (triggers Provider status)",
                 options=["name_trademark", "intended_purpose_change", "substantial_modification", "none"],
-                default=st.session_state.get("s3_a_art25_status_change", []),
                 key="s3_a_art25_status_change",
             )
             st.multiselect(
@@ -784,7 +835,6 @@ def _render_step_3() -> None:
                 options=["civil_aviation_security", "two_three_wheel_vehicles",
                          "agricultural_forestry_vehicles", "marine_equipment",
                          "rail_interoperability", "motor_vehicles", "civil_aviation"],
-                default=st.session_state.get("s3_a_annex_i_section_b", []),
                 key="s3_a_annex_i_section_b",
             )
             st.multiselect(
@@ -792,7 +842,6 @@ def _render_step_3() -> None:
                 options=["machinery", "toys", "recreational_craft", "lifts",
                          "atex_equipment", "radio_equipment", "pressure_equipment",
                          "cableway", "ppe", "gas_appliances", "medical_devices", "ivd_medical_devices"],
-                default=st.session_state.get("s3_a_annex_i_section_a", []),
                 key="s3_a_annex_i_section_a",
             )
             st.checkbox(
@@ -809,7 +858,6 @@ def _render_step_3() -> None:
                 "FLI-R2 · Art. 2 exclusion category (if any)",
                 options=["", "military", "third_country_law_enforcement",
                          "research_and_development", "open_source", "personal_use", "none"],
-                index=0,
                 key="s3_a_art2_exclusion",
             )
             st.multiselect(
@@ -819,7 +867,6 @@ def _render_step_3() -> None:
                          "predictive_policing", "facial_recognition_db_scraping",
                          "emotion_recognition_workplace_education",
                          "real_time_remote_biometrics", "none"],
-                default=st.session_state.get("s3_a_art5_prohibited_practices", []),
                 key="s3_a_art5_prohibited_practices",
             )
             st.multiselect(
@@ -828,7 +875,6 @@ def _render_step_3() -> None:
                          "emotion_or_biometric_categorisation",
                          "direct_interaction_with_persons",
                          "synthetic_content_generation", "none"],
-                default=st.session_state.get("s3_a_art50_transparency_triggers", []),
                 key="s3_a_art50_transparency_triggers",
             )
             st.checkbox(
@@ -906,7 +952,14 @@ def _render_step_3() -> None:
         st.text_area(
             "Performance metrics (JSON)",
             key="s3_b_accuracy_metrics_raw",
-            help='Annex IV §4 — Key performance metrics as a JSON object. E.g. {"accuracy": 0.78, "auc": 0.82, "f1": 0.71}. Must be valid JSON.',
+            help=(
+                "Annex IV §4 — Key performance metrics as JSON. "
+                'Accepted formats: 1) flat object with metric names as keys and numbers as values, '
+                'e.g. {"accuracy": 0.78, "auc": 0.82, "f1": 0.71}; '
+                '2) wrapped block with nested "accuracy_metrics" and "robustness_metrics", '
+                'e.g. {"accuracy_metrics": {"accuracy": 0.78}, "robustness_metrics": {"psi": 0.04}}. '
+                "All metric values must be numbers."
+            ),
             placeholder='{"accuracy": 0.78, "auc": 0.82, "f1": 0.71}',
             height=70,
         )
@@ -999,6 +1052,9 @@ def _render_step_4() -> None:
                 st.session_state["audit_store"] = store
             except IntakeValidatorError as exc:
                 st.error(f"Intake validation failed at stage {exc.stage}: {exc.reason}")
+                if exc.details:
+                    with st.expander("Validation details", expanded=True):
+                        st.json(exc.details)
                 if st.button("← Back to Review"):
                     st.session_state["step"] = 3
                     st.rerun()

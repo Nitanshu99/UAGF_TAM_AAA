@@ -1,0 +1,57 @@
+{
+  "engagement_id": "eng-cd2d13e6",
+  "schema_version": "1.0.0",
+  "engagement_metadata": {
+    "provider_name": "",
+    "deployer_name": null,
+    "system_name": "",
+    "version": "1.0",
+    "intended_purpose": null,
+    "modality": "tabular",
+    "risk_tier": "high",
+    "deployment_context": "b2b",
+    "is_llm_or_agentic": false,
+    "annex_iii_sections": []
+  },
+  "executive_summary": "Autonomous AI audit complete for engagement eng-cd2d13e6. Final verdict: PASS_WITH_OBSERVATIONS. KPI0=n/a, KPI1=n/a, KPI2=n/a. Blocking findings: 0. See embedded artefacts T01a\u2013T17 for full evidence chain. Prompt metadata: source=PROMPT.md, agent_prompt=phase6_report, prompt_version_hash=0b1474db83bccd757fe6ea264573845c8f8ca7bc8f0fb2720d6c00ebf139b745, llm_fallback_mode=false.",
+  "kpis": {
+    "intake_completeness_score": null,
+    "completeness_score": null,
+    "regulatory_coverage_pct": null,
+    "kpi0_band": null,
+    "kpi1_band": null,
+    "kpi2_band": null
+  },
+  "final_verdict": "PASS_WITH_OBSERVATIONS",
+  "auditor_opinion": {
+    "opinion_type": "qualified",
+    "opinion_paragraph": "Except for the matters described in the Basis for Conclusion, the AI system was designed and documented in conformity with the applicable EU AI Act requirements assessed by UAGF-TAM.",
+    "basis_paragraph": "Qualified matters include material or possibly material findings: see findings register.",
+    "methodology_basis": "This conformity assessment was conducted in accordance with the UAGF-TAM audit protocol (v1.0.0), applying the methodology of ISAE 3000 (Revised) for non-financial assurance engagements and ISO 19011:2018 for audit programme management. The audit was performed by an automated multi-agent system; results should be reviewed by a qualified human auditor before regulatory submission under Article 43 of the EU AI Act.",
+    "scope_paragraph": "The assessment covered admitted intake artefacts, phase reports, verifier critiques, the T17 compliance matrix, and CGSA handoff evidence available to UAGF-TAM at report generation time. It did not extend beyond evidence admitted to the audit evidence store."
+  },
+  "art43_decision": null,
+  "embedded_artefacts": {},
+  "compliance_matrix_ref": {
+    "uri": "minio://eng-cd2d13e6/phase_6/T17_compliance_matrix_8e3c1cca.json",
+    "sha256": "8e3c1cca8abe5ae1995fdf64c6ef24e4188072de1e560d22a4dd0fe3ac1874e3",
+    "template_id": "T17_compliance_matrix"
+  },
+  "blocking_findings": [],
+  "positive_findings": [],
+  "remediation_roadmap": [],
+  "management_response": [],
+  "risk_heatmap_uri": "/var/folders/9c/0d2rspm913962qzmg34vtsy00000gn/T/heatmap_eng-cd2d13e6.png",
+  "maturity_radar_uri": null,
+  "cgsa_report_url": null,
+  "rendered_report": {
+    "pdf_uri": "minio://eng-cd2d13e6/phase_6/T18_audit_report.pdf_b115939e.json",
+    "pdf_bytes_size": 57658,
+    "json_uri": "minio://eng-cd2d13e6/phase_6/T18_audit_report.json_7a428b14.json",
+    "renderer": "reportlab"
+  },
+  "hitl_required": false,
+  "hitl_reason": null,
+  "verifier_summary": {},
+  "generated_at": "2026-06-26T05:56:27.082253+00:00"
+}

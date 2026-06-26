@@ -264,103 +264,11 @@ def _node_phase_5(state: dict) -> dict:
     return state
 
 
-def _node_compliance_matrix(state: dict) -> dict:
-    """
-    Compliance Matrix Assembly (§6 step 6).
-
-    - Assembles article verdicts from phase artefacts + CGSA payload.
-    - Computes KPI 1 (completeness_score) and KPI 2 (regulatory_coverage_pct).
-    - Determines final_verdict.
-    """
-    from aaa.tools.art43_select import art43_select_from_state  # type: ignore
-
-    # Art. 43 final decision
-    try:
-        art43 = art43_select_from_state(state, use_declared=False)
-        # art43_select returns Art43Decision which is a TypedDict (i.e., a dict)
-        state["art43_decision"] = {
-            "procedure": art43["procedure"],
-            "rationale": art43["rationale"],
-        }
-    except Exception as exc:
-        logger.warning("art43_select failed: %s", exc)
-
-    # Build compliance_matrix from admitted artefact citations
-    admitted_articles: set[str] = set()
-
-    # Add articles derived from pre-intake scope gate flags
-    gate = state.get("scope_gate", {})
-    if gate.get("become_provider_under_art25"):
-        admitted_articles.add("Art.25")
-    if gate.get("triggers_fria"):
-        admitted_articles.add("Art.27")
-    if gate.get("triggers_art50_transparency"):
-        admitted_articles.add("Art.50")
-    if gate.get("is_gpai_systemic"):
-        admitted_articles.add("Arts.51-55")
-
-    for tid, critique in state["verifier_critiques"].items():
-        if critique.get("verdict") in {"accept", "accept_with_notes"}:
-            for art in critique.get("article_citations", []):
-                admitted_articles.add(art)
-            # Map template IDs to articles
-            _TEMPLATE_ARTICLES = {
-                "T01b_annex_iv_dossier": ["Art.11", "Annex_IV"],
-                "T01c_intake_completeness_report": ["Annex_IV"],
-                "T02_system_card": ["Art.5", "Art.13"],
-                "T03_annex_iii_mapping": ["Art.6", "Annex_III"],
-                "T04_risk_tier_decision": ["Art.5", "Art.6"],
-                "T05_art43_decision": ["Art.43"],
-                "T06_datasheet_for_datasets": ["Art.10"],
-                "T09_model_card": ["Art.13"],
-                "T11_robustness_report": ["Art.15"],
-                "T12_output_fairness_report": ["Art.15", "Art.50"],
-                "T13_output_sampling_log": ["Art.50"],
-                "T14_governance_findings": ["Art.9", "Art.17"],
-                "T15_monitoring_logging_review": ["Art.12", "Art.72"],
-                "T17_compliance_matrix": ["Art.17"],
-            }
-            if tid in _TEMPLATE_ARTICLES:
-                admitted_articles.update(_TEMPLATE_ARTICLES[tid])
-
-    if "T01b_annex_iv_dossier" in state.get("phase_artefacts", {}):
-        admitted_articles.update({"Art.11", "Annex_IV"})
-    if "T01c_intake_completeness_report" in state.get("phase_artefacts", {}):
-        admitted_articles.add("Annex_IV")
-
-    for article in admitted_articles:
-        if state["compliance_matrix"].get(article) in (None, "PENDING"):
-            state["compliance_matrix"][article] = "PASS"
-
-    # KPI 1 and KPI 2
-    compute_completeness_score(state)
-    compute_regulatory_coverage_pct(state)
-
-    # Final verdict
-    phase5_ok = state.get("cgsa_phase5_verdict") in {"PASS", "PASS_WITH_OBSERVATIONS", None}
-    csp_ok = state.get("cgsa_csp_satisfiable", True) is not False
-    cs = state.get("completeness_score") or 0.0
-    rc = state.get("regulatory_coverage_pct") or 0.0
-    ics = state.get("intake_completeness_score") or 0.0
-
-    if ics >= 0.90 and cs >= 0.90 and rc >= 90.0 and phase5_ok and csp_ok:
-        verdict = "PASS"
-    elif ics >= 0.80 and cs >= 0.75 and rc >= 75.0 and phase5_ok and csp_ok:
-        verdict = "PASS_WITH_OBSERVATIONS"
-    else:
-        verdict = "FAIL"
-
-    state["final_verdict"] = verdict
-    state["material_findings_count"] = sum(
-        1 for finding in state.get("blocking_findings", [])
-        if finding.get("materiality") == "material"
-    )
-    state["possibly_material_findings_count"] = sum(
-        1 for finding in state.get("blocking_findings", [])
-        if finding.get("materiality") == "possibly_material"
-    )
-    logger.info("Engagement %s final_verdict=%s (cs=%.2f rc=%.1f)", state["engagement_id"], verdict, cs, rc)
-    return state
+# NOTE: compliance-matrix assembly + final verdict now lives solely in
+# ``aaa.agents.tier1.phases.compliance_matrix.node_compliance_matrix`` (imported
+# above, wired into both the LangGraph and sequential paths). The previous local
+# duplicate that auto-stamped every admitted article ``PASS`` has been removed so it
+# can never be re-wired by accident.
 
 
 def _node_hitl_checkpoint(state: dict) -> dict:

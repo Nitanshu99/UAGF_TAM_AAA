@@ -49,7 +49,7 @@
           },
           "verdict": {
             "type": "string",
-            "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_APPLICABLE", "PENDING"]
+            "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "INSUFFICIENT_EVIDENCE", "NOT_APPLICABLE", "PENDING"]
           },
           "evidence_uris": {
             "type": "array",

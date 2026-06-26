@@ -7,12 +7,12 @@
   "monitoring_measures": "Weekly WAPE and MASE dashboards per customer; Grafana alerts if MASE > 1.15; quarterly retraining evaluation.",
   "logging_capabilities": "Per-prediction log: timestamp, store_id, dept_id, forecast_horizon, predicted_values, model_version. Retained 2 years.",
   "accuracy_metrics": {
-    "mae": 1.116,
+    "forecast_accuracy": 0.884,
     "wape_target": 0.25,
-    "mase_alert_threshold": 1.15
+    "mase_target_attainment": 0.87
   },
   "robustness_metrics": {
-    "out_of_distribution_test": "hold-out seasonal period 2024-Q4",
+    "seasonal_ood_holdout_coverage": 0.25,
     "mase_ood": 1.08
   },
   "risk_management_file_uri": "mock/02_retailiq_ag/docs/risk_management_file.txt",

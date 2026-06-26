@@ -99,11 +99,45 @@ Model assignments follow a cost-vs-capability rule, implemented in `aaa/platform
 | # | Agent | Model | UAGF-TAM phase | Primary responsibility |
 |---|-------|-------|----------------|------------------------|
 | 4 | **Phase 1 — Scope (Declaration Verifier)** | **gpt-5.4** | P1 | **Verifies** the Stage-A triage declaration (modality, risk tier, Annex III sections, deployment context) collected at intake (§6 Stage 0); enforces the Art. 5 prohibition gate; performs GPAI screening; emits the `declaration_verification` map (match / mismatch / corrected). The `is_llm_or_agentic` flag is taken from the client declaration and only overridden if Phase 1 detects a verified mismatch (which raises HITL per §8.4). |
-| 5 | **Phase 2 — Data Governance Auditor** | **gpt-5.4** | P2 | Data quality, completeness, special-category-data scan, datasheet validation (Art. 10). |
-| 6 | **Phase 3 — Model Validation Agent** | **gpt-5.5** (Flex) | P3 | Performance metrics, explainability (SHAP/Grad-CAM tool calls), robustness (Art. 13, 15). |
-| 7 | **Phase 4 — Output Fairness Tester** | **gpt-5.4-mini** | P4 | Output sampling, demographic-parity / equal-opportunity / disparate-impact metrics, subgroup analysis. |
-| 8 | **Phase 5 — Governance Agent** | **gpt-5.5** (Flex) | P5 | **Ingests `uagf_cgsa_aaa_schema.json`** from the upstream S4 CGSA, validates schema, lifts `aaa_phase5_handoff.blocking_findings` and `remediation_roadmap` into the compliance matrix. |
+| 5 | **Phase 2 — Data Governance Auditor** | **gpt-5.4** | P2 | **Loads the real training/evaluation dataset** (`artifact_loader`) and re-runs data-quality / missingness / class-balance / special-category-data scans on it; diffs the declared dataset description against the actual data; datasheet validation (Art. 10). A dataset that cannot be loaded → INSUFFICIENT_EVIDENCE, never PASS. |
+| 6 | **Phase 3 — Model Validation Agent** | **gpt-5.5** (Flex) | P3 | **Loads the real model artefact + evaluation set** (`eval_inputs.load_scored_evaluation`), independently re-computes performance metrics, explainability (SHAP/Grad-CAM), and robustness, then `declaration_diff`s the computed metrics against the declared `accuracy_metrics` (Art. 13, 15). A non-executable / unscoreable model → material finding + INSUFFICIENT_EVIDENCE. |
+| 7 | **Phase 4 — Output Fairness Tester** | **gpt-5.4-mini** | P4 | **Scores the real model** on the eval set and runs the fairness suite (demographic parity / equal opportunity / disparate impact / subgroup) **per declared-or-inferred protected attribute**; a failing group → material FAIL; unscoreable → INSUFFICIENT_EVIDENCE. |
+| 8 | **Phase 5 — Governance Agent** | **gpt-5.5** (Flex) | P5 | Ingests `uagf_cgsa_aaa_schema.json` from the upstream S4 CGSA and **treats it as a claim to test**: `_reconcile_cgsa` checks the self-assessment's internal consistency (e.g. controls-assessed vs controls-detailed, below-threshold controls named) and lifts `blocking_findings` / `remediation_roadmap`. If the CGSA is unretrievable, governance articles are marked INSUFFICIENT_EVIDENCE (not FAIL). |
 | 9 | **Phase 6 — Report Architect** | **gpt-5.4** (Flex) | P6 | Composes T17/T18, synthesises the executive summary, builds the formal auditor opinion, emits management-response shells, renders risk heat-map + maturity radar assets, and persists the final PDF/JSON report outputs. |
+
+### 3.2a Evidence-Grounded Verdicts (the "real auditor" model)
+
+The pipeline is built on one rule: **absence of evidence is never `PASS`.** The audit
+independently re-derives every quantitative claim and grounds every article verdict in
+traceable evidence rather than admitting artefacts by default.
+
+- **Independent re-computation.** Phase agents load the *real* client artefacts referenced
+  in Stage B (`model_artifact_uri`, `evaluation_dataset_uri`, `training_dataset_uri`) and
+  re-run the analysis tools on them. Declared `accuracy_metrics` are `declaration_diff`'d
+  against the recomputed values; a material gap is a finding. Supporting modules:
+  `aaa/platform/artifact_loader.py` (resolves a store URI to a model/CSV/docx, raising
+  `ArtifactUnavailable` rather than returning a silent stub), `aaa/tools/eval_inputs.py`
+  (`load_scored_evaluation`, shared by Phases 3 & 4), `aaa/tools/data_dictionary.py`
+  (target / positive-label / sensitive-column resolution), and `aaa/tools/findings.py`
+  (canonical finding dicts).
+- **The Verifier gate is enforced, not aspirational.** Every phase artefact is critiqued by
+  the independent Verifier via `aaa/agents/tier1/phases/verification.py::run_phase_with_verification`
+  before admission; a `rerun` re-dispatches the phase agent (bounded by `MAX_RERUNS`), an
+  `escalate_hitl` flags the engagement. (Previously the critiques were hardcoded to
+  `accept`.)
+- **Verdict ladder** (`aaa/agents/tier1/phases/compliance_matrix.py`): per article —
+  a confirmed material finding → `FAIL`; required analysis not performed
+  (`insufficient_evidence_articles`) → `INSUFFICIENT_EVIDENCE`; a possibly-material /
+  observation finding → `PASS_WITH_OBSERVATIONS`; admitted, verifier-accepted, no findings →
+  `PASS`. Each row carries `article_evidence` (rationale + evidence URIs + supporting
+  template ids + CGSA control ids). The final verdict is `FAIL` if any article FAILs (or the
+  CGSA is present and reports `csp_satisfiable=false` / `phase5_verdict=FAIL`); otherwise
+  `PASS_WITH_OBSERVATIONS` when any article is `INSUFFICIENT_EVIDENCE` or
+  `PASS_WITH_OBSERVATIONS`; else `PASS`.
+- **Auditor opinion** (ISAE 3000 style): `unqualified` (clean PASS, no material findings),
+  `qualified` (PASS_WITH_OBSERVATIONS), `adverse` (FAIL), or `disclaimer_of_opinion` — set
+  via `opinion_disclaimer` when a *mandatory high-risk* article (Art. 9/10/11/12/13/14/15/17)
+  is `INSUFFICIENT_EVIDENCE`, i.e. conformity cannot be concluded.
 
 ### 3.3 Tier 3 — Specialist Sub-Agents (on-demand)
 
@@ -431,6 +465,18 @@ class AnnexIVDossier(TypedDict):
     eu_doc_uri: str | None
     # §9 Post-market monitoring plan
     post_market_plan_uri: str | None
+    # Independent-analysis inputs — the real artefacts Phases 2/3/4 load + re-run on.
+    # All NotRequired for backward compatibility with legacy fixtures.
+    model_artifact_uri: str | None         # fitted model (joblib/pickle) re-scored in Phase 3/4
+    evaluation_dataset_uri: str | None     # labelled holdout re-scored for metrics + fairness
+    training_dataset_uri: str | None       # re-scanned for data quality / PII (Phase 2)
+    # Data dictionary — how to split X/y and scope protected-attribute fairness testing.
+    # When omitted, inferred (last column = target; protected attrs from column names) and
+    # the assumption is recorded as a finding (aaa/tools/data_dictionary.py).
+    target_column: str | None
+    positive_label: Any                    # favourable outcome for fairness (default 1)
+    sensitive_feature_columns: list[str] | None
+    feature_columns: list[str] | None
     # L-branch additional fields (populated only when declared_modality ∈ {llm, agentic, gpai})
     system_prompt_uri: str | None
     rag_manifest_uri: str | None        # vector-store schema + retrieval config
@@ -507,10 +553,12 @@ class AuditState(TypedDict):
     cgsa_risk_tier_match: bool | None                # Phase 1 verified tier vs CGSA metadata
 
     # --- compliance assembly ---
-    compliance_matrix: dict[Article, Verdict]        # Art. 9, 10, 11, 13, 14, 15, 17, 43; Annex III/IV; GPAI 51–55
-    blocking_findings: list[Finding]
+    compliance_matrix: dict[Article, Verdict]        # Verdict ∈ PASS | PASS_WITH_OBSERVATIONS | FAIL | INSUFFICIENT_EVIDENCE | NOT_APPLICABLE | PENDING
+    article_evidence: dict[Article, dict]            # per-article rationale + evidence_uris + supporting_template_ids + cgsa_control_ids + finding_ids
+    blocking_findings: list[Finding]                 # accumulate-merged across phases (agent_runner)
     positive_findings: list[Finding]
     remediation_roadmap: list[RemediationItem]
+    insufficient_evidence_articles: list[str]        # articles whose required independent analysis could not be performed → INSUFFICIENT_EVIDENCE
 
     # --- verification & verdict ---
     verifier_critiques: dict[str, Critique]
@@ -518,6 +566,7 @@ class AuditState(TypedDict):
     completeness_score: float | None                 # §9.1 KPI 1; 0.0–1.0
     regulatory_coverage_pct: float | None            # §9.1 KPI 2; 0.0–100.0
     final_verdict: Literal["PASS","PASS_WITH_OBSERVATIONS","FAIL"] | None
+    opinion_disclaimer: bool                          # true ⇒ a mandatory high-risk article is INSUFFICIENT_EVIDENCE → disclaimer of opinion
 ```
 
 ### 5.2 Evidence Store
@@ -1162,47 +1211,31 @@ UAGF_TAM_AAA/
 │   ├── cli.py                           # CLI entry point: python -m aaa.cli run ...
 │   ├── settings.py                      # pydantic-settings; reads env vars
 │   ├── agents/
-│   │   ├── base.py                      # BaseAgent ABC + message TypedDicts
-│   │   ├── intake_validator.py          # IntakeValidator (Stage 0 A/B/C)
+│   │   ├── base.py                      # BaseAgent + audited LiteLLM wrapper
+│   │   ├── doc_intelligence.py          # Pre-intake document extraction agent
+│   │   ├── intake_validator.py          # Stage 0 validation + completeness gate
 │   │   ├── tier1/
-│   │   │   ├── orchestrator.py          # 9-node LangGraph StateGraph
-│   │   │   ├── verifier.py              # Verifier — rubric critique loop
-│   │   │   └── regulatory_rag.py        # RegulatoryRAG — offline KB + Qdrant
-│   │   ├── tier2/
-│   │   │   ├── scope_agent.py           # Phase 1 — Scope & Risk Classifier
-│   │   │   ├── data_auditor.py          # Phase 2 — Data Governance Auditor
-│   │   │   ├── model_validator.py       # Phase 3 — Model Validation Agent
-│   │   │   ├── output_fairness.py       # Phase 4 — Output Fairness Tester
-│   │   │   ├── governance_agent.py      # Phase 5 — Governance Agent (S4 integration)
-│   │   │   └── report_architect.py      # Phase 6 — Report Architect
-│   │   └── tier3/
-│   │       ├── uagf_tam_l.py            # L-Branch — GPAI Arts. 51–55 specialist
-│   │       ├── cyber_agent.py           # Cyber Security Sub-Agent
-│   │       └── privacy_agent.py         # Privacy DPO Sub-Agent
-│   ├── tools/                           # §4 deterministic tools (one module per tool)
-│   │   ├── triage_render.py             # Stage A form validator
-│   │   ├── annex_iv_validator.py        # Stage B dossier validator
-│   │   ├── intake_completeness_calculator.py  # KPI 0
-│   │   ├── art43_select.py              # Art. 43 procedure selector
-│   │   ├── annex_iii_classify.py        # Annex III classifier
-│   │   ├── declaration_diff.py          # Declaration diff (§3.6)
-│   │   ├── csp_solver.py                # Risk-Tier × Phase CSP (§6.2)
-│   │   ├── completeness_score.py        # KPI 1
-│   │   ├── regulatory_coverage.py       # KPI 2
-│   │   ├── data_profile.py / missingness_scan.py / class_balance.py / pii_scan.py
-│   │   ├── metric_suite.py / shap_explain.py / lime_explain.py / gradcam_explain.py / robustness_probe.py
-│   │   ├── demographic_parity.py / equal_opportunity.py / disparate_impact.py / subgroup_metrics.py / toxicity_classifier.py
-│   │   ├── cgsa_pull.py / cgsa_ingest.py  # §10.2 S4 pull client + schema validator
-│   │   ├── ragas_eval.py / groundedness_check.py / prompt_injection_suite.py / trajectory_audit.py
-│   │   ├── client_doc_ingest.py         # per-engagement client-doc RAG
-│   │   ├── risk_heatmap_render.py / maturity_radar_render.py
-│   │   └── template_render.py / report_render.py  # T01–T18 rendering
+│   │   │   ├── orchestrator.py          # slim coordinator over modular phase nodes
+│   │   │   ├── agent_initializer.py     # lazy agent wiring
+│   │   │   ├── checkpointer.py          # orchestration checkpoint helpers
+│   │   │   ├── verifier.py              # independent quality gate
+│   │   │   ├── regulatory_rag.py        # regulatory retrieval agent
+│   │   │   └── phases/                  # initial_state, node_plan, stage0, runners, CM
+│   │   ├── tier2/                       # Phase 1–6 specialist agents
+│   │   └── tier3/                       # UAGF-TAM-L, Cyber, Privacy specialists
+│   ├── api/
+│   │   ├── main.py                      # FastAPI app factory + lifespan logging setup
+│   │   ├── schemas.py                   # request/response models
+│   │   ├── store.py                     # current in-memory runtime store
+│   │   └── routes/                      # health, engagements, workflow, reports, data
+│   ├── data/                            # file-based persistence (inputs/results/index)
+│   ├── dagster/                         # assets, jobs, sensors, resources, definitions
+│   ├── observability/                   # logging, metrics, error capture, LLM audit
 │   ├── platform/
 │   │   ├── prompt_registry.py           # prompt runtime sourced from PROMPT.md
-│   │   ├── state.py                     # AuditState TypedDict + all nested types (§5.1)
-│   │   └── evidence.py                  # EvidenceStore — in-memory / MinIO-compatible (§5.2)
-│   ├── api/                             # FastAPI engagement + upload-to-report workflow
-│   │   └── main.py
+│   │   ├── state.py                     # AuditState TypedDict + nested types (§5.1)
+│   │   └── evidence.py                  # current in-memory EvidenceStore
+│   ├── tools/                           # deterministic audit tools (one module per tool)
 │   └── ui/
 │       └── app.py                       # Streamlit demo (§14.7): streamlit run aaa/ui/app.py
 ├── schemas/
@@ -1560,29 +1593,26 @@ flowchart LR
 
 | Incident | Detection | First action | Escalation |
 |---|---|---|---|
-| Engagement stuck > 2 h | Cost dashboard SLA breach | `aaa.cli resume --engagement {id}` (uses LangGraph checkpoint) | HITL if 3 reruns fail |
-| `cgsa_pull` 5xx > 5 min | Langfuse alert | Check S4 status page; flip engagement to HITL pause | Email supervisor |
-| Schema drift on nightly contract | GitHub issue auto-opened | Inspect diff; if non-breaking, bump pinned version + PR; if breaking, freeze new audits | Joint S4↔S5 sync meeting |
-| MinIO disk > 80% | Grafana | Run `restic forget --keep-last 30` on backups; scale volume | On-call rota |
-| LLM provider outage | LiteLLM fallback engaged automatically | Verify fallback model in cost dashboard; downgrade audit confidence flag | If all fallbacks down, pause new engagements |
-| Verifier `escalate_hitl` spike | Langfuse anomaly | Inspect last 10 critiques; if prompt regression, roll back agent prompt version | Notify prompt-owner |
-| Client right-to-erasure request | GDPR ticket | `aaa.cli purge --engagement {id}` (drops Postgres schema + MinIO prefix) | Log in DPA register |
+| API unhealthy | `/healthz` fails | Inspect `logs/app/app.log` and `logs/api/api.log`; restart `uvicorn aaa.api.main:app --reload --port 8000` | Open runtime bug if reproducible |
+| Audit run failed | `POST /run` fails or no result written | Inspect `logs/errors/*.jsonl`, `logs/audit/llm_audit.jsonl`, and `data/results/<id>/` | Escalate to maintainer if repeated |
+| Persisted result missing | `/api/v1/data/...` returns 404 after completion | Inspect `data/index.json` and per-engagement directories | Open bug on `aaa/data/` or API routes |
+| LLM audit anomaly | unexpected cost/token spike | Aggregate `logs/audit/llm_audit.jsonl` or run Dagster cost-monitoring job | Notify prompt/model owner |
+| Schema version mismatch | `/api/v1/schema-version` unexpected | Reconcile `CGSA_SCHEMA_VERSION`, vendored schema, and settings | Coordinate schema update before new runs |
+| PDF not available | `/report.pdf` returns 404 | Use JSON report and inspect rendering logs | Escalate only if PDF is required |
 
 ### 14.10 Smoke-Test Procedure (10-Minute Acceptance)
 
-Run after every deploy and after every milestone target. All eleven steps must pass.
+Run after doc-sensitive or runtime-sensitive changes. The currently implemented
+acceptance path is:
 
-1. `make up` — every container healthy in `docker compose ps` (including Qdrant at `:6333`).
-2. `curl -fsS http://localhost:8000/healthz` returns `{"status":"ok","schema_version":"1.0.0"}`.
-3. `.venv/bin/python -m aaa.cli check-cgsa-schema` — pinned schema matches vendored; curl S4 FastAPI healthz at `$S4_CGSA_BASE_URL/healthz`.
-4. **`make intake-validate`** — `annex_iv_validator` and `intake_completeness_calculator` run against `german_credit_stage_b.json`; `intake_completeness_score >= 0.95` (full fixture); output prints per-section scores with no missing required fields.
-5. **`make intake-demo`** — simulates Stage A → B → C wizard in offline mode; `art43_preview` printed; T01a/T01b/T01c written to MinIO; no exceptions.
-6. `make m3-linear` — produces 6 admitted artefacts (T01a, T01b, T01c, T02, T04, T06) in MinIO; `completeness_score >= 0.30`.
-7. `make m4-full` — produces 19 of 20 templates (T16 skipped on non-LLM); PDF rendered in ≤ 2 hours wall-clock (exposé SLA); `intake_completeness_score >= 0.80`, `completeness_score >= 0.85`, `regulatory_coverage_pct >= 80`.
-8. `.venv/bin/pytest tests/intake/test_completeness.py` — unit tests for `intake_completeness_calculator` covering all nine Annex IV sections + L-branch conditional fields; all cases pass.
-9. `.venv/bin/pytest tests/contract/test_cgsa_pull.py` — pull from S4 FastAPI, validate, hydrate against all fixtures in `scripts/fixtures/cgsa/`.
-10. `.venv/bin/pytest tests/e2e/test_uagf_tam_l.py` — L-branch end-to-end produces T16; UAGF-TAM-L PDF emitted; `intake_completeness_score` present in T01c.
-11. Open Streamlit wizard at `http://localhost:8501`; advance through all 5 steps using the German Credit fixture data; confirm the Review & Confirm step shows a completeness score ≥ 0.80 and a green scope-gate banner; click **Confirm & Run Audit**; verify the Results step shows a non-null `final_verdict`, `intake_completeness_score`, and active download buttons for PDF, T18 JSON, and T17 JSON.
+1. `python3.12 scripts/setup.py --no-docker --no-migrate` completes successfully.
+2. `AAA_OFFLINE_MODE=true python -m pytest tests/unit -q` passes.
+3. `uvicorn aaa.api.main:app --reload --port 8000` starts cleanly.
+4. `curl -fsS http://localhost:8000/healthz` returns `status=ok` and the pinned schema version.
+5. `curl -fsS http://localhost:8000/metrics > /dev/null` succeeds.
+6. `make intake-demo` or `python -m aaa.cli run ... --offline` completes with a JSON summary.
+7. `GET /api/v1/data/engagements` returns at least the created demo engagement after a persisted run.
+8. If Streamlit is in scope, `AAA_OFFLINE_MODE=true streamlit run aaa/ui/app.py` starts and the 5-step flow is reachable at `http://localhost:8501`.
 
 ### 14.11 Exposé Milestone ↔ Deployment Checklist
 
@@ -1624,22 +1654,22 @@ in `aaa/ui/app.py` is the sole UI**:
   placeholders kept for documentation parity with §14.8 and have no
   runtime effect on the Streamlit demo.
 
-#### 14.12.2 Storage backends — in-memory for the thesis demo
+#### 14.12.2 Storage backends — hybrid current implementation
 
-The FastAPI app (`aaa/api/main.py`) uses an **in-memory dict** for the
-engagement store so the `/healthz` and engagement CRUD endpoints work
-without Docker services running. The production-grade SQLAlchemy + Postgres
-implementation is reached via:
+The current thesis/demo implementation uses a **hybrid storage model**:
 
-- `docker-compose.yml` (brings up Postgres, MinIO, Qdrant, Valkey,
-  Langfuse, OpenBao), and
-- `alembic upgrade head` (applies `alembic/versions/0001_initial_schema.py`
-  which creates `engagements`, `evidence_artefacts`, and
-  `langgraph_checkpoints`).
+- `aaa/api/store.py` keeps live FastAPI engagement state in memory for the
+  current process.
+- `aaa/data/` persists user-entered engagement metadata, intake payloads,
+  uploaded-file metadata, and final audit results to JSON under `data/` (or
+  `AAA_DATA_DIR`).
+- `aaa/platform/evidence.py` still provides an in-memory `EvidenceStore` for
+  uploaded/report artefacts in the current runtime.
 
-`aaa/platform/evidence.py` similarly ships with an in-memory `EvidenceStore`
-suitable for offline demos; a MinIO-backed implementation is the production
-target.
+The broader local stack (`docker-compose.yml` + `alembic upgrade head`) still
+exists for the future/optional production-style path with Postgres and other
+services, but the repo's implemented persistence guarantee today is the local
+file-based store in `aaa/data/`.
 
 #### 14.12.3 Schema explorer (`data/files/uagf_schema_explorer.jsx`)
 
@@ -1664,12 +1694,10 @@ production deployment (M9)** but are not on the critical path for the
 thesis demo (M3/M4):
 
 - A production Next.js portal (14.12.1).
-- A MinIO-backed `EvidenceStore` replacing the in-memory implementation.
-- A Postgres-backed engagement repository replacing the in-memory dict in
-  `aaa/api/main.py`.
-- The `aaa.cli pause` / `resume` / `purge` subcommands referenced in
-  `infra/runbook.md`.
-- The `tests/` tree at full coverage (≥ 80 %) referenced by `ci.yml`.
+- A MinIO-backed `EvidenceStore` replacing the current in-memory evidence store.
+- A Postgres-backed engagement repository replacing the current in-memory API store.
+- A first-party purge/deletion command for persisted engagements.
+- Broader automated coverage beyond the current unit/contract/golden set.
 
 The thesis demo (`make demo`) and offline pipeline (`make m4-full`) run
 without any of these — they exercise the LangGraph orchestrator, the 12

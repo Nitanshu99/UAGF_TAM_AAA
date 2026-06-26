@@ -1,5 +1,4 @@
 """aaa.dagster.assets.phase3 — Phase 3 Model Validator asset."""
-from __future__ import annotations
 import asyncio, time
 from typing import Any
 from dagster import AssetExecutionContext, MetadataValue, asset

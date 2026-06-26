@@ -1,16 +1,27 @@
 # uagf-tam-templates
 
-Distributable **T01a–T18 JSON-Schema templates** and **Jinja2 partials** for the
-UAGF-TAM Autonomous AI Auditor (§4A of `ARCHITECTURE.md`).
+This package contains the distributable **T01a–T18 JSON Schemas** and the
+packaged Jinja partials used by the AAA reporting flow.
 
-This package lets third-party audit toolchains, regulators, or auditees
-consume the canonical artefact schemas without installing the full AAA
-runtime.
+It is intended for:
+
+- schema consumers that do not want the full AAA runtime
+- tests that validate template compatibility independently of the main app
+- future publication as a standalone artefact package
 
 ## Install
 
+### Local editable install
+
 ```bash
-pip install uagf-tam-templates
+cd packages/uagf_tam_templates
+python -m pip install -e .
+```
+
+### If published to an index
+
+```bash
+python -m pip install uagf-tam-templates
 ```
 
 ## Usage
@@ -18,47 +29,40 @@ pip install uagf-tam-templates
 ```python
 import uagf_tam_templates as utt
 
-# Discover all packaged templates
-utt.list_templates()
-# -> ['T01a_stage_a_triage', 'T01b_annex_iv_dossier', ..., 'T18_audit_report']
-
-# Load and validate
+ids = utt.list_templates()
 schema = utt.load_schema("T17_compliance_matrix")
-utt.validate("T17_compliance_matrix", my_payload)
-
-# Render the packaged Jinja2 partial
-md = utt.render_partial("T17_compliance_matrix", my_payload)
+utt.validate("T17_compliance_matrix", payload)
+markdown = utt.render_partial("T18_audit_report", payload)
 ```
 
-## Contents
+## Package contents
 
-- `src/uagf_tam_templates/schemas/T*.json` — JSON Schema (draft-07) for
-  T01a, T01b, T01c, T02–T16, T17, T18.
-- `src/uagf_tam_templates/partials/*.j2` — Jinja2 partials for the
-  human-readable rendering of T17 (compliance matrix) and T18 (audit
-  report).
+- `src/uagf_tam_templates/schemas/T*.json` — packaged draft-07 schemas
+- `src/uagf_tam_templates/partials/*.j2` — packaged partials for T17 and T18
+- `tests/test_loader.py` — smoke tests for discovery, validation, and rendering
 
-## Versioning and publication
+## Sync from the main repository
 
-- **Licence:** MIT.
-- **Versioning:** [SemVer 2.0.0](https://semver.org).  Bump `MAJOR` only
-  when a schema field is removed or its semantics changes.
-- **CI gate:** `pytest --cov` runs against the packaged schemas with a
-  `--cov-fail-under=80` minimum (see `pyproject.toml`).
-- **Publish flow** (release engineer):
+The canonical schema files in this repo live under `templates/`.
 
-  ```bash
-  cd packages/uagf_tam_templates
-  python -m pip install --upgrade build twine
-  python -m build                      # produces dist/*.whl and *.tar.gz
-  twine check dist/*
-  twine upload --repository testpypi dist/*   # 1) staging
-  twine upload dist/*                          # 2) PyPI
-  ```
-
-Schema files are kept in lock-step with `src/templates/*.json` in the AAA
-mono-repo; regenerate the package copies with:
+To refresh the packaged copies:
 
 ```bash
-cp src/templates/T*.json packages/uagf_tam_templates/src/uagf_tam_templates/schemas/
+cp templates/T*.json packages/uagf_tam_templates/src/uagf_tam_templates/schemas/
+```
+
+## Versioning and release notes
+
+- **License:** MIT
+- **Versioning:** SemVer 2.0.0
+- **Coverage gate:** `pytest --cov --cov-fail-under=80`
+- **Python requirement:** see `pyproject.toml`
+
+Example release flow:
+
+```bash
+cd packages/uagf_tam_templates
+python -m pip install --upgrade build twine
+python -m build
+twine check dist/*
 ```

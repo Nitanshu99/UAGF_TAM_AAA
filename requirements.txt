@@ -1,6 +1,8 @@
 # AAA — Unified Requirements
 # Python 3.12 REQUIRED. Install with: python3.12 -m pip install -r requirements.txt
 
+-c constraints.txt
+
 # ---------------------------------------------------------------------------
 # Core orchestration & agent runtime (Agents)
 # ---------------------------------------------------------------------------
@@ -19,6 +21,11 @@ uvicorn[standard]>=0.34.2
 gunicorn>=23.0.0
 httpx>=0.28.1
 python-multipart>=0.0.20
+
+# ---------------------------------------------------------------------------
+# UI
+# ---------------------------------------------------------------------------
+streamlit>=1.57.0
 
 # ---------------------------------------------------------------------------
 # Data & computation (Teams B, C, G)
@@ -49,6 +56,7 @@ lime>=0.2.0.1
 torch>=2.6.0
 torchmetrics>=1.7.1
 grad-cam>=1.5.4
+Pillow>=12.2.0
 
 # ---------------------------------------------------------------------------
 # Adversarial & robustness (Tools)
@@ -67,6 +75,9 @@ aif360>=0.6.1
 # ---------------------------------------------------------------------------
 ragas>=0.2.14
 trulens-eval>=2.8.1
+datasets>=4.8.5
+# Optional: use `requirements-optional-redteam.txt` in a separate red-team env
+# for garak-based active probing. The default app env keeps datasets>=4 for ragas.
 detoxify>=0.5.2
 sentence-transformers>=4.1.0
 
@@ -79,10 +90,12 @@ llama-index-vector-stores-qdrant>=0.10.1
 qdrant-client>=1.18.0
 fastembed>=0.8.0
 openai>=2.38.0
+nltk>=3.9.4
 beautifulsoup4>=4.14.3
 lxml>=6.1.1
 pdfplumber>=0.11.9
 pypdfium2>=5.8.0
+python-docx>=1.1.2
 
 # ---------------------------------------------------------------------------
 # Governance, reporting, schema (Teams A, B, C)
@@ -91,6 +104,7 @@ python-constraint>=1.4.0
 jsonschema>=4.23.0
 reportlab>=4.3.1
 jinja2>=3.1.6
+matplotlib>=3.10.0
 pydantic>=2.11.3
 pydantic-settings>=2.6.1
 
@@ -122,8 +136,8 @@ presidio-anonymizer>=2.2.362
 # ---------------------------------------------------------------------------
 # Dagster — pipeline orchestration and monitoring
 # ---------------------------------------------------------------------------
-dagster>=1.8.0
-dagster-webserver>=1.8.0
+dagster
+dagster-webserver
 
 # ---------------------------------------------------------------------------
 # Dev & utilities
@@ -132,26 +146,3 @@ python-dotenv>=1.1.0
 ruamel.yaml>=0.18.10
 click>=8.1.8
 requests>=2.32.0
-
-# ---------------------------------------------------------------------------
-# Testing (all teams)
-# ---------------------------------------------------------------------------
-pytest>=8.3.5
-pytest-asyncio>=0.26.0
-pytest-cov>=6.1.1
-pytest-xdist>=3.5.0
-vcrpy>=7.0.0
-respx>=0.22.0
-testcontainers>=4.9.0
-aiosqlite>=0.21.0
-
-# ---------------------------------------------------------------------------
-# Lint & type checking (all teams)
-# ---------------------------------------------------------------------------
-ruff>=0.11.6
-mypy>=1.15.0
-import-linter>=2.3
-pip-licenses>=5.0.0
-types-psycopg2>=2.9.21.20250318
-types-passlib>=1.7.7.20240819
-types-python-jose>=3.3.4.20240106

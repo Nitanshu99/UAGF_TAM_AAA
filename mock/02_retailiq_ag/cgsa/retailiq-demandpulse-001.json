@@ -160,7 +160,7 @@
             "threshold_score": 3,
             "satisfied": false
           },
-          "gap_severity": "minor"
+          "gap_severity": "low"
         }
       ]
     },
@@ -220,7 +220,7 @@
             "threshold_score": 3,
             "satisfied": false
           },
-          "gap_severity": "minor"
+          "gap_severity": "low"
         },
         {
           "control_id": "C31",
@@ -259,6 +259,20 @@
       "coverage_pct": 100.0,
       "hard_constraints_violated": [],
       "article_summary": "Basic risk identification for limited-risk system."
+    },
+    "article_10": {
+      "article_reference": "Article 10",
+      "article_title": "Data and data governance",
+      "status": "satisfied",
+      "controls_mapped": [
+        "C07"
+      ],
+      "controls_satisfied": [
+        "C07"
+      ],
+      "coverage_pct": 100.0,
+      "hard_constraints_violated": [],
+      "article_summary": "Aggregate-only data governance is documented with no personal data processing."
     },
     "article_13": {
       "article_reference": "Article 13",
@@ -316,7 +330,7 @@
       "rank": 1,
       "control_id": "C30",
       "control_name": "Incident Response",
-      "gap_severity": "minor",
+      "gap_severity": "low",
       "current_score": 2,
       "target_score": 3,
       "action": "Create formal IR runbook with escalation contacts and SLA commitments.",
@@ -329,7 +343,7 @@
       "rank": 2,
       "control_id": "C21",
       "control_name": "Explainability Reports",
-      "gap_severity": "minor",
+      "gap_severity": "low",
       "current_score": 2,
       "target_score": 3,
       "action": "Surface RF wrapper SHAP plots in deployer dashboard and quarterly report.",

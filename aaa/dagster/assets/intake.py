@@ -4,8 +4,6 @@ aaa.dagster.assets.intake — Dagster asset for Stage 0 intake validation.
 Runs IntakeValidator and materialises the validated AuditState dict.
 Metadata surfaced: completeness score, art43 preview, stage gate result.
 """
-from __future__ import annotations
-
 import asyncio
 from typing import Any
 
@@ -17,15 +15,29 @@ from aaa.observability.error_handler import capture_error
 configure_logging()
 
 
+def _load_engagement_payload(engagement_id: str) -> dict[str, Any]:
+    """Load the submitted intake payload for an engagement."""
+    from aaa.api.store import INTAKE_PAYLOADS
+    from aaa.data.reader import load_intake
+
+    payload = INTAKE_PAYLOADS.get(engagement_id) or load_intake(engagement_id)
+    if payload is None:
+        raise FileNotFoundError(
+            f"No intake payload found for engagement_id={engagement_id!r}. "
+            "Submit intake first or provide a valid engagement_id."
+        )
+    return {"engagement_id": engagement_id, **payload}
+
+
 @asset(
     name="intake_validation",
     group_name="audit_pipeline",
     description="Stage 0 — validate intake bundle (A/B/C) via IntakeValidator.",
+    config_schema={"engagement_id": str},
     required_resource_keys={"evidence_store"},
 )
 def intake_validation_asset(
     context: AssetExecutionContext,
-    engagement_payload: dict[str, Any],
 ) -> dict[str, Any]:
     """Run IntakeValidator and return the initial AuditState.
 
@@ -33,9 +45,6 @@ def intake_validation_asset(
     ----------
     context:
         Dagster execution context (provides resources, logging).
-    engagement_payload:
-        Dict with keys ``engagement_id``, ``stage_a``, ``stage_b``,
-        and optionally ``stage_c``.
 
     Returns
     -------
@@ -45,7 +54,8 @@ def intake_validation_asset(
     from aaa.agents.base import IntakeDispatch
 
     store = context.resources.evidence_store
-    eid = engagement_payload["engagement_id"]
+    eid = context.op_execution_context.op_config["engagement_id"]
+    engagement_payload = _load_engagement_payload(eid)
 
     stage_a_uri = store.store_artefact(eid, "stage_a_raw", "stage_a_raw",
                                        engagement_payload["stage_a"], "dagster")
@@ -54,7 +64,7 @@ def intake_validation_asset(
     stage_c = engagement_payload.get("stage_c")
     stage_c_uri = (
         store.store_artefact(eid, "stage_c_raw", "stage_c_raw", stage_c, "dagster")
-        if stage_c else None
+        if stage_c is not None else None
     )
 
     dispatch: IntakeDispatch = {
@@ -75,7 +85,7 @@ def intake_validation_asset(
     context.add_output_metadata({
         "engagement_id": MetadataValue.text(eid),
         "intake_completeness_score": MetadataValue.float(
-            state.get("intake_completeness_score") or 0.0
+            float(state.get("intake_completeness_score") or 0.0)
         ),
         "declared_risk_tier": MetadataValue.text(state.get("declared_risk_tier", "")),
         "art43_preview": MetadataValue.text(
