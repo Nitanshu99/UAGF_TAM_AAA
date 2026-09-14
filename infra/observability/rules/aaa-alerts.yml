@@ -1,0 +1,67 @@
+# Alerting rules evaluated by Prometheus (no Alertmanager in the local profile:
+# firing alerts show on http://127.0.0.1:9090/alerts and in Grafana's
+# Alerting → Alert rules view via the Prometheus datasource).
+#
+# Every expression is written against metrics this repository actually emits
+# (aaa/observability/metrics/) or that the obs containers expose themselves.
+groups:
+  - name: aaa
+    rules:
+      - alert: AAAApiScrapeDown
+        expr: up{job="aaa_api"} == 0
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "AAA API /metrics is not being scraped"
+          description: >-
+            Prometheus cannot reach the FastAPI /metrics endpoint. Start the API
+            (`python -m aaa` or `python -m aaa api`) or check PLATFORM_PORT.
+            Nothing pipeline-related can appear on the dashboard until it does.
+
+      - alert: AAALLMErrorRatioHigh
+        expr: >-
+          sum(rate(aaa_llm_calls_total{status="error"}[10m]))
+            / clamp_min(sum(rate(aaa_llm_calls_total[10m])), 1e-9) > 0.2
+          and sum(rate(aaa_llm_calls_total[10m])) > 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "More than 20 % of LLM calls failed over the last 10 minutes"
+          description: >-
+            Check the provider (PROVIDER / API key / rate limit) and
+            logs/audit/llm_audit.jsonl for the `error` field of recent rows.
+
+      - alert: AAAErrorsCaptured
+        expr: increase(aaa_errors_total[10m]) > 0
+        labels: {severity: info}
+        annotations:
+          summary: "capture_error() recorded {{ $value | humanize }} error(s) in 10 min"
+          description: >-
+            component={{ $labels.component }} exception={{ $labels.exception_type }}.
+            Full records are in logs/errors/<component>.jsonl (Loki: {job="aaa", level="error"}).
+
+      - alert: AAAIntakeFailures
+        expr: increase(aaa_engagements_total{status="intake_failed"}[1h]) > 0
+        labels: {severity: info}
+        annotations:
+          summary: "An engagement was rejected at intake in the last hour"
+          description: >-
+            POST /run returned 400 from the IntakeValidator — a client
+            submission failed Stage A/B validation, not a system fault.
+
+      - alert: AlloyDroppedLogEntries
+        expr: increase(loki_write_dropped_entries_total[10m]) > 0
+        labels: {severity: warning}
+        annotations:
+          summary: "Alloy dropped log entries on the way to Loki"
+          description: >-
+            Loki rejected a batch (reason={{ $labels.reason }}). Lines are
+            still on disk under logs/, but Grafana log search is incomplete.
+
+      - alert: ObservabilityTargetDown
+        expr: up{job=~"loki|alloy|grafana|prometheus"} == 0
+        for: 3m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.job }} is not answering its /metrics scrape"
+          description: "docker compose --profile obs ps; docker compose logs {{ $labels.job }}"

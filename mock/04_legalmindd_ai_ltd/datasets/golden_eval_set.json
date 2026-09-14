@@ -1,0 +1,542 @@
+[
+  {
+    "id": "qa-001",
+    "question": "What does EU AI Act Article 9 require?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 9(1): 'A risk management system shall be established, implemented, documented and maintained in relation to high-risk AI systems.' Article 9(2) describes it as a continuous iterative process planned and run throughout the entire lifecycle of the system, requiring regular systematic review and updating.",
+    "answer": "Article 9 requires providers of high-risk AI systems to establish, implement, document and maintain a risk management system throughout the entire lifecycle.",
+    "expected": "establish, implement, document and maintain a risk management system throughout the entire lifecycle",
+    "reference": "EU AI Act Art. 9 para 1"
+  },
+  {
+    "id": "qa-002",
+    "question": "What are data governance requirements under Article 10?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 10(2): high-risk AI systems which make use of techniques involving the training of AI models shall be developed on the basis of training, validation and testing data sets that meet the quality criteria set out in the Article. Those data sets shall be subject to data governance and management practices appropriate for the intended purpose, covering design choices, data collection processes, preparation operations such as annotation and labelling, formulation of assumptions, and examination for biases.",
+    "answer": "Article 10 requires training, validation and testing data sets be subject to data governance practices covering collection, preparation, labelling and oversight.",
+    "expected": "training, validation and testing data sets be subject to data governance practices",
+    "reference": "EU AI Act Art. 10 para 2"
+  },
+  {
+    "id": "qa-003",
+    "question": "When does GDPR require a DPIA under Article 35?",
+    "corpus": "LexAI GDPR",
+    "context": "GDPR Article 35(1): where a type of processing, in particular using new technologies, is likely to result in a high risk to the rights and freedoms of natural persons, the controller shall, prior to the processing, carry out an assessment of the impact of the envisaged processing operations. Article 35(3) lists systematic and extensive evaluation of personal aspects based on automated processing, including profiling, among the cases where a DPIA is required.",
+    "answer": "A DPIA is required when processing is likely to result in a high risk to the rights and freedoms of natural persons, particularly with new technologies or systematic profiling.",
+    "expected": "processing is likely to result in a high risk to the rights and freedoms of natural persons",
+    "reference": "GDPR Art. 35 para 1"
+  },
+  {
+    "id": "qa-004",
+    "question": "What is a material breach under Irish contract law?",
+    "corpus": "LexAI Irish Contract Law",
+    "context": "Irish contract law distinguishes breach of condition from breach of warranty. A breach is material, entitling the innocent party to terminate, where it goes to the root of the contract and deprives that party of substantially the whole benefit intended under the agreement. The court asks whether the breach defeats the main purpose of the bargain rather than merely causing loss compensable in damages.",
+    "answer": "A material breach goes to the root of the contract, depriving the innocent party of substantially the whole benefit. The test is whether the breach defeats the main purpose.",
+    "expected": "goes to the root of the contract, depriving the innocent party of substantially the whole benefit",
+    "reference": "Dunlop v Selfridge [1915]"
+  },
+  {
+    "id": "qa-005",
+    "question": "What are the six lawful bases under GDPR Article 6?",
+    "corpus": "LexAI GDPR",
+    "context": "GDPR Article 6(1) provides that processing is lawful only if and to the extent that at least one of the following applies: the data subject has given consent; processing is necessary for the performance of a contract; for compliance with a legal obligation; to protect vital interests; for the performance of a task carried out in the public interest; or for the purposes of the legitimate interests pursued by the controller. The basis must be identified before processing begins and cannot be swapped later.",
+    "answer": "The six lawful bases are: consent, contract performance, legal obligation, vital interests, public task, and legitimate interests. One must be identified before processing begins.",
+    "expected": "consent, contract performance, legal obligation, vital interests, public task, and legitimate interests",
+    "reference": "GDPR Art. 6 para 1"
+  },
+  {
+    "id": "qa-006",
+    "question": "What does Article 13 require for high-risk AI transparency?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 13(1): high-risk AI systems shall be designed and developed in such a way as to ensure that their operation is sufficiently transparent to enable deployers to interpret a system's output and use it appropriately. Article 13(3) requires instructions for use stating the characteristics, capabilities and limitations of performance, including known or foreseeable circumstances which may lead to risks.",
+    "answer": "Article 13 requires high-risk AI systems to be sufficiently transparent that deployers can interpret outputs and use the system appropriately, including information on capabilities and limitations.",
+    "expected": "sufficiently transparent that deployers can interpret outputs and use the system appropriately",
+    "reference": "EU AI Act Art. 13 para 1"
+  },
+  {
+    "id": "qa-007",
+    "question": "What is the difference between controller and processor under GDPR?",
+    "corpus": "LexAI GDPR",
+    "context": "GDPR Article 4(7) defines the controller as the body which, alone or jointly with others, determines the purposes and means of the processing of personal data. Article 4(8) defines the processor as the body which processes personal data on behalf of the controller. Article 29 provides that the processor shall not process personal data except on instructions from the controller.",
+    "answer": "A controller determines purposes and means of processing. A processor processes data on behalf of the controller. Controllers bear primary obligations; processors act only on controller instructions.",
+    "expected": "A controller determines purposes and means of processing. A processor processes data on behalf of the controller.",
+    "reference": "GDPR Art. 4 para 7-8"
+  },
+  {
+    "id": "qa-008",
+    "question": "What are human oversight requirements under Article 14?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 14(1): high-risk AI systems shall be designed and developed in such a way that they can be effectively overseen by natural persons during the period in which they are in use. Article 14(4) requires that oversight measures enable the person to understand the relevant capacities and limitations of the system, remain aware of automation bias, correctly interpret the output, decide not to use the system, and intervene or interrupt operation.",
+    "answer": "Article 14 requires high-risk AI systems to be effectively overseen by natural persons, enabling them to understand capabilities, monitor operation, intervene, and interpret outputs.",
+    "expected": "overseen by natural persons, enabling them to understand capabilities, monitor operation, intervene, and interpret outputs",
+    "reference": "EU AI Act Art. 14 para 1-4"
+  },
+  {
+    "id": "qa-009",
+    "question": "What constitutes promissory estoppel in Irish equity law?",
+    "corpus": "LexAI Irish Equity",
+    "context": "Promissory estoppel, as applied in Ireland following Central London Property Trust v High Trees House and Revenue Commissioners v Moroney, requires an unambiguous promise or representation intended to affect the legal relations between the parties, reliance by the promisee such that they altered their position, and circumstances making it inequitable for the promisor to resile from the promise. The doctrine operates defensively and does not itself create a cause of action.",
+    "answer": "Promissory estoppel requires a clear promise, reliance by the promisee to their detriment, and that it would be inequitable for the promisor to resile. It operates as a shield not a sword.",
+    "expected": "a clear promise, reliance by the promisee to their detriment, and that it would be inequitable for the promisor to resile",
+    "reference": "Central London Property v High Trees [1947]; Revenue v Moroney [1972] IR 372"
+  },
+  {
+    "id": "qa-010",
+    "question": "What are Article 72 post-market monitoring obligations?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 72(1): providers shall establish and document a post-market monitoring system in a manner that is proportionate to the nature of the AI technologies and the risks of the high-risk AI system. Article 72(2) requires the system to actively and systematically collect, document and analyse relevant data on the performance of high-risk AI systems throughout their lifetime.",
+    "answer": "Article 72 requires providers to establish a post-market monitoring system that actively collects, documents and analyses data on performance throughout the system lifetime.",
+    "expected": "establish a post-market monitoring system that actively collects, documents and analyses data on performance",
+    "reference": "EU AI Act Art. 72 para 1"
+  },
+  {
+    "id": "qa-011",
+    "question": "What is the standard of care in Irish medical negligence?",
+    "corpus": "LexAI Irish Tort Law",
+    "context": "Dunne (an infant) v National Maternity Hospital [1989] IR 91 established that a medical practitioner is not negligent if they acted in accordance with a general and approved practice accepted as proper by a responsible body of practitioners of like specialisation and skill, unless that practice has inherent defects which ought to be obvious to any person giving the matter due consideration.",
+    "answer": "The Dunne v National Maternity Hospital test: not negligent if acting in accordance with a practice accepted as proper by a responsible body of medical practitioners.",
+    "expected": "acting in accordance with a practice accepted as proper by a responsible body of medical practitioners",
+    "reference": "Dunne v National Maternity Hospital [1989] IR 91"
+  },
+  {
+    "id": "qa-012",
+    "question": "What must an EU Declaration of Conformity contain under Article 47?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 47 requires the provider to draw up a written machine-readable EU declaration of conformity for each high-risk AI system and keep it at the disposal of national competent authorities for 10 years. Annex V specifies the content: the system name and type, the name and address of the provider, a statement that the declaration is issued under the sole responsibility of the provider, a statement of conformity with the Regulation, references to any harmonised standards applied, and the place, date and signature.",
+    "answer": "The DoC must state compliance with applicable requirements and contain information per Annex V: provider details, system description, standards applied, and signatory.",
+    "expected": "provider details, system description, standards applied, and signatory",
+    "reference": "EU AI Act Art. 47; Annex V"
+  },
+  {
+    "id": "qa-013",
+    "question": "What are grounds for judicial review in Ireland?",
+    "corpus": "LexAI Irish Administrative Law",
+    "context": "The grounds of judicial review recognised in Irish administrative law include illegality, where the decision-maker acted ultra vires or misdirected itself in law; irrationality, under the O'Keeffe v An Bord Pleanala standard requiring that the decision flew in the face of fundamental reason and common sense; procedural impropriety, including breach of the rules of natural justice, fair procedures and legitimate expectation; and, in cases engaging constitutional rights, proportionality.",
+    "answer": "Grounds include: illegality (ultra vires), irrationality (O Keeffe standard), procedural impropriety (breach of natural justice, legitimate expectation), and proportionality.",
+    "expected": "illegality (ultra vires), irrationality (O Keeffe standard), procedural impropriety",
+    "reference": "O Keeffe v An Bord Pleanala [1993] 1 IR 39"
+  },
+  {
+    "id": "qa-014",
+    "question": "What does Article 15 require for AI accuracy and robustness?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 15(1): high-risk AI systems shall be designed and developed in such a way that they achieve an appropriate level of accuracy, robustness and cybersecurity, and that they perform consistently in those respects throughout their lifecycle. Article 15(2) requires the levels of accuracy and the relevant accuracy metrics to be declared in the accompanying instructions for use, which Annex IV point 2 carries into the technical documentation.",
+    "answer": "Article 15 requires high-risk AI systems to achieve appropriate accuracy, robustness and cybersecurity, performing consistently throughout their lifecycle. Metrics must be declared in Annex IV.",
+    "expected": "achieve appropriate accuracy, robustness and cybersecurity, performing consistently throughout their lifecycle",
+    "reference": "EU AI Act Art. 15 para 1"
+  },
+  {
+    "id": "qa-015",
+    "question": "What are employee rights regarding algorithmic management under GDPR?",
+    "corpus": "LexAI Employment Law",
+    "context": "GDPR Article 22(1) gives the data subject the right not to be subject to a decision based solely on automated processing, including profiling, which produces legal effects concerning them or similarly significantly affects them. Where such a decision is nonetheless permitted, Article 22(3) requires the controller to implement suitable measures to safeguard the data subject's rights, at least the right to obtain human intervention, to express their point of view and to contest the decision.",
+    "answer": "Under GDPR Article 22, employees have the right not to be subject to solely automated decisions with legal effects, and can obtain human intervention and contest the decision.",
+    "expected": "right not to be subject to solely automated decisions with legal effects",
+    "reference": "GDPR Art. 22"
+  },
+  {
+    "id": "qa-016",
+    "question": "What is the Annex III classification for credit scoring AI?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Annex III point 5 covers access to and enjoyment of essential private services and essential public services and benefits. Point 5(a) concerns AI systems used by public authorities to evaluate eligibility for essential public assistance benefits. Point 5(b) concerns AI systems intended to be used to evaluate the creditworthiness of natural persons or establish their credit score, excluding systems used to detect financial fraud.",
+    "answer": "Credit scoring AI is listed in Annex III paragraph 5(a) as high-risk under access to and enjoyment of essential private and public services.",
+    "expected": "Credit scoring AI is listed in Annex III paragraph 5(b); paragraph 5(a) covers eligibility for essential public assistance benefits.",
+    "reference": "EU AI Act Annex III para 5(b)"
+  },
+  {
+    "id": "qa-017",
+    "question": "What constitutes unfair dismissal under Irish employment law?",
+    "corpus": "LexAI Irish Employment Law",
+    "context": "The Unfair Dismissals Act 1977, section 6(1), provides that the dismissal of an employee shall be deemed to be an unfair dismissal unless, having regard to all the circumstances, there were substantial grounds justifying the dismissal. The burden of proof rests on the employer, and the Acts as amended to 2015 require that fair procedures be observed in reaching the decision to dismiss.",
+    "answer": "Under the Unfair Dismissals Acts 1977-2015, dismissal is unfair unless the employer shows substantial grounds. The burden is on the employer; fair procedures are required.",
+    "expected": "dismissal is unfair unless the employer shows substantial grounds",
+    "reference": "Unfair Dismissals Act 1977 s.6"
+  },
+  {
+    "id": "qa-018",
+    "question": "What are Article 43 conformity assessment options?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 43(1): for high-risk AI systems listed in Annex III point 1, where the provider has applied harmonised standards or, where applicable, common specifications, the provider shall follow the conformity assessment procedure based on internal control referred to in Annex VI. Where such standards have not been applied or are only partly applied, the provider shall follow the procedure based on assessment by a notified body set out in Annex VII.",
+    "answer": "Article 43 allows providers to choose between notified body assessment (Annex VII) or internal control (Annex VI) if harmonised standards are fully applied.",
+    "expected": "notified body assessment (Annex VII) or internal control (Annex VI) if harmonised standards are fully applied",
+    "reference": "EU AI Act Art. 43 para 1-2"
+  },
+  {
+    "id": "qa-019",
+    "question": "What is the scope of legal professional privilege in Ireland?",
+    "corpus": "LexAI Irish Evidence Law",
+    "context": "Miley v Flood [2001] 2 IR 50 confirms that legal professional privilege attaches to confidential communications between lawyer and client made for the dominant purpose of seeking or giving legal advice (legal advice privilege), and to communications with third parties where litigation is in contemplation or pending (litigation privilege). The privilege belongs to the client and survives the retainer.",
+    "answer": "Legal professional privilege covers confidential communications between lawyer and client made for the dominant purpose of obtaining legal advice, or for anticipated litigation.",
+    "expected": "confidential communications between lawyer and client made for the dominant purpose of obtaining legal advice",
+    "reference": "Miley v Flood [2001] 2 IR 50"
+  },
+  {
+    "id": "qa-020",
+    "question": "What special category data is protected under GDPR Article 9?",
+    "corpus": "LexAI GDPR",
+    "context": "GDPR Article 9(1) prohibits the processing of personal data revealing racial or ethnic origin, political opinions, religious or philosophical beliefs, or trade union membership, and the processing of genetic data, biometric data for the purpose of uniquely identifying a natural person, data concerning health, and data concerning a natural person's sex life or sexual orientation.",
+    "answer": "Article 9 prohibits processing of racial or ethnic origin, political opinions, religious beliefs, trade union membership, genetic data, biometric identification, health data, sex life or sexual orientation.",
+    "expected": "racial or ethnic origin, political opinions, religious beliefs, trade union membership, genetic data, biometric identification, health data, sex life or sexual orientation",
+    "reference": "GDPR Art. 9 para 1"
+  },
+  {
+    "id": "qa-021",
+    "question": "What is proportionality in EU law?",
+    "corpus": "LexAI EU Law",
+    "context": "Article 5(4) TEU provides that under the principle of proportionality the content and form of Union action shall not exceed what is necessary to achieve the objectives of the Treaties. Case C-331/88 Fedesa states the settled test: measures must be appropriate for attaining the legitimate objective pursued, must not go beyond what is necessary to achieve it, and where a choice exists between several appropriate measures recourse must be had to the least onerous.",
+    "answer": "Proportionality requires measures be suitable for their objective, not go beyond what is necessary, and the burden imposed not be excessive in relation to the aims pursued.",
+    "expected": "suitable for their objective, not go beyond what is necessary",
+    "reference": "EU Treaty Art. 5(4); Case C-331/88 Fedesa"
+  },
+  {
+    "id": "qa-022",
+    "question": "What are requirements for a valid contract under Irish law?",
+    "corpus": "LexAI Irish Contract Law",
+    "context": "Under Irish law a binding contract requires an offer capable of acceptance, an unqualified acceptance communicated to the offeror, consideration moving from the promisee, an intention to create legal relations, capacity on the part of both parties, and terms sufficiently certain to be enforceable. Carlill v Carbolic Smoke Ball Co illustrates offer, acceptance and consideration in the unilateral contract setting.",
+    "answer": "A valid contract requires: offer, acceptance, consideration, intention to create legal relations, capacity, and certainty of terms.",
+    "expected": "offer, acceptance, consideration, intention to create legal relations, capacity, and certainty of terms",
+    "reference": "Carlill v Carbolic Smoke Ball Co [1893]"
+  },
+  {
+    "id": "qa-023",
+    "question": "What is the Campus Oil test for interlocutory injunctions?",
+    "corpus": "LexAI Irish Procedural Law",
+    "context": "Campus Oil Ltd v Minister for Industry and Energy (No 2) [1983] IR 88 sets the Irish test for an interlocutory injunction: the applicant must show a fair or serious question to be tried; the court then asks whether damages would be an adequate remedy for either party; and if not, it decides where the balance of convenience lies. Merck Sharp & Dohme v Clonmel Healthcare [2019] IESC 65 restated the test as a flexible overall assessment.",
+    "answer": "The Campus Oil test requires: (1) a serious question to be tried, (2) whether damages would be adequate remedy, and (3) balance of convenience favouring the injunction.",
+    "expected": "(1) a serious question to be tried, (2) whether damages would be adequate remedy, and (3) balance of convenience",
+    "reference": "Campus Oil v Minister for Industry [1983] IR 82"
+  },
+  {
+    "id": "qa-024",
+    "question": "What AI practices does Article 5 prohibit?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 5 prohibits placing on the market or using AI systems that deploy subliminal, purposefully manipulative or deceptive techniques; that exploit vulnerabilities due to age, disability or a specific social or economic situation; that evaluate or classify natural persons based on social behaviour or personal characteristics leading to detrimental or disproportionate treatment; and that infer emotions in the areas of workplace and education institutions, save for medical or safety reasons. The use of real-time remote biometric identification systems in publicly accessible spaces for law enforcement is prohibited subject to narrowly defined exceptions requiring prior authorisation.",
+    "answer": "Article 5 prohibits: subliminal manipulation, exploitation of vulnerabilities, all real-time biometric identification in public spaces, social scoring by any public or private actor, and all emotion recognition systems.",
+    "expected": "Real-time remote biometric identification in publicly accessible spaces is prohibited for law enforcement subject to narrow exceptions, and emotion recognition is prohibited in the workplace and education institutions rather than universally.",
+    "reference": "EU AI Act Art. 5"
+  },
+  {
+    "id": "qa-025",
+    "question": "What is the test for economic duress in Irish contract law?",
+    "corpus": "LexAI Irish Contract Law",
+    "context": "Economic duress in Irish law requires pressure whose practical effect is compulsion or absence of choice, that the pressure was illegitimate, and that it was a significant cause inducing the claimant to enter the contract. The court considers whether the victim protested, whether an alternative course such as an adequate legal remedy was open, whether independent advice was taken, and whether steps were taken to avoid the contract.",
+    "answer": "Economic duress requires illegitimate pressure that is a significant cause of entering the contract, leaving the victim with no practical alternative.",
+    "expected": "illegitimate pressure that is a significant cause of entering the contract, leaving the victim with no practical alternative",
+    "reference": "Occidental Worldwide v Skibs [1976]"
+  },
+  {
+    "id": "qa-026",
+    "question": "What are data minimisation requirements under GDPR Article 5?",
+    "corpus": "LexAI GDPR",
+    "context": "GDPR Article 5(1)(c) provides that personal data shall be adequate, relevant and limited to what is necessary in relation to the purposes for which they are processed (data minimisation). Article 5(2) makes the controller responsible for, and able to demonstrate compliance with, that principle.",
+    "answer": "Article 5(1)(c) requires personal data be adequate, relevant and limited to what is necessary for the purposes for which it is processed.",
+    "expected": "adequate, relevant and limited to what is necessary for the purposes for which it is processed",
+    "reference": "GDPR Art. 5 para 1(c)"
+  },
+  {
+    "id": "qa-027",
+    "question": "What constitutes passing off under Irish IP law?",
+    "corpus": "LexAI Irish IP Law",
+    "context": "The classical trinity in passing off, from Reckitt & Colman v Borden and applied in Ireland in Adidas v O'Neill, requires the plaintiff to establish goodwill or reputation attached to the goods or services in the mind of the purchasing public; a misrepresentation by the defendant leading or likely to lead the public to believe that the goods or services offered are those of the plaintiff; and damage, or the likelihood of damage, to that goodwill.",
+    "answer": "Passing off requires: goodwill or reputation in the mark, a misrepresentation likely to deceive the public, and damage or likelihood of damage to the plaintiff goodwill.",
+    "expected": "goodwill or reputation in the mark, a misrepresentation likely to deceive the public, and damage",
+    "reference": "Reckitt v Borden [1990]; Adidas v O Neill [1983] ILRM 112"
+  },
+  {
+    "id": "qa-028",
+    "question": "What is the employer duty of care under Irish employment law?",
+    "corpus": "LexAI Irish Employment Law",
+    "context": "Section 8 of the Safety, Health and Welfare at Work Act 2005 obliges every employer to ensure, so far as is reasonably practicable, the safety, health and welfare at work of employees, including managing work activities to prevent improper conduct, providing a safe place of work and safe plant and equipment, providing systems of work that are planned, organised and maintained, and providing instruction, training and supervision. The statutory duty runs alongside the common law duty of care.",
+    "answer": "Employers owe a duty to take reasonable care of employees safety under common law and the Safety Health and Welfare at Work Act 2005, covering safe systems, safe place, competent staff and suitable equipment.",
+    "expected": "safe systems, safe place, competent staff and suitable equipment",
+    "reference": "Safety Health and Welfare at Work Act 2005 s.8"
+  },
+  {
+    "id": "qa-029",
+    "question": "What data subject rights exist under GDPR Articles 15-22?",
+    "corpus": "LexAI GDPR",
+    "context": "GDPR Chapter III confers on data subjects the right of access under Article 15, the right to rectification under Article 16, the right to erasure under Article 17, the right to restriction of processing under Article 18, the right to data portability under Article 20, the right to object under Article 21, and rights in relation to automated individual decision-making including profiling under Article 22. Article 19 requires the controller to communicate rectification, erasure or restriction to each recipient.",
+    "answer": "Data subjects have: access (Art 15), rectification (Art 16), erasure (Art 17), restriction (Art 18), portability (Art 20), objection (Art 21), and rights on automated decision-making (Art 22).",
+    "expected": "access (Art 15), rectification (Art 16), erasure (Art 17), restriction (Art 18), portability (Art 20), objection (Art 21)",
+    "reference": "GDPR Arts. 15-22"
+  },
+  {
+    "id": "qa-030",
+    "question": "What are Article 50 AI transparency obligations?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 50(1): providers shall ensure that AI systems intended to interact directly with natural persons are designed and developed in such a way that the natural persons concerned are informed that they are interacting with an AI system, unless this is obvious from the point of view of a reasonably well-informed person. Article 50(4) requires deployers of AI systems generating or manipulating image, audio or video content constituting a deep fake to disclose that the content has been artificially generated or manipulated.",
+    "answer": "Article 50 requires AI systems interacting with humans to inform them they are interacting with an AI, unless obvious from context. Deep fakes must be labelled.",
+    "expected": "inform them they are interacting with an AI, unless obvious from context",
+    "reference": "EU AI Act Art. 50 para 1-2"
+  },
+  {
+    "id": "qa-031",
+    "question": "What is legitimate expectation in Irish administrative law?",
+    "corpus": "LexAI Irish Administrative Law",
+    "context": "Webb v Ireland [1988] IR 353 and later Glencar Explorations v Mayo County Council set out the requirements for legitimate expectation: a public authority must have made a statement or adopted a position amounting to a promise or representation, addressed to an identifiable person or group, as to how it would act; the representation must have been such as to create an expectation reasonably entertained; and it must be unjust to permit the authority to resile from it.",
+    "answer": "Legitimate expectation arises where a public body made a clear representation, the applicant relied to their detriment, and it would be fundamentally unfair not to hold the body to it.",
+    "expected": "a public body made a clear representation, the applicant relied to their detriment",
+    "reference": "Webb v Ireland [1988] IR 353"
+  },
+  {
+    "id": "qa-032",
+    "question": "What are Article 12 record-keeping obligations for high-risk AI?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 12(1): high-risk AI systems shall technically allow for the automatic recording of events (logs) over the lifetime of the system. Article 19(1) requires providers to keep the logs automatically generated by their high-risk AI systems, to the extent such logs are under their control, for a period appropriate to the intended purpose of the system, of at least six months, unless provided otherwise in applicable Union or national law.",
+    "answer": "Article 12 requires high-risk AI systems to automatically log events relevant for compliance. Logs must be retained for at least 12 months unless otherwise required.",
+    "expected": "Logs must be retained for a period appropriate to the intended purpose, of at least six months, unless otherwise provided in Union or national law.",
+    "reference": "EU AI Act Art. 12"
+  },
+  {
+    "id": "qa-033",
+    "question": "What constitutes unlawful processing under GDPR?",
+    "corpus": "LexAI GDPR",
+    "context": "Processing is unlawful under the GDPR where no lawful basis under Article 6 applies; where special category data is processed without an Article 9(2) exception applying to the Article 9(1) prohibition; or where the processing contravenes the principles in Article 5, which include lawfulness, fairness and transparency, purpose limitation, data minimisation, accuracy, storage limitation, and integrity and confidentiality.",
+    "answer": "Processing is unlawful without a valid legal basis, in violation of the special category prohibition, in breach of data subject rights, or in violation of the data protection principles in Art. 5.",
+    "expected": "unlawful without a valid legal basis",
+    "reference": "GDPR Art. 5, 6, 9"
+  },
+  {
+    "id": "qa-034",
+    "question": "What are requirements for valid arbitration clauses in Ireland?",
+    "corpus": "LexAI Irish Commercial Law",
+    "context": "The Arbitration Act 2010 gives the UNCITRAL Model Law the force of law in Ireland. Article 7 of the Model Law requires the arbitration agreement to be in writing, which includes any form recording the agreement, and to be an agreement to submit to arbitration all or certain disputes which have arisen or may arise between the parties in respect of a defined legal relationship. The clause must disclose a clear intention to arbitrate rather than merely to negotiate.",
+    "answer": "An arbitration clause must be in writing, refer to disputes from the contract, clearly express the intention to arbitrate, and not be unconscionable. The Arbitration Act 2010 applies.",
+    "expected": "in writing, refer to disputes from the contract, clearly express the intention to arbitrate",
+    "reference": "Arbitration Act 2010"
+  },
+  {
+    "id": "qa-035",
+    "question": "What does Annex IV technical documentation require?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Annex IV requires the technical documentation to contain a general description of the AI system including its intended purpose; a detailed description of the elements of the system and of the process for its development, including design specifications and the methodologies and training data used; detailed information about the monitoring, functioning and control of the system; a description of the appropriateness of the performance metrics; the risk management system; the logging capabilities; and the cybersecurity measures put in place.",
+    "answer": "Annex IV requires documentation covering: general description, intended purpose, design process, training data, monitoring measures, logging, accuracy metrics, human oversight, and cybersecurity.",
+    "expected": "general description, intended purpose, design process, training data, monitoring measures, logging, accuracy metrics, human oversight, and cybersecurity",
+    "reference": "EU AI Act Annex IV"
+  },
+  {
+    "id": "qa-036",
+    "question": "What whistleblower protections exist under Irish law?",
+    "corpus": "LexAI Irish Employment Law",
+    "context": "Section 5 of the Protected Disclosures Act 2014 defines a protected disclosure as a disclosure of relevant information which, in the reasonable belief of the worker, tends to show one or more relevant wrongdoings and came to the worker's attention in connection with their employment. Section 11 prohibits penalisation of a worker for having made a protected disclosure, and section 16 protects the identity of the discloser.",
+    "answer": "The Protected Disclosures Act 2014 protects workers making disclosures of relevant wrongdoing in good faith, including protection from penalisation and confidentiality of identity.",
+    "expected": "protects workers making disclosures of relevant wrongdoing",
+    "reference": "Protected Disclosures Act 2014 s.5, 11"
+  },
+  {
+    "id": "qa-037",
+    "question": "What are Article 15 cybersecurity requirements for AI?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 15(4): high-risk AI systems shall be resilient against attempts by unauthorised third parties to alter their use, outputs or performance by exploiting system vulnerabilities. The technical solutions shall be appropriate to the relevant circumstances and the risks, and shall include measures to prevent, detect, respond to, resolve and control for attacks trying to manipulate the training data set (data poisoning), inputs designed to cause the model to make a mistake (adversarial examples), model evasion, and confidentiality attacks.",
+    "answer": "Article 15 requires resilience against attempts to alter use, outputs or performance, and resilience against adversarial attacks, data poisoning and model evasion.",
+    "expected": "resilience against adversarial attacks, data poisoning and model evasion",
+    "reference": "EU AI Act Art. 15 para 3-4"
+  },
+  {
+    "id": "qa-038",
+    "question": "What is company director liability under Irish company law?",
+    "corpus": "LexAI Irish Company Law",
+    "context": "Section 228 of the Companies Act 2014 codifies the fiduciary duties of a director: to act in good faith in what the director considers to be the interests of the company; to act honestly and responsibly in relation to the conduct of the affairs of the company; to act in accordance with the company's constitution and exercise powers only for lawful purposes; not to use company property, information or opportunities for personal benefit unless permitted; not to fetter their discretion; to avoid conflicts of interest; and to exercise the care, skill and diligence reasonably expected.",
+    "answer": "Directors owe fiduciary duties: act bona fide in company interests, exercise skill and care, avoid conflicts, not misapply property. Companies Act 2014 s.228 codifies these.",
+    "expected": "act bona fide in company interests, exercise skill and care, avoid conflicts, not misapply property",
+    "reference": "Companies Act 2014 s.228"
+  },
+  {
+    "id": "qa-039",
+    "question": "What are requirements for processing children data under GDPR?",
+    "corpus": "LexAI GDPR",
+    "context": "GDPR Article 8(1): where point (a) of Article 6(1) applies, in relation to the offer of information society services directly to a child, the processing of the personal data of a child shall be lawful where the child is at least 16 years old. Where the child is below the age of 16, such processing shall be lawful only if and to the extent that consent is given or authorised by the holder of parental responsibility. Member States may provide by law for a lower age, provided it is not below 13 years. Recital 38 notes that children merit specific protection and Article 12(1) requires information addressed to a child to be in clear and plain language.",
+    "answer": "Under Article 8, consent for information society services requires parental authorisation for children under 13. Processing must be in the child best interests; notices must be child-friendly.",
+    "expected": "Parental authorisation is required for children under 16, though Member States may provide for a lower age not below 13.",
+    "reference": "GDPR Art. 8; Recital 38"
+  },
+  {
+    "id": "qa-040",
+    "question": "What does the Article 17 quality management system require?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 17(1) requires providers of high-risk AI systems to put a quality management system in place documented in written policies, procedures and instructions, including a strategy for regulatory compliance; techniques and procedures for design, design control and design verification; techniques for development, quality control and quality assurance; examination, test and validation procedures; technical specifications and standards applied; systems and procedures for data management; the risk management system; the setting-up, implementation and maintenance of a post-market monitoring system; procedures for the reporting of serious incidents; and an accountability framework.",
+    "answer": "Article 17 requires a quality management system covering: compliance strategy, design procedures, data management, testing, risk management, post-market monitoring, incident reporting, and cybersecurity.",
+    "expected": "compliance strategy, design procedures, data management, testing, risk management, post-market monitoring, incident reporting, and cybersecurity",
+    "reference": "EU AI Act Art. 17"
+  },
+  {
+    "id": "qa-041",
+    "question": "What is the presumption of innocence in Irish criminal law?",
+    "corpus": "LexAI Irish Criminal Law",
+    "context": "Article 38.1 of the Constitution of Ireland provides that no person shall be tried on any criminal charge save in due course of law. The courts have held that the presumption of innocence is a fundamental component of a trial in due course of law: an accused is presumed innocent until proven guilty, and the prosecution bears the burden of proving guilt beyond reasonable doubt throughout the trial.",
+    "answer": "Every person charged is presumed innocent until proven guilty beyond reasonable doubt. The burden rests on the prosecution throughout. Guaranteed by Art. 38.1 Irish Constitution.",
+    "expected": "presumed innocent until proven guilty beyond reasonable doubt",
+    "reference": "Irish Constitution Art. 38.1"
+  },
+  {
+    "id": "qa-042",
+    "question": "What are Chapter V requirements for data transfers outside the EU?",
+    "corpus": "LexAI GDPR",
+    "context": "GDPR Chapter V governs transfers of personal data to third countries. Article 45 permits transfer where the Commission has decided that the third country ensures an adequate level of protection. In the absence of an adequacy decision, Article 46 permits transfer subject to appropriate safeguards, including standard contractual clauses adopted by the Commission and binding corporate rules. Article 49 provides derogations for specific situations. Case C-311/18 Schrems II invalidated the Privacy Shield and required a case-by-case assessment of the destination country's law where SCCs are relied on.",
+    "answer": "Data may only be transferred to third countries if an adequacy decision exists (Art. 45), appropriate safeguards such as SCCs are in place (Art. 46), or specific derogations apply (Art. 49).",
+    "expected": "an adequacy decision exists (Art. 45), appropriate safeguards such as SCCs are in place (Art. 46), or specific derogations apply (Art. 49)",
+    "reference": "GDPR Arts. 44-49; Schrems II C-311/18"
+  },
+  {
+    "id": "qa-043",
+    "question": "What constitutes tortious interference with business in Ireland?",
+    "corpus": "LexAI Irish Tort Law",
+    "context": "The economic torts, as restated in OBG Ltd v Allan and applied in Ireland, distinguish inducing breach of contract from causing loss by unlawful means. Inducing breach requires knowledge of the contract and of the fact that the conduct induced would be a breach, an intention to procure that breach, an actual breach, and resulting damage. Causing loss by unlawful means requires the use of means that are independently unlawful against a third party with the intention of injuring the claimant.",
+    "answer": "The tort requires knowledge of the contract, deliberate interference by unlawful means or intent to injure, and resulting damage.",
+    "expected": "knowledge of the contract, deliberate interference by unlawful means or intent to injure, and resulting damage",
+    "reference": "OBG Ltd v Allan [2007] UKHL 21"
+  },
+  {
+    "id": "qa-044",
+    "question": "What are processor obligations under GDPR Article 28?",
+    "corpus": "LexAI GDPR",
+    "context": "GDPR Article 28(3) requires that processing by a processor be governed by a contract binding the processor to process personal data only on documented instructions from the controller; to ensure persons authorised to process have committed to confidentiality; to take all measures required under Article 32 on security; to engage a sub-processor only with prior specific or general written authorisation of the controller; to assist the controller in responding to data subject requests; to delete or return all personal data at the end of the provision of services; and to make available all information necessary to demonstrate compliance.",
+    "answer": "Processors must: act only on controller instructions, implement security measures, use sub-processors only with authorisation, assist with data subject rights, delete or return data, and cooperate with authorities.",
+    "expected": "act only on controller instructions, implement security measures, use sub-processors only with authorisation",
+    "reference": "GDPR Art. 28"
+  },
+  {
+    "id": "qa-045",
+    "question": "What are EU AI Act enforcement powers under Article 79?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 79 governs the procedure for dealing with AI systems presenting a risk at national level. Market surveillance authorities apply Regulation (EU) 2019/1020, under which they may require operators to provide documentation and information, carry out evaluations and testing, and be granted access to the training, validation and testing data sets where necessary. Where a system is found to present a risk, the authority may require corrective action, prohibit or restrict the making available of the system, or order its withdrawal or recall, and Article 99 provides for administrative fines.",
+    "answer": "Article 79 gives market surveillance authorities powers to request documentation, conduct testing, require access to training data, order market withdrawal, and impose fines.",
+    "expected": "request documentation, conduct testing, require access to training data, order market withdrawal, and impose fines",
+    "reference": "EU AI Act Art. 79"
+  },
+  {
+    "id": "qa-046",
+    "question": "What is the duty of confidence in Irish equity law?",
+    "corpus": "LexAI Irish Equity",
+    "context": "Coco v A N Clark (Engineers) Ltd [1969] RPC 41, applied in Ireland in House of Spring Gardens v Point Blank Ltd [1984] IR 611, requires three elements for breach of confidence: the information must have the necessary quality of confidence about it; it must have been imparted in circumstances importing an obligation of confidence; and there must be an unauthorised use of that information to the detriment of the party who communicated it.",
+    "answer": "A duty of confidence arises when information is imparted in circumstances importing an obligation of confidence. The obligation is not to disclose or use without authority.",
+    "expected": "information is imparted in circumstances importing an obligation of confidence",
+    "reference": "Coco v AN Clark Engineers [1969]; House of Spring Gardens v Point Blank [1984] IR 611"
+  },
+  {
+    "id": "qa-047",
+    "question": "What are rights of access to environmental information in Ireland?",
+    "corpus": "LexAI Irish Environmental Law",
+    "context": "The European Communities (Access to Information on the Environment) Regulations 2007, SI 133/2007, give effect to Directive 2003/4/EC. Article 6 provides that a public authority shall make available environmental information to any applicant on request, without the applicant having to state an interest. Article 10(3) requires the grounds for refusal in Articles 8 and 9 to be interpreted on a restrictive basis, with the public interest served by disclosure weighed against the interest served by refusal in each case.",
+    "answer": "Under the AIE Regulations 2007, any person may request environmental information from public authorities. Refusal grounds are narrow and must be construed restrictively.",
+    "expected": "any person may request environmental information from public authorities",
+    "reference": "AIE Regulations 2007; SI 133/2007"
+  },
+  {
+    "id": "qa-048",
+    "question": "What does Article 43 say about conformity assessment procedures?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 43(1): for high-risk AI systems listed in Annex III point 1, where the provider has applied harmonised standards or common specifications, the provider shall follow the conformity assessment procedure based on internal control referred to in Annex VI, which involves no notified body. Where those standards have not been applied, or have been applied only in part, or do not exist, the provider shall follow the conformity assessment procedure based on the involvement of a notified body set out in Annex VII.",
+    "answer": "Article 43 para 1 provides for notified body assessment (Annex VII) where harmonised standards are applied, or internal control (Annex VI) where no harmonised standards apply.",
+    "expected": "Internal control under Annex VI applies where harmonised standards have been applied; notified body assessment under Annex VII applies where they have not.",
+    "reference": "EU AI Act Art. 43 para 1"
+  },
+  {
+    "id": "qa-049",
+    "question": "Can an offer be made irrevocable under Irish contract law?",
+    "corpus": "LexAI Irish Contract Law",
+    "context": "Routledge v Grant (1828) 4 Bing 653 establishes that an offer may be withdrawn at any time before acceptance, even where the offeror has promised to keep it open, unless that promise is supported by consideration and so constitutes a binding option contract. Revocation is effective only when communicated to the offeree. Where the offeree has acted in reliance on the promise, promissory estoppel may in principle prevent the offeror from resiling.",
+    "answer": "An offer is generally revocable before acceptance unless supported by consideration as an option contract, or the offeree relied on it under promissory estoppel. Revocation must be communicated.",
+    "expected": "generally revocable before acceptance unless supported by consideration as an option contract",
+    "reference": "Routledge v Grant (1828)"
+  },
+  {
+    "id": "qa-050",
+    "question": "What post-market obligations apply to GPAI models?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689 subjects providers of general-purpose AI models to Chapter V rather than to the high-risk conformity assessment regime. Article 53 requires technical documentation, information for downstream providers, a copyright policy and a public summary of training content. Article 55 adds, for models with systemic risk, model evaluation and adversarial testing, systemic risk assessment and mitigation, tracking and reporting of serious incidents to the AI Office and national competent authorities, and adequate cybersecurity protection. No notified body conformity assessment is imposed on general-purpose AI models.",
+    "answer": "Article 72 para 3 requires GPAI model providers to complete a notified body conformity assessment under Annex VII before placing the model on the market, and to re-certify annually.",
+    "expected": "GPAI model providers must keep technical documentation, monitor their models, report serious incidents to the AI Office and cooperate with it; no notified body conformity assessment is imposed on GPAI models.",
+    "reference": "EU AI Act Art. 72 para 3"
+  },
+  {
+    "id": "qa-051",
+    "question": "What fiduciary duties does a solicitor owe to their client?",
+    "corpus": "LexAI Irish Legal Ethics",
+    "context": "A solicitor stands in a fiduciary relationship with the client. The duties comprise undivided loyalty, requiring the solicitor to avoid acting where their own interest or a duty owed to another client conflicts with the client's interest; the duty of confidentiality in respect of the client's affairs, which survives the retainer; the duty to act in the client's best interests; and the duty to account for all money and property held on the client's behalf, reinforced by the Solicitors Accounts Regulations of the Law Society of Ireland.",
+    "answer": "Solicitors owe: undivided loyalty, duty to avoid conflicts, duty of confidentiality, duty to act in client best interests, and duty to account for all money or property held.",
+    "expected": "undivided loyalty, duty to avoid conflicts, duty of confidentiality",
+    "reference": "Law Society of Ireland Regulations"
+  },
+  {
+    "id": "qa-052",
+    "question": "What exceptions exist to the Article 9 special category prohibition?",
+    "corpus": "LexAI GDPR",
+    "context": "GDPR Article 9(2) disapplies the Article 9(1) prohibition where one of the listed conditions applies: explicit consent; processing necessary for carrying out obligations in the field of employment and social security law; protection of vital interests where the data subject is incapable of giving consent; processing by a foundation, association or not-for-profit body in the course of its legitimate activities; data manifestly made public by the data subject; establishment, exercise or defence of legal claims; substantial public interest; preventive or occupational medicine and the provision of health care; public interest in the area of public health; and archiving, scientific or historical research or statistical purposes.",
+    "answer": "Exceptions in Art. 9 para 2 include: explicit consent, employment law, vital interests, not-for-profit bodies, manifestly public data, legal claims, substantial public interest, health purposes, and research.",
+    "expected": "explicit consent, employment law, vital interests, not-for-profit bodies, manifestly public data, legal claims, substantial public interest, health purposes, and research",
+    "reference": "GDPR Art. 9 para 2"
+  },
+  {
+    "id": "qa-053",
+    "question": "What constitutes negligent misrepresentation in Irish law?",
+    "corpus": "LexAI Irish Tort Law",
+    "context": "Hedley Byrne & Co Ltd v Heller & Partners Ltd [1964] AC 465 established liability for negligent misstatement causing pure economic loss. The claimant must show a special relationship of proximity giving rise to a duty of care, typically where the defendant possessed special skill and undertook to apply it for the claimant; that the statement was made negligently; and that the claimant reasonably relied on the statement to their detriment. Reliance is an essential element, not an optional one.",
+    "answer": "Under Hedley Byrne principles, negligent misrepresentation requires a special relationship giving rise to a duty of care and a statement made carelessly.",
+    "expected": "The test requires a special relationship giving rise to a duty of care, a statement made carelessly, and reliance by the claimant to their detriment.",
+    "reference": "Hedley Byrne v Heller [1964]"
+  },
+  {
+    "id": "qa-054",
+    "question": "What are the powers of the EU AI Office?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689 establishes the AI Office within the Commission. It monitors the effective implementation and compliance of general-purpose AI model providers, may request information and documentation under Article 91, may conduct evaluations of general-purpose AI models under Article 92, and may request measures and impose fines under Articles 93 and 101. It supports the AI Board and coordinates with national competent authorities, and is the body responsible for enforcement in relation to general-purpose AI models.",
+    "answer": "The EU AI Office monitors GPAI models, requests evaluations, conducts investigations, issues warnings, and coordinates with national competent authorities. It is the primary GPAI enforcement body.",
+    "expected": "monitors GPAI models, requests evaluations, conducts investigations",
+    "reference": "EU AI Act Arts. 64-70"
+  },
+  {
+    "id": "qa-055",
+    "question": "What is the constitutional right to privacy in Ireland?",
+    "corpus": "LexAI Irish Constitutional Law",
+    "context": "Article 40.3.1 of the Constitution of Ireland obliges the State to respect, and as far as practicable by its laws to defend and vindicate, the personal rights of the citizen. In Kennedy v Ireland [1987] IR 587 the High Court held that the right to privacy is one of the personal rights guaranteed by that Article although not expressly enumerated in the text, being derived from the Christian and democratic nature of the State. The right is not absolute and is balanced against the requirements of public order, morality and the common good.",
+    "answer": "The right to privacy is expressly enumerated in Article 40.3.1 of the Irish Constitution, which lists it among the personal rights guaranteed to citizens.",
+    "expected": "The right to privacy is an unenumerated personal right derived from Article 40.3.1 and recognised in Kennedy v Ireland, not expressly listed in the text.",
+    "reference": "Irish Constitution Art. 40.3.1; Kennedy v Ireland [1987] IR 587"
+  },
+  {
+    "id": "qa-056",
+    "question": "What are AI literacy requirements under Article 4?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 4: providers and deployers of AI systems shall take measures to ensure, to their best extent, a sufficient level of AI literacy of their staff and other persons dealing with the operation and use of AI systems on their behalf, taking into account their technical knowledge, experience, education and training and the context the AI systems are to be used in.",
+    "answer": "Article 4 requires providers and deployers to take measures to ensure sufficient AI literacy of their staff and persons dealing with AI systems on their behalf.",
+    "expected": "ensure sufficient AI literacy of their staff",
+    "reference": "EU AI Act Art. 4"
+  },
+  {
+    "id": "qa-057",
+    "question": "What constitutes unfair commercial practices under Irish consumer law?",
+    "corpus": "LexAI Irish Consumer Law",
+    "context": "The Consumer Protection Act 2007 transposes the Unfair Commercial Practices Directive. Section 41 prohibits unfair commercial practices, defined by reference to whether the practice is contrary to the requirements of professional diligence and materially distorts or is likely to materially distort the economic behaviour of the average consumer. Sections 43 to 55 address misleading commercial practices, including misleading actions and omissions, and sections 53 to 55 address aggressive commercial practices involving harassment, coercion or undue influence.",
+    "answer": "The Consumer Protection Act 2007 prohibits misleading commercial practices, aggressive practices, and practices contrary to professional diligence. The test is the effect on the average consumer.",
+    "expected": "misleading commercial practices, aggressive practices, and practices contrary to professional diligence",
+    "reference": "Consumer Protection Act 2007 s.41-67"
+  },
+  {
+    "id": "qa-058",
+    "question": "What are fundamental rights impact assessment requirements for AI?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 27(1): prior to deploying a high-risk AI system referred to in Article 6(2), deployers that are bodies governed by public law, or are private entities providing public services, and deployers of high-risk AI systems referred to in points 5(b) and (c) of Annex III, shall perform an assessment of the impact on fundamental rights that the use of such system may produce. The obligation therefore attaches to a defined subset of deployers rather than to all of them.",
+    "answer": "Article 27 requires every deployer of a high-risk AI system to conduct a fundamental rights impact assessment before putting the system into service.",
+    "expected": "The obligation falls on public-law bodies, private entities providing public services and deployers under Annex III points 5(b) and (c), not on every deployer.",
+    "reference": "EU AI Act Art. 27"
+  },
+  {
+    "id": "qa-059",
+    "question": "What is the law of unjust enrichment in Ireland?",
+    "corpus": "LexAI Irish Private Law",
+    "context": "The Irish law of restitution requires the claimant to show that the defendant was enriched, that the enrichment was at the expense of the claimant, that the enrichment was unjust by reference to a recognised unjust factor, and that no defence such as change of position or bona fide purchase applies. Recognised unjust factors include mistake of fact or law, total failure of basis or consideration, and compulsion including duress and undue influence, as discussed in Lipkin Gorman v Karpnale and applied in Dublin Corporation v Building and Allied Trade Union.",
+    "answer": "Unjust enrichment requires: enrichment of the defendant, at the expense of the claimant, which is unjust, and absence of any defence. Grounds include mistake, failure of basis, and compulsion.",
+    "expected": "enrichment of the defendant, at the expense of the claimant, which is unjust",
+    "reference": "Lipkin Gorman v Karpnale [1991]"
+  },
+  {
+    "id": "qa-060",
+    "question": "What are deployer obligations under Article 26?",
+    "corpus": "LexAI EU AI Act",
+    "context": "Regulation (EU) 2024/1689, Article 26 obliges deployers of high-risk AI systems to take appropriate technical and organisational measures to ensure they use such systems in accordance with the instructions for use; to assign human oversight to natural persons who have the necessary competence, training and authority; to ensure input data is relevant and sufficiently representative; to monitor the operation of the system and inform the provider and the market surveillance authority where they identify a risk or a serious incident; and to keep the logs automatically generated by the system.",
+    "answer": "Article 26 requires deployers to: use systems per instructions, implement human oversight, monitor performance, inform providers of serious incidents, and conduct fundamental rights impact assessments where required.",
+    "expected": "use systems per instructions, implement human oversight, monitor performance, inform providers of serious incidents",
+    "reference": "EU AI Act Art. 26"
+  }
+]

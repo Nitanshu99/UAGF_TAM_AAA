@@ -1,0 +1,23 @@
+HarbourLogistik GmbH -- HarbourSense v1.4
+POST-MARKET MONITORING PLAN  |  Ref: PMM-HS-v1.4-2026
+STATUS: DRAFT
+
+1. KPIs (DRAFT)
+K01  False negative rate (missed anomalies)   target < 2%
+K02  False positive rate (spurious alerts)    target < 10%
+K03  Sensor data completeness                 target > 99%
+
+2. MONITORING SCHEDULE
+Daily   : Automated anomaly count dashboard
+Weekly  : False-positive rate review
+Monthly : [PLANNED] Full model performance review (not yet operational)
+
+3. INCIDENT RESPONSE
+[OPEN] Formal IR runbook not yet completed.
+Current practice: ad-hoc escalation to on-call OT team.
+Planned: Formal runbook by Q2 2026.
+
+4. GAPS ACKNOWLEDGED
+- Formal data validation pipeline not operational (ETA Q3 2026)
+- Adversarial robustness framework not implemented (ETA Q4 2026)
+- Monthly performance review not yet scheduled

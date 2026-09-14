@@ -1,0 +1,71 @@
+{
+  "general_description": "LexAI v2.0 is an agentic LLM+RAG system built on the open cimphony-ai-admin/Cimphony-Mistral-Law-7B legal-domain LoRA adapter (rank 64) over the mistralai/Mistral-7B-v0.1 base model. Architecture: foundation LLM + Qdrant vector store + citation verifier + tool-calling agents. Deployed as multi-tenant API with per-engagement data isolation.",
+  "model_type": "llm_rag_agentic_mistral_7b_lora",
+  "design_process": "Base: mistralai/Mistral-7B-v0.1 (HuggingFace Hub, public, Apache-2.0). Adapter: cimphony-ai-admin/Cimphony-Mistral-Law-7B \u2014 LoRA rank 64, alpha 64, dropout 0.05, trained on ~600M tokens of legal reading-comprehension data blended with general instruction data. RAG: Qdrant with all-MiniLM-L6-v2, top-k=8, cross-encoder reranker. Guardrails: Llama Guard 2 + NLI hallucination detector.",
+  "training_data_description": "Adapter training corpus is general legal-domain: case law and statutory text (FreeLaw), the LexGLUE benchmark suite, and US class-action filings, blended with general instruction data. All publicly available. No client data used in training. Irish and EU legal coverage is supplied at inference time by the RAG corpus (EUR-Lex, Irish Statute Book, BAILII), not by the adapter weights.",
+  "data_governance_measures": "Per-engagement Qdrant collection isolation. No cross-client access. Data deleted on engagement close. DPIA completed. DPA with all deployers. Data residency: EU (AWS eu-west-1).",
+  "monitoring_measures": "Weekly citation verification pass rate. Monthly RAGAS evaluation on 60-item golden eval set. Quarterly differential prompt testing. Quarterly red-team exercise.",
+  "logging_capabilities": "All interactions logged: timestamp, engagement_id, hashed_user_id, query, response, citations_verified, guardrail_triggers. Retained 365 days per DPA.",
+  "accuracy_metrics": {
+    "ragas_faithfulness_target": 0.9,
+    "ragas_relevancy_target": 0.85,
+    "citation_verification_rate": 0.97
+  },
+  "robustness_metrics": {
+    "prompt_injection_detection_rate": 0.993,
+    "jailbreak_resistance_rate": 0.987
+  },
+  "risk_management_file_uri": "mock/04_legalmindd_ai_ltd/docs/risk_management_file.txt",
+  "lifecycle_change_log": [
+    "v1.0 GPT-4-based RAG 2024-09-01",
+    "v2.0 Mistral LoRA + agentic tooling 2026-03-15"
+  ],
+  "harmonised_standards": [
+    "ISO/IEC 42001:2023",
+    "ISO/IEC 27001:2022"
+  ],
+  "other_standards": [
+    "ISO/IEC 27701:2019",
+    "OWASP LLM Top 10 2025"
+  ],
+  "eu_doc_uri": "mock/04_legalmindd_ai_ltd/docs/eu_declaration_of_conformity.txt",
+  "post_market_plan_uri": "mock/04_legalmindd_ai_ltd/docs/post_market_monitoring_plan.txt",
+  "system_prompt_uri": "mock/04_legalmindd_ai_ltd/docs/system_prompt.txt",
+  "rag_manifest_uri": "mock/04_legalmindd_ai_ltd/docs/rag_manifest.json",
+  "tool_inventory": [
+    "statute_lookup",
+    "case_law_search",
+    "cross_reference_checker",
+    "citation_verifier",
+    "jurisdiction_tagger"
+  ],
+  "guardrail_config_uri": "mock/04_legalmindd_ai_ltd/docs/guardrail_config.json",
+  "golden_set_uri": "mock/04_legalmindd_ai_ltd/datasets/golden_eval_set.json",
+  "task_type": "llm_generation",
+  "model_format": "huggingface_adapter",
+  "model_framework": "huggingface_peft",
+  "model_access_mode": "base_plus_adapter",
+  "model_reference": {
+    "provider": "huggingface",
+    "model_id": "cimphony-ai-admin/Cimphony-Mistral-Law-7B",
+    "revision": "c7cc200adeab6197b17e3bf6cdf4bc11f79bb684",
+    "base_model_id": "mistralai/Mistral-7B-v0.1",
+    "base_model_revision": "27d67f1b5f57dc0953326b2601d68371d40ea8da",
+    "adapter_reference": "cimphony-ai-admin/Cimphony-Mistral-Law-7B",
+    "peft_type": "LORA",
+    "gated": false,
+    "license": "apache-2.0",
+    "auth_type": "none",
+    "runtime_versions": {
+      "transformers": "4.44.2",
+      "torch": "2.4.0",
+      "peft": "0.12.0"
+    },
+    "quantization": "none",
+    "decoding_params": {
+      "temperature": 0.2,
+      "top_p": 0.95,
+      "max_tokens": 1024
+    }
+  }
+}

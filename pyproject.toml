@@ -1,0 +1,96 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aaa"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [] # managed via requirements.txt
+
+[project.scripts]
+aaa = "aaa.launcher.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "e2e: end-to-end tests requiring a running Docker Compose stack",
+    "contract: contract tests against live or fixture S4 payloads",
+    "golden: golden-output regression tests against out/ reference files",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N"]
+ignore = ["E501", "N802", "N803", "N806"]
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_return_any = false
+
+[tool.pylint.main]
+py-version = "3.12"
+ignore-paths = [
+    "\\.venv", "graphify-out", "\\.claude", "alembic/versions",
+    # Frozen alembic table builders — alembic.op members are added dynamically
+    # at migration runtime, which pylint cannot see (spurious no-member).
+    "aaa/data/schema_0001",
+]
+
+[tool.pylint.format]
+max-line-length = 100
+max-module-lines = 400
+
+[tool.pylint.basic]
+# ``X`` / ``y`` (and variants like ``X_eval``) are the universal scikit-learn
+# feature-matrix / target convention; ``df`` is the pandas idiom.
+good-names = ["X", "y", "df", "i", "j", "k", "n", "p", "e", "f", "_"]
+good-names-rgxs = ["^X[\\w]*$", "^y[\\w]*$"]
+
+[tool.pylint.design]
+# One-line-per-branch kind/verdict dispatch tables run slightly over the default.
+max-returns = 8
+
+[tool.pylint."messages control"]
+# Import hygiene (unused-import / wrong-order) is owned by ruff, which runs in
+# CI and understands the modular re-export shims; disabling here avoids the two
+# linters fighting over the same intentional re-exports.  The remaining
+# disables are deliberate architecture: lazy imports break import cycles and
+# gate optional dependencies, and every agent wraps its LLM call in a broad
+# except to fall back to a deterministic path.
+disable = [
+    "duplicate-code",
+    "too-few-public-methods",
+    "fixme",
+    "unused-import",
+    "wrong-import-order",
+    "import-outside-toplevel",
+    "import-error",
+    "broad-exception-caught",
+    "too-many-arguments",
+    "too-many-positional-arguments",
+    "too-many-locals",
+    "protected-access",
+    # Line length is owned by ruff (E501), which defers over-long CSP
+    # constraint lambdas and long string literals to author judgement.
+    "line-too-long",
+    # The codebase carries state between pipeline steps in dataclass DTOs
+    # (context / result objects), which legitimately hold many fields.
+    "too-many-instance-attributes",
+    # Input-validation guards on the fairness/metric tools combine several
+    # None / empty / length-mismatch checks in one readable clause.
+    "too-many-boolean-expressions",
+    # Arguments are frequently part of a required interface rather than used in
+    # every implementation: bound mixin methods, FastAPI lifespan callbacks,
+    # duck-typed DataFrame stubs, and the uniform tool signatures.  Ruff (the
+    # CI linter) does not check function arguments, so no coverage is lost.
+    "unused-argument",
+]

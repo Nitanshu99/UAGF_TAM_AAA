@@ -1,0 +1,34 @@
+# Pre-commit gate for the AAA repository.
+#
+# Installed by `make install` (`.venv/bin/pre-commit install`). Deliberately
+# narrow: it mirrors the `ruff check` half of the `make lint` target so commits
+# stay fast, and leaves pylint + pyright to CI, where they already run against
+# the whole tree.
+#
+# `ruff format` is intentionally absent — the codebase is not in ruff-format
+# style (791 of 826 files would be rewritten), so enabling it here would either
+# block every commit or bury real changes in a repo-wide reformat.
+#
+# Run against everything (not just staged files) with:
+#   .venv/bin/pre-commit run --all-files
+repos:
+  # Pinned to the ruff in requirements-dev.txt / constraints.txt so the hook and
+  # `make lint` cannot disagree about what passes. Bump both together.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.14
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # Non-mutating safety checks only: these never rewrite your files, so a
+      # commit is blocked solely for a genuine problem.
+      - id: check-merge-conflict
+      - id: check-json
+      - id: check-toml
+      # Excludes docker-compose/CI files that use multi-document or templated
+      # YAML which the plain parser rejects.
+      - id: check-yaml
+        args: [--allow-multiple-documents]

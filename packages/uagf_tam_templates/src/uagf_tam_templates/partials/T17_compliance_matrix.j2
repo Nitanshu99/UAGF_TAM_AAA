@@ -1,0 +1,19 @@
+{# T17 — Compliance Matrix (markdown rendering) #}
+# Compliance Matrix — {{ engagement_id }}
+
+- **Risk tier:** {{ risk_tier }}
+- **In-scope articles:** {{ in_scope_articles | join(', ') }}
+- **Final verdict:** **{{ final_verdict }}**
+
+| Article | Verdict | Evidence URIs |
+|---------|---------|---------------|
+{%- for row in articles %}
+| {{ row.article }} | {{ row.verdict }} | {{ (row.evidence_uris or []) | join('<br>') }} |
+{%- endfor %}
+
+## KPI summary
+- intake_completeness_score: {{ kpi_summary.intake_completeness_score | default('—') }}
+- completeness_score:        {{ kpi_summary.completeness_score | default('—') }}
+- regulatory_coverage_pct:   {{ kpi_summary.regulatory_coverage_pct | default('—') }}
+
+_Generated: {{ generated_at }}_

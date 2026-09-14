@@ -1,0 +1,316 @@
+{
+  "engagement_id": "eng-01_finclear_gmbh",
+  "risk_tier": "high",
+  "is_llm_or_agentic": false,
+  "in_scope_articles": [
+    "Annex_III",
+    "Annex_IV",
+    "Art.10",
+    "Art.10\u00a72(f)",
+    "Art.11",
+    "Art.12",
+    "Art.13",
+    "Art.15",
+    "Art.15\u00a71",
+    "Art.17",
+    "Art.43",
+    "Art.5",
+    "Art.50",
+    "Art.6",
+    "Art.72",
+    "Art.9"
+  ],
+  "articles": [
+    {
+      "article": "Annex_III",
+      "verdict": "PASS",
+      "evidence_uris": [
+        "minio://eng-01_finclear_gmbh/phase_1/T03_annex_iii_mapping_39d802ca.json"
+      ],
+      "supporting_template_ids": [
+        "T03_annex_iii_mapping"
+      ],
+      "source_phase": "P1",
+      "rationale": "Admitted, verifier-accepted evidence (T03_annex_iii_mapping) with no findings raised.",
+      "cgsa_control_ids": [],
+      "blocking_findings": []
+    },
+    {
+      "article": "Annex_IV",
+      "verdict": "PASS",
+      "evidence_uris": [
+        "minio://eng-01_finclear_gmbh/stage_b/T01b_annex_iv_dossier_4bf4baa3.json",
+        "minio://eng-01_finclear_gmbh/stage_b/T01c_intake_completeness_report_a2daabc7.json"
+      ],
+      "supporting_template_ids": [
+        "T01b_annex_iv_dossier",
+        "T01c_intake_completeness_report"
+      ],
+      "source_phase": "P1",
+      "rationale": "Admitted, verifier-accepted evidence (T01b_annex_iv_dossier, T01c_intake_completeness_report) with no findings raised.",
+      "cgsa_control_ids": [],
+      "blocking_findings": []
+    },
+    {
+      "article": "Art.10",
+      "verdict": "FAIL",
+      "evidence_uris": [
+        "minio://eng-01_finclear_gmbh/phase_2/T06_datasheet_for_datasets_04b4ed12.json",
+        "minio://eng-01_finclear_gmbh/phase_2/T07_data_quality_report_e5abdeec.json",
+        "minio://eng-01_finclear_gmbh/phase_2/T08_special_category_data_log_72d83953.json"
+      ],
+      "supporting_template_ids": [
+        "T06_datasheet_for_datasets",
+        "T07_data_quality_report",
+        "T08_special_category_data_log"
+      ],
+      "source_phase": "P2",
+      "rationale": "Material non-conformity from independent analysis: Output fairness across 'personal_status' is PASS_WITH_OBSERVATIONS (disparate-impact ratio=0.914845, demographic-parity diff=0.16352201257861637).; Output fairness across 'age' is FAIL (disparate-impact ratio=0.4, demographic-parity diff=1.0).; Output fairness across 'foreign_worker' is FAIL (dispar.",
+      "cgsa_control_ids": [
+        "C07",
+        "C08"
+      ],
+      "blocking_findings": [
+        "P4-FAIR-PERSONAL_STATUS",
+        "P4-FAIR-AGE",
+        "P4-FAIR-FOREIGN_WORKER"
+      ]
+    },
+    {
+      "article": "Art.10\u00a72(f)",
+      "verdict": "FAIL",
+      "evidence_uris": [
+        "minio://eng-01_finclear_gmbh/phase_4/T12_output_fairness_report_624c383d.json"
+      ],
+      "supporting_template_ids": [
+        "T12_output_fairness_report"
+      ],
+      "source_phase": "ORCH",
+      "rationale": "Material non-conformity from independent analysis: Output fairness across 'personal_status' is PASS_WITH_OBSERVATIONS (disparate-impact ratio=0.914845, demographic-parity diff=0.16352201257861637).; Output fairness across 'age' is FAIL (disparate-impact ratio=0.4, demographic-parity diff=1.0).; Output fairness across 'foreign_worker' is FAIL (dispar.",
+      "cgsa_control_ids": [
+        "C07",
+        "C08"
+      ],
+      "blocking_findings": [
+        "P4-FAIR-PERSONAL_STATUS",
+        "P4-FAIR-AGE",
+        "P4-FAIR-FOREIGN_WORKER"
+      ]
+    },
+    {
+      "article": "Art.11",
+      "verdict": "PASS",
+      "evidence_uris": [
+        "minio://eng-01_finclear_gmbh/stage_b/T01b_annex_iv_dossier_4bf4baa3.json"
+      ],
+      "supporting_template_ids": [
+        "T01b_annex_iv_dossier"
+      ],
+      "source_phase": "P1",
+      "rationale": "Admitted, verifier-accepted evidence (T01b_annex_iv_dossier) with no findings raised.",
+      "cgsa_control_ids": [],
+      "blocking_findings": []
+    },
+    {
+      "article": "Art.12",
+      "verdict": "PASS",
+      "evidence_uris": [
+        "minio://eng-01_finclear_gmbh/phase_5/T15_monitoring_logging_review_bc8700c0.json"
+      ],
+      "supporting_template_ids": [
+        "T15_monitoring_logging_review"
+      ],
+      "source_phase": "P5",
+      "rationale": "Admitted, verifier-accepted evidence (T15_monitoring_logging_review) with no findings raised.",
+      "cgsa_control_ids": [],
+      "blocking_findings": []
+    },
+    {
+      "article": "Art.13",
+      "verdict": "PASS",
+      "evidence_uris": [
+        "minio://eng-01_finclear_gmbh/phase_1/T02_system_card_cb571a52.json",
+        "minio://eng-01_finclear_gmbh/phase_3/T09_model_card_7f94f22f.json",
+        "minio://eng-01_finclear_gmbh/phase_3/T10_explainability_report_6ac1da8a.json"
+      ],
+      "supporting_template_ids": [
+        "T02_system_card",
+        "T09_model_card",
+        "T10_explainability_report"
+      ],
+      "source_phase": "P1",
+      "rationale": "Admitted, verifier-accepted evidence (T02_system_card, T09_model_card, T10_explainability_report) with no findings raised.",
+      "cgsa_control_ids": [
+        "C20",
+        "C21"
+      ],
+      "blocking_findings": []
+    },
+    {
+      "article": "Art.15",
+      "verdict": "FAIL",
+      "evidence_uris": [
+        "minio://eng-01_finclear_gmbh/phase_3/T09_model_card_7f94f22f.json",
+        "minio://eng-01_finclear_gmbh/phase_3/T11_robustness_report_5b4bf195.json",
+        "minio://eng-01_finclear_gmbh/phase_4/T12_output_fairness_report_624c383d.json"
+      ],
+      "supporting_template_ids": [
+        "T09_model_card",
+        "T11_robustness_report",
+        "T12_output_fairness_report"
+      ],
+      "source_phase": "P3",
+      "rationale": "Material non-conformity from independent analysis: Output fairness across 'personal_status' is PASS_WITH_OBSERVATIONS (disparate-impact ratio=0.914845, demographic-parity diff=0.16352201257861637).; Output fairness across 'age' is FAIL (disparate-impact ratio=0.4, demographic-parity diff=1.0).; Output fairness across 'foreign_worker' is FAIL (dispar.",
+      "cgsa_control_ids": [
+        "C14"
+      ],
+      "blocking_findings": [
+        "P4-FAIR-PERSONAL_STATUS",
+        "P4-FAIR-AGE",
+        "P4-FAIR-FOREIGN_WORKER"
+      ]
+    },
+    {
+      "article": "Art.15\u00a71",
+      "verdict": "FAIL",
+      "evidence_uris": [
+        "minio://eng-01_finclear_gmbh/phase_4/T12_output_fairness_report_624c383d.json",
+        "minio://eng-01_finclear_gmbh/phase_4/T13_output_sampling_log_637a0489.json"
+      ],
+      "supporting_template_ids": [
+        "T12_output_fairness_report",
+        "T13_output_sampling_log"
+      ],
+      "source_phase": "ORCH",
+      "rationale": "Material non-conformity from independent analysis: Output fairness across 'personal_status' is PASS_WITH_OBSERVATIONS (disparate-impact ratio=0.914845, demographic-parity diff=0.16352201257861637).; Output fairness across 'age' is FAIL (disparate-impact ratio=0.4, demographic-parity diff=1.0).; Output fairness across 'foreign_worker' is FAIL (dispar.",
+      "cgsa_control_ids": [
+        "C14"
+      ],
+      "blocking_findings": [
+        "P4-FAIR-PERSONAL_STATUS",
+        "P4-FAIR-AGE",
+        "P4-FAIR-FOREIGN_WORKER"
+      ]
+    },
+    {
+      "article": "Art.17",
+      "verdict": "PASS",
+      "evidence_uris": [
+        "minio://eng-01_finclear_gmbh/phase_5/T14_governance_findings_726f10bc.json"
+      ],
+      "supporting_template_ids": [
+        "T14_governance_findings"
+      ],
+      "source_phase": "P5",
+      "rationale": "Admitted, verifier-accepted evidence (T14_governance_findings) with no findings raised.",
+      "cgsa_control_ids": [
+        "C30",
+        "C31"
+      ],
+      "blocking_findings": []
+    },
+    {
+      "article": "Art.43",
+      "verdict": "PASS",
+      "evidence_uris": [
+        "minio://eng-01_finclear_gmbh/phase_1/T05_art43_decision_4c7af477.json"
+      ],
+      "supporting_template_ids": [
+        "T05_art43_decision"
+      ],
+      "source_phase": "P1",
+      "rationale": "Admitted, verifier-accepted evidence (T05_art43_decision) with no findings raised.",
+      "cgsa_control_ids": [],
+      "blocking_findings": []
+    },
+    {
+      "article": "Art.5",
+      "verdict": "PASS",
+      "evidence_uris": [
+        "minio://eng-01_finclear_gmbh/phase_1/T02_system_card_cb571a52.json",
+        "minio://eng-01_finclear_gmbh/phase_1/T04_risk_tier_decision_cd66ff77.json"
+      ],
+      "supporting_template_ids": [
+        "T02_system_card",
+        "T04_risk_tier_decision"
+      ],
+      "source_phase": "P1",
+      "rationale": "Admitted, verifier-accepted evidence (T02_system_card, T04_risk_tier_decision) with no findings raised.",
+      "cgsa_control_ids": [],
+      "blocking_findings": []
+    },
+    {
+      "article": "Art.50",
+      "verdict": "PASS",
+      "evidence_uris": [
+        "minio://eng-01_finclear_gmbh/phase_4/T12_output_fairness_report_624c383d.json",
+        "minio://eng-01_finclear_gmbh/phase_4/T13_output_sampling_log_637a0489.json"
+      ],
+      "supporting_template_ids": [
+        "T12_output_fairness_report",
+        "T13_output_sampling_log"
+      ],
+      "source_phase": "P4",
+      "rationale": "Admitted, verifier-accepted evidence (T12_output_fairness_report, T13_output_sampling_log) with no findings raised.",
+      "cgsa_control_ids": [],
+      "blocking_findings": []
+    },
+    {
+      "article": "Art.6",
+      "verdict": "PASS",
+      "evidence_uris": [
+        "minio://eng-01_finclear_gmbh/phase_1/T03_annex_iii_mapping_39d802ca.json",
+        "minio://eng-01_finclear_gmbh/phase_1/T04_risk_tier_decision_cd66ff77.json"
+      ],
+      "supporting_template_ids": [
+        "T03_annex_iii_mapping",
+        "T04_risk_tier_decision"
+      ],
+      "source_phase": "P1",
+      "rationale": "Admitted, verifier-accepted evidence (T03_annex_iii_mapping, T04_risk_tier_decision) with no findings raised.",
+      "cgsa_control_ids": [],
+      "blocking_findings": []
+    },
+    {
+      "article": "Art.72",
+      "verdict": "PASS",
+      "evidence_uris": [
+        "minio://eng-01_finclear_gmbh/phase_5/T15_monitoring_logging_review_bc8700c0.json"
+      ],
+      "supporting_template_ids": [
+        "T15_monitoring_logging_review"
+      ],
+      "source_phase": "P5",
+      "rationale": "Admitted, verifier-accepted evidence (T15_monitoring_logging_review) with no findings raised.",
+      "cgsa_control_ids": [],
+      "blocking_findings": []
+    },
+    {
+      "article": "Art.9",
+      "verdict": "PASS",
+      "evidence_uris": [
+        "minio://eng-01_finclear_gmbh/phase_5/T14_governance_findings_726f10bc.json"
+      ],
+      "supporting_template_ids": [
+        "T14_governance_findings"
+      ],
+      "source_phase": "P5",
+      "rationale": "Admitted, verifier-accepted evidence (T14_governance_findings) with no findings raised.",
+      "cgsa_control_ids": [
+        "C01",
+        "C02"
+      ],
+      "blocking_findings": []
+    }
+  ],
+  "kpi_summary": {
+    "intake_completeness_score": 1.0,
+    "completeness_score": 0.88,
+    "regulatory_coverage_pct": 93.3
+  },
+  "blocking_findings_count": 3,
+  "final_verdict": "FAIL",
+  "report_status": "PROVISIONAL_PENDING_HITL",
+  "hitl_pending": true,
+  "generated_at": "2026-06-28T10:46:04.342781+00:00"
+}

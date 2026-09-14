@@ -1,0 +1,11 @@
+# Auto-provisioned dashboard folder for the local `obs` profile.
+apiVersion: 1
+
+providers:
+  - name: aaa
+    orgId: 1
+    folder: AAA
+    type: file
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/dashboards

@@ -1,0 +1,33 @@
+{# T18 — Audit Report (markdown rendering) #}
+# UAGF-TAM Audit Report — {{ engagement_id }}
+
+**Final verdict:** {{ final_verdict }}
+{% if hitl_required %}**HITL required:** {{ hitl_reason }}{% endif %}
+
+## Executive summary
+{{ executive_summary | default('(no executive summary supplied)') }}
+
+## Engagement metadata
+- Provider: {{ provider_name | default('—') }}
+- System: {{ system_name | default('—') }} v{{ version | default('—') }}
+- Risk tier: {{ risk_tier }} ({{ modality | default('—') }})
+- Deployment: {{ deployment_context | default('—') }}
+- Art. 43 procedure: {{ (art43_decision or {}).get('procedure', '—') }}
+
+## KPIs
+| KPI | Value |
+|-----|-------|
+| intake_completeness_score | {{ intake_completeness_score | default('—') }} |
+| completeness_score        | {{ completeness_score | default('—') }} |
+| regulatory_coverage_pct   | {{ regulatory_coverage_pct | default('—') }} |
+
+## Findings
+**Blocking ({{ (blocking_findings or []) | length }}):**
+{%- for f in blocking_findings or [] %}
+- {{ f.title | default(f.id | default('(unnamed)')) }}: {{ f.description | default('') }}
+{%- endfor %}
+
+**Positive ({{ (positive_findings or []) | length }}):**
+{%- for f in positive_findings or [] %}
+- {{ f.title | default(f.id | default('(unnamed)')) }}
+{%- endfor %}

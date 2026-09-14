@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T19_client_brief:1.0.0",
+  "title": "T19 — Client Brief",
+  "description": "The plain-language, per-article brief written for the customer after the compliance matrix is set (ClientBriefAgent, phase 6). Stored as Markdown; verdicts in it render from AuditState, not from the model's reply.",
+  "type": "object",
+  "required": [
+    "format",
+    "body",
+    "bytes_size"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "type": "string",
+      "enum": [
+        "markdown"
+      ],
+      "description": "Serialisation of body."
+    },
+    "body": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The complete brief."
+    },
+    "bytes_size": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "UTF-8 size of body, in bytes."
+    }
+  }
+}

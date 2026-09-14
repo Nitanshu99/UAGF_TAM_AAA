@@ -1,0 +1,62 @@
+{
+  "general_description": "Linear text classifier (scikit-learn TF-IDF + logistic regression) over anonymised free-text CV summaries. Input: the cv_text field of a screening record. Output: shortlist probability [0,1] plus a binary shortlist recommendation at a recall-oriented threshold. Used exclusively as decision support for human recruiters in Annex III §4 employment screening; no automated rejection is issued by the system.",
+  "model_type": "tfidf_logistic_regression_sklearn_v1.2",
+  "design_process": "Stratified 75/25 train/evaluation split on anonymised screening records; 5-fold cross-validated grid search over the regularisation strength C and TF-IDF n-gram range (1,1)-(1,2); balanced class weights; decision threshold tuned to favour shortlist recall at the cost of precision, reflecting the asymmetric harm of wrongly excluding a qualified applicant.",
+  "training_data_description": "TalentSift screening corpus — 240 anonymised CV summaries from 2024–2025 recruitment campaigns across office, logistics and engineering vacancy families. One free-text field (cv_text), binary target shortlist (1 = invited to interview). Demographic attributes sex, age_group and nationality are retained solely for Art. 10 §5 non-discrimination monitoring and are never model inputs.",
+  "data_governance_measures": "Applicant names, birth dates and contact details are stripped before vectorisation; records pseudonymised via salted hashes; access restricted to the model-governance team; annual bias review of the screening corpus against placement outcomes; no enrichment from social-media or data-broker sources.",
+  "monitoring_measures": "Quarterly fairness re-test (demographic parity and equal opportunity per declared protected attribute); token-distribution drift monitoring over the top-100 TF-IDF mass (alert at PSI > 0.2); recruiter override-rate tracking with monthly review when overrides exceed 15%.",
+  "logging_capabilities": "Per-screening log: timestamp, hashed applicant_id, vacancy family, model_version, shortlist score, threshold, recommendation, recruiter decision and override flag — retained 5 years per Art. 12.",
+  "accuracy_metrics": {
+    "accuracy": 0.8,
+    "f1_score": 0.7647,
+    "auc_roc": 0.8139
+  },
+  "robustness_metrics": {
+    "adversarial_accuracy_char_noise_0_1": 0.7375
+  },
+  "risk_management_file_uri": "mock/05_talentsift_gmbh/docs/risk_management_file.txt",
+  "lifecycle_change_log": [
+    "v1.0 initial production release 2025-09-15",
+    "v1.1 stop-word list and PII-stripping update 2026-01-20",
+    "v1.2 fairness threshold recalibration 2026-05-02"
+  ],
+  "harmonised_standards": [
+    "ISO/IEC 42001:2023",
+    "ISO/IEC 23894:2023",
+    "ISO/IEC TR 24027:2021",
+    "ISO/IEC 5259-1:2024"
+  ],
+  "other_standards": [
+    "IEEE 7003-2024 Algorithmic Bias Considerations"
+  ],
+  "eu_doc_uri": "mock/05_talentsift_gmbh/docs/eu_declaration_of_conformity.txt",
+  "post_market_plan_uri": "mock/05_talentsift_gmbh/docs/post_market_monitoring_plan.txt",
+  "system_prompt_uri": null,
+  "rag_manifest_uri": null,
+  "tool_inventory": null,
+  "guardrail_config_uri": null,
+  "golden_set_uri": null,
+  "data_dictionary": {
+    "target_column": "shortlist",
+    "positive_label": 1,
+    "feature_columns": [
+      "cv_text"
+    ],
+    "sensitive_feature_columns": [
+      "sex",
+      "age_group",
+      "nationality"
+    ]
+  },
+  "task_type": "binary_classification",
+  "model_format": "joblib",
+  "model_framework": "sklearn",
+  "target_column": "shortlist",
+  "positive_label": 1,
+  "sensitive_feature_columns": [
+    "sex",
+    "age_group",
+    "nationality"
+  ],
+  "model_access_mode": "artifact_upload"
+}

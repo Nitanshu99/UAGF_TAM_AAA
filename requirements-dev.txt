@@ -1,0 +1,39 @@
+# AAA — Autonomous AI Auditor: development dependencies (Python 3.12)
+# Extends runtime deps from requirements.txt.
+
+-c constraints.txt
+
+-r requirements.txt
+
+# --- test ---
+pytest>=8.3.5
+pytest-asyncio>=0.26.0
+pytest-cov>=6.1.1
+pytest-xdist>=3.5.0
+vcrpy>=7.0.0
+respx>=0.22.0
+testcontainers>=4.9.0
+aiosqlite>=0.21.0
+
+# --- docs ---
+sphinx>=8.0
+furo>=2024.8.6
+
+# --- lint / typecheck ---
+ruff>=0.11.6
+mypy>=1.15.0
+pylint>=3.3
+pyright>=1.1.390
+import-linter>=2.3
+pip-licenses>=5.0.0
+types-psycopg2>=2.9.21.20250318
+types-passlib>=1.7.7.20240819
+types-python-jose>=3.3.4.20240106
+
+# --- pre-commit hooks ---
+pre-commit>=4.0.1
+
+# UI driver (scripts/wizard_fill): drives the Streamlit wizard end to end in a
+# real browser. Imported unconditionally there, so it belongs in the dev set;
+# the browser binaries are a separate one-off: `playwright install chromium`.
+playwright>=1.55

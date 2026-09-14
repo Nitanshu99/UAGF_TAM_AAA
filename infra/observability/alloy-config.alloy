@@ -1,0 +1,153 @@
+// Grafana Alloy log-shipping pipeline for the local `obs` profile (§14.6/14.8).
+// Promtail is EOL (2026-03-02); Alloy is its supported successor.
+//
+// Tails everything the app writes under logs/ (bind-mounted at /var/log/aaa):
+//   app/app.log, api/api.log, agents/agents.log, audit/llm_audit.log — JSON,
+//     one structlog / stdlib record per line (level, logger, timestamp, event)
+//   audit/llm_audit.jsonl — one LLM call per line, with the full prompt and
+//     reply (avg 35 KB, max 770 KB observed)
+//   errors/<component>.jsonl — capture_error() / ErrorLogHandler records
+//
+// Labels stay bounded on purpose: level (5 values), and for audit rows agent
+// (14 agents) and status (ok/error). engagement_id and call_id are NOT labels
+// — a label per engagement would create a stream per engagement forever;
+// they remain in the line, so `{job="aaa"} | json | engagement_id="eng-x"`
+// still finds them.
+
+local.file_match "aaa_logs" {
+  path_targets = [
+    {"__path__" = "/var/log/aaa/**/*.jsonl", "job" = "aaa"},
+    {"__path__" = "/var/log/aaa/**/*.log", "job" = "aaa"},
+  ]
+}
+
+loki.source.file "aaa_logs" {
+  targets    = local.file_match.aaa_logs.targets
+  forward_to = [loki.process.aaa_logs.receiver]
+}
+
+loki.process "aaa_logs" {
+  // Every writer emits JSON; the two timestamp spellings and the two agent
+  // spellings below are the real ones in the files (audit rows: ts/agent,
+  // structlog events: timestamp/agent_name).
+  stage.json {
+    expressions = {
+      level     = "level",
+      status    = "status",
+      ts        = "ts",
+      timestamp = "timestamp",
+      agent     = "agent",
+      agent_name = "agent_name",
+    }
+  }
+
+  stage.template {
+    source   = "event_ts"
+    template = "{{ or .ts .timestamp \"\" }}"
+  }
+
+  // Index each line at the moment it was written, not the moment Alloy read
+  // it — otherwise a first tail of an existing file shows months of history
+  // at one instant. Lines without a parseable time keep the read time.
+  stage.timestamp {
+    source            = "event_ts"
+    format            = "RFC3339Nano"
+    action_on_failure = "fudge"
+  }
+
+  // Audit rows carry no `level`; derive it from status so `level="error"`
+  // also surfaces failed LLM calls. ErrorLogHandler writes "ERROR" — lower it.
+  stage.template {
+    source   = "level"
+    template = "{{ if .level }}{{ .level | ToLower }}{{ else if eq .status \"error\" }}error{{ else }}info{{ end }}"
+  }
+
+  // Rows written before the record carried a timestamp (llm_audit.jsonl
+  // predating the `ts` field, the old plain-text agents.log) can only be
+  // indexed at the moment they were read. They get their own stream so their
+  // read-time stamps never sit in front of real ones — Loki rejects an entry
+  // that is more than max_chunk_age/2 behind its stream's newest as "too far
+  // behind", which is exactly what a first backfill of a mixed file produced.
+  stage.template {
+    source   = "ts_source"
+    template = "{{ if .event_ts }}record{{ else }}ingest{{ end }}"
+  }
+
+  stage.labels {
+    values = {
+      level     = "",
+      ts_source = "",
+    }
+  }
+
+  // llm_audit.jsonl: Loki gets the metadata of each call, not the prompt.
+  // The complete record (messages, response_text) stays in the file and the
+  // same call is a full trace in Langfuse. This is what keeps the log panel
+  // readable and Loki's chunks small.
+  stage.match {
+    selector = "{filename=~\".*llm_audit\\\\.jsonl\"}"
+
+    stage.json {
+      expressions = {
+        engagement_id      = "engagement_id",
+        call_id            = "call_id",
+        model              = "model",
+        latency_ms         = "latency_ms",
+        attempts           = "attempts",
+        prompt_tokens      = "prompt_tokens",
+        completion_tokens  = "completion_tokens",
+        total_tokens       = "total_tokens",
+        estimated_cost_usd = "estimated_cost_usd",
+        cost_basis         = "cost_basis",
+        error              = "error",
+      }
+    }
+
+    stage.template {
+      source   = "error_text"
+      template = "{{ or .error \"\" | Replace \"\\\\\" \"/\" | Replace \"\\\"\" \"'\" }}"
+    }
+
+    stage.template {
+      source   = "compact"
+      template = "{\"ts\":\"{{ or .event_ts \"\" }}\",\"engagement_id\":\"{{ or .engagement_id \"\" }}\",\"call_id\":\"{{ or .call_id \"\" }}\",\"agent\":\"{{ or .agent \"\" }}\",\"model\":\"{{ or .model \"\" }}\",\"status\":\"{{ or .status \"\" }}\",\"latency_ms\":{{ or .latency_ms 0 }},\"attempts\":{{ or .attempts 1 }},\"prompt_tokens\":{{ or .prompt_tokens 0 }},\"completion_tokens\":{{ or .completion_tokens 0 }},\"total_tokens\":{{ or .total_tokens 0 }},\"estimated_cost_usd\":{{ if .estimated_cost_usd }}{{ .estimated_cost_usd }}{{ else }}null{{ end }},\"cost_basis\":\"{{ or .cost_basis \"\" }}\",\"error\":\"{{ or .error_text \"\" }}\",\"detail\":\"logs/audit/llm_audit.jsonl\"}"
+    }
+
+    stage.output {
+      source = "compact"
+    }
+
+    stage.labels {
+      values = {
+        agent  = "",
+        status = "",
+      }
+    }
+  }
+
+  // Structlog's own per-call events (audit/llm_audit.log: llm_call_ok /
+  // llm_call_failed) name the agent `agent_name`; give them the same labels.
+  stage.match {
+    selector = "{filename=~\".*llm_audit\\\\.log\"} |= \"\\\"agent_name\\\"\""
+
+    stage.template {
+      source   = "agent"
+      template = "{{ or .agent .agent_name \"\" }}"
+    }
+
+    stage.labels {
+      values = {
+        agent  = "",
+        status = "",
+      }
+    }
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

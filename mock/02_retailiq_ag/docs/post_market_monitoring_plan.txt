@@ -1,0 +1,17 @@
+RetailIQ AG -- DemandPulse v3.0
+POST-MARKET MONITORING PLAN  |  Ref: PMM-DP-v3.0-2026
+
+1. KPIs
+K01  Weekly WAPE (Weighted Absolute Percentage Error)  threshold <= 0.25
+K02  MASE (Mean Absolute Scaled Error)                 alert if > 1.15
+K03  Forecast bias (over/under) by product category    +/- 5%
+K04  API latency P99                                   <= 500ms
+
+2. SCHEDULE
+Weekly    : Automated WAPE/MASE dashboard
+Monthly   : Per-customer accuracy review
+Quarterly : Retraining on rolling 8-week window
+
+3. RETRAINING TRIGGER
+MASE > 1.15 sustained for 2 consecutive weeks on any customer segment.
+Automatic retraining pipeline via Kubeflow on GCP.

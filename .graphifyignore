@@ -1,0 +1,30 @@
+# Generated/runtime artifacts - not source, keep the graph signal-rich
+mock/
+mock.zip
+logs/
+backups/
+data/
+out/
+notebooks/
+
+# Build/tooling caches (also in .gitignore but graphify scans independently)
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+node_modules/
+.git/
+.claude/
+
+# Doc/prose files - excluded from this pass since semantic indexing requires
+# sending content to an external LLM API, which the harness hard-blocks for
+# this repo's proprietary docs. Code (AST-only, offline) is unaffected.
+<!-- *.md
+*.docx
+*.pdf
+*.txt
+*.yml
+*.yaml
+*.ini
+*.j2 -->

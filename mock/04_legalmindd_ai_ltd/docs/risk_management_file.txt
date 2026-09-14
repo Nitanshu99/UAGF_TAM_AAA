@@ -1,0 +1,30 @@
+LegalMind AI Ltd -- LexAI v2.0
+RISK MANAGEMENT FILE  |  Ref: RMF-LX-v2.0-2026
+Pursuant to EU AI Act Article 9 | Risk tier: HIGH -- Annex III para 8
+Date: 2026-04-01  |  Approved by: CTO, LegalMind AI Ltd
+
+1. SCOPE
+LexAI v2.0 is an LLM+RAG legal research assistant based on
+mistralai/Mistral-7B-v0.1 fine-tuned via LoRA (rank 64) on 50,000
+EU and Irish legal documents. Deployed B2B to law firms.
+Primary deployer: McCann FitzGerald LLP, Dublin.
+Risk tier: HIGH -- Annex III para 8 (administration of justice).
+
+2. IDENTIFIED RISKS
+R-001  Legal hallucination (fabricated case citations)    CRITICAL
+R-002  Prompt injection by adversarial users              HIGH
+R-003  Confidentiality breach of privileged communications CRITICAL
+R-004  Jurisdictional error (mixing Irish/UK/EU law)      HIGH
+R-005  Biased outputs disadvantaging certain groups       HIGH
+
+3. MITIGATION MEASURES
+R-001: Citations verified against RAG corpus; unverifiable refs rejected.
+R-002: Prompt injection detection (deepset/deberta); Llama Guard output filter.
+R-003: Per-engagement Qdrant collection isolation; data deleted on close.
+R-004: Jurisdiction flag required per query; responses tagged by jurisdiction.
+R-005: RAGAS bias evaluation monthly; differential prompt testing quarterly.
+
+4. HARMONISED STANDARDS
+ISO/IEC 42001:2023 | ISO/IEC 27001:2022 | ISO/IEC 27701:2019
+
+GDPR: DPIA completed per Art. 35. DPA with all deployers.

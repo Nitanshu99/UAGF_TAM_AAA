@@ -1,0 +1,35 @@
+TalentSift GmbH -- TalentRank v1.2
+POST-MARKET MONITORING PLAN  |  Ref: PMM-TR-v1.2-2026
+Pursuant to EU AI Act Article 72
+Owner: Model Governance Team  |  Effective: 2026-05-15
+
+1. MONITORING SCOPE
+Production shortlist recommendations issued by TalentRank v1.2 at all
+deployer sites, covering performance, fairness, robustness and human-
+oversight indicators throughout the operational lifetime.
+
+2. DATA COLLECTED
+Per-screening logs (hashed applicant_id, vacancy family, score,
+recommendation, recruiter decision, override flag); quarterly labelled
+audit samples of 200 screenings per deployer; token-distribution
+statistics per month.
+
+3. INDICATORS AND THRESHOLDS
+M-01 Shortlist accuracy vs recruiter final decision   alert < 0.75
+M-02 Demographic parity difference (sex, age group,
+     nationality)                                     alert > 0.10
+M-03 Equal-opportunity difference                     alert > 0.10
+M-04 Token-distribution PSI (top-100 TF-IDF mass)     alert > 0.20
+M-05 Recruiter override rate                          review > 15%
+M-06 PII-leak findings per quarterly scan             alert > 0
+
+4. REVIEW AND ESCALATION
+Monthly metric review by the Model Governance Team; breaches open a
+corrective action within 10 working days. Serious incidents are
+reported per Article 73 within the statutory deadlines, and deployers
+are notified within 48 hours.
+
+5. FEEDBACK INTO THE RISK MANAGEMENT SYSTEM
+Monitoring outcomes feed the semi-annual review of RMF-TR-v1.2-2026;
+threshold breaches trigger an out-of-cycle review and, where needed, a
+substantial-modification assessment under Article 25.

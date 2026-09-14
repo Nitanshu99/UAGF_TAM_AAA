@@ -1,0 +1,371 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T16_uagf_tam_l_evidence:1.0.0",
+  "title": "T16 — UAGF-TAM-L Evidence",
+  "description": "Golden-set evaluation, RAGAs faithfulness, groundedness, prompt-injection, and trajectory audit results for LLM/agentic systems. Art. 15; GPAI Arts. 51–55.",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "golden_set_results",
+    "ragas_metrics",
+    "groundedness_metrics",
+    "prompt_injection_results",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this audit engagement."
+    },
+    "golden_set_results": {
+      "type": "object",
+      "required": [
+        "total_samples",
+        "passed_samples",
+        "failed_samples",
+        "pass_rate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "total_samples": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "passed_samples": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed_samples": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pass_rate": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Null when nothing was scored; a pass rate over zero scored samples is not 0."
+        },
+        "scored": {
+          "type": "boolean",
+          "description": "Whether any golden-set sample was scored against a system answer."
+        },
+        "unscored_reason": {
+          "type": ["string", "null"],
+          "description": "Why the golden set was not scored, when it was not."
+        },
+        "failure_details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sample_id": {
+                "type": "string"
+              },
+              "input": {
+                "type": "string"
+              },
+              "expected": {
+                "type": "string"
+              },
+              "actual": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "ragas_metrics": {
+      "type": "object",
+      "required": [
+        "faithfulness",
+        "answer_relevance"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "computed": {
+          "type": "boolean",
+          "description": "Whether RAGAs metrics were computed; null metrics with computed=false are unmeasured, not zero."
+        },
+        "reason": {
+          "type": ["string", "null"],
+          "description": "Why the metrics were not computed, when they were not."
+        },
+        "faithfulness": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "answer_relevance": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "context_precision": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "context_recall": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "answer_similarity": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "answer_correctness": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "sample_size": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Golden-set samples the metrics were measured on (a seeded random sample within the phase budget)."
+        },
+        "population_size": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Golden-set samples available."
+        },
+        "intervals": {
+          "type": ["object", "null"],
+          "description": "95% bootstrap interval [low, high] of each metric's mean over the measured samples.",
+          "additionalProperties": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}
+        }
+      }
+    },
+    "groundedness_metrics": {
+      "type": "object",
+      "required": [
+        "groundedness_score"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "computed": {
+          "type": "boolean",
+          "description": "Whether groundedness was computed; see rationale when it was not."
+        },
+        "groundedness_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "context_relevance": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "answer_relevance": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "rationale": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "prompt_injection_results": {
+      "type": "object",
+      "required": [
+        "tested"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "total_probes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "successful_attacks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "vulnerability_rate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Null when nothing was probed — never 0.0, which reads as 'probed and clean'."
+        },
+        "attack_types": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "attack_name",
+              "count",
+              "success_rate"
+            ],
+            "properties": {
+              "attack_name": {
+                "type": "string"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "success_rate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "critical_vulnerabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tested": {
+          "type": "boolean",
+          "description": "Whether adversarial probing actually ran. False means no numbers below were measured."
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "adversarial_probe",
+            "static_prompt_analysis",
+            "not_run"
+          ],
+          "description": "How the result was obtained. Static analysis reads the system prompt; it is not adversarial probing."
+        },
+        "not_tested_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Findings from static prompt analysis; not probe results."
+        }
+      }
+    },
+    "trajectory_audit": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Audit of agentic tool-call sequences and trajectories.",
+      "required": [
+        "total_trajectories",
+        "compliant_trajectories",
+        "violation_count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "total_trajectories": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "compliant_trajectories": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "violation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "violations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "trajectory_id",
+              "violation_type",
+              "description"
+            ],
+            "properties": {
+              "trajectory_id": {
+                "type": "string"
+              },
+              "violation_type": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "step_index": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "overall_verdict": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "PASS_WITH_OBSERVATIONS",
+        "FAIL",
+        "NOT_TESTED"
+      ]
+    },
+    "interpretation_notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tier3_llm_narrative": {
+      "type": ["string", "null"],
+      "description": "The specialist agent's written synthesis; deterministic fields above remain the source of truth."
+    },
+    "declared_controls": {
+      "type": ["object", "null"],
+      "description": "The provider's declared L-branch controls (guardrail configuration, RAG manifest, tool inventory) as read from the dossier."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

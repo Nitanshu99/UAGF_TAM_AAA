@@ -1,0 +1,32 @@
+FinClear GmbH -- CreditGuard v2.1
+POST-MARKET MONITORING PLAN  |  Ref: PMM-CG-v2.1-2026
+Pursuant to EU AI Act Article 72 and Annex IV para 9
+
+1. MONITORING OBJECTIVES
+   (a) Performance degradation detection
+   (b) Demographic fairness drift monitoring
+   (c) Input distribution shift detection
+   (d) Human oversight effectiveness
+
+2. KEY PERFORMANCE INDICATORS
+K01  Monthly AUC-ROC on production sample      threshold >= 0.78
+K02  PSI on top-10 input features               alert if PSI > 0.20
+K03  Demographic parity delta -- gender          threshold <= 0.05
+K04  Demographic parity delta -- age group       threshold <= 0.08
+K05  FNR for creditworthy applicants declined    threshold <= 0.25
+K06  Human override rate                        expected 3--15%
+
+3. SCHEDULE
+Weekly    : Automated error-rate dashboard (MLflow)
+Monthly   : Full performance + fairness review (Model Risk Team)
+Quarterly : Adversarial robustness re-probe
+Annually  : Full UAGF-TAM audit cycle
+
+4. SERIOUS INCIDENT CRITERIA  (Art. 72 para 1)
+Trigger: AUC drops >10% vs baseline OR demographic parity delta > 0.15
+Reporting deadline: 15 working days to BaFin
+Owner: Head of Model Risk, FinClear GmbH
+
+5. RETRAINING POLICY
+Trigger: PSI > 0.25 on any feature OR AUC < 0.76
+Version archive: MLflow registry, minimum 10 years

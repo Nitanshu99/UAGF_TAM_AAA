@@ -1,0 +1,19 @@
+LegalMind AI Ltd -- LexAI v2.0
+POST-MARKET MONITORING PLAN  |  Ref: PMM-LX-v2.0-2026
+
+1. KPIs
+K01  RAGAS faithfulness (citation accuracy)  threshold >= 0.90
+K02  RAGAS answer relevancy                   threshold >= 0.85
+K03  Prompt injection detection rate           target >= 99%
+K04  Legal hallucination rate (user-reported)  target < 0.5%
+
+2. SCHEDULE
+Weekly    : Citation verification pass rate dashboard
+Monthly   : RAGAS evaluation on 60-item golden eval set
+Quarterly : Differential prompt testing + red-team exercise
+Annually  : Full UAGF-TAM-L audit cycle
+
+3. INCIDENT REPORTING
+Trigger: Any confirmed hallucination reaching a client.
+Reporting: DPC (Data Protection Commission, Ireland) within 72h.
+Owner: CTO, LegalMind AI Ltd

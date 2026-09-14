@@ -1,0 +1,139 @@
+# AAA — Unified Requirements
+# Python 3.12 REQUIRED. Install with: python3.12 -m pip install -r requirements.txt
+
+-c constraints.txt
+
+# ---------------------------------------------------------------------------
+# Core orchestration & agent runtime (Agents)
+# ---------------------------------------------------------------------------
+langgraph>=0.3.5
+langgraph-checkpoint-postgres>=2.0.19
+langchain>=0.3.23
+langchain-core>=0.3.51
+langchain-community>=0.3.21
+litellm>=1.67.4.post1
+
+# ---------------------------------------------------------------------------
+# API & web framework (Teams A, B, C)
+# ---------------------------------------------------------------------------
+fastapi>=0.115.12
+uvicorn[standard]>=0.34.2
+gunicorn>=23.0.0
+httpx>=0.28.1
+python-multipart>=0.0.20
+
+# ---------------------------------------------------------------------------
+# UI
+# ---------------------------------------------------------------------------
+streamlit>=1.57.0
+
+# ---------------------------------------------------------------------------
+# Data & computation (Teams B, C, G)
+# ---------------------------------------------------------------------------
+pandas>=2.2.3
+numpy>=2.0.2
+scipy>=1.15.2
+scikit-learn>=1.6.1
+
+# ---------------------------------------------------------------------------
+# Database & storage (Teams A, C, E)
+# ---------------------------------------------------------------------------
+psycopg[binary]>=3.2.6
+psycopg2-binary>=2.9.10
+pgvector>=0.2.5
+sqlalchemy[asyncio]>=2.0.36
+alembic>=1.14.0
+asyncpg>=0.30.0
+redis>=5.2.0
+minio>=7.2.15
+boto3>=1.37.34
+
+# ---------------------------------------------------------------------------
+# Model explainability & XAI (Tools)
+# ---------------------------------------------------------------------------
+shap>=0.47.2
+lime>=0.2.0.1
+torch>=2.6.0
+torchmetrics>=1.7.1
+grad-cam>=1.5.4
+Pillow>=12.2.0
+
+# ---------------------------------------------------------------------------
+# Fairness (Tools)
+# ---------------------------------------------------------------------------
+fairlearn>=0.12.0
+aif360>=0.6.1
+
+# ---------------------------------------------------------------------------
+# LLM / Agentic evaluation & safety (Tools, G)
+# ---------------------------------------------------------------------------
+ragas>=0.2.14
+trulens-eval>=2.8.1
+# trulens-eval 2.x installs core/feedback/dashboard but NOT the provider
+# packages. Without this, `trulens.providers.litellm` never resolves and
+# groundedness_check could only ever report not-computed.
+trulens-providers-litellm>=2.8.1
+datasets>=4.8.5
+# Optional: use `requirements-optional-redteam.txt` in a separate red-team env
+# for garak-based active probing. The default app env keeps datasets>=4 for ragas.
+detoxify>=0.5.2
+sentence-transformers>=4.1.0
+
+# ---------------------------------------------------------------------------
+# RAG & knowledge (Knowledge)
+# ---------------------------------------------------------------------------
+llama-index>=0.12.30
+llama-index-embeddings-openai>=0.6.0
+llama-index-vector-stores-qdrant>=0.10.1
+qdrant-client>=1.18.0
+fastembed>=0.8.0
+openai>=2.38.0
+nltk>=3.9.4
+beautifulsoup4>=4.14.3
+lxml>=6.1.1
+pdfplumber>=0.11.9
+pypdfium2>=5.8.0
+python-docx>=1.1.2
+
+# ---------------------------------------------------------------------------
+# Governance, reporting, schema (Teams A, B, C)
+# ---------------------------------------------------------------------------
+python-constraint>=1.4.0
+jsonschema>=4.23.0
+reportlab>=4.3.1
+jinja2>=3.1.6
+matplotlib>=3.10.0
+pydantic>=2.11.3
+pydantic-settings>=2.6.1
+
+# ---------------------------------------------------------------------------
+# Auth & security (Platform)
+# ---------------------------------------------------------------------------
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# ---------------------------------------------------------------------------
+# Observability & tracing (Teams A, F, G)
+# ---------------------------------------------------------------------------
+langfuse>=4.14.2,<5  # v4 SDK; compose runs langfuse/langfuse:4 + langfuse-worker:4 (ClickHouse/Redis/S3). LiteLLM must use the `langfuse_otel` callback — the legacy `langfuse` one reads langfuse.version, removed in v4.
+opentelemetry-api>=1.32.0
+opentelemetry-sdk>=1.32.0
+opentelemetry-instrumentation>=0.53b0
+prometheus-client>=0.21.1
+python-json-logger>=2.0.7
+structlog>=25.2.0
+
+# ---------------------------------------------------------------------------
+# Data profiling & quality (Tools)
+# ---------------------------------------------------------------------------
+ydata-profiling>=4.16.1
+presidio-analyzer>=2.2.362
+presidio-anonymizer>=2.2.362
+
+# ---------------------------------------------------------------------------
+# Dev & utilities
+# ---------------------------------------------------------------------------
+python-dotenv>=1.1.0
+ruamel.yaml>=0.18.10
+click>=8.1.8
+requests>=2.32.0

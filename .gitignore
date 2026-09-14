@@ -1,0 +1,133 @@
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+*.egg-info/
+dist/
+build/
+*.egg
+*.whl
+
+# ---------------------------------------------------------------------------
+# IDEs & OS
+# ---------------------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ---------------------------------------------------------------------------
+# Testing & lint caches
+# ---------------------------------------------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.import_linter_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ---------------------------------------------------------------------------
+# Node / Frontend
+# ---------------------------------------------------------------------------
+node_modules/
+.next/
+out/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---------------------------------------------------------------------------
+# Secrets
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# Anchored to the repo root on purpose: a bare `data/` also matches source
+# packages named `data` at any depth (aaa/data/, aaa/api/routes/data/) and
+# silently kept 57 tracked-by-intent files out of git.
+/data/
+*.db
+*.sqlite3
+# ---------------------------------------------------------------------------
+# Graphify (local knowledge graph, not committed by default)
+# ---------------------------------------------------------------------------
+graphify-out/
+
+# ---------------------------------------------------------------------------
+# Temporary / generated evidence
+# ---------------------------------------------------------------------------
+tmp_evidence/
+*.tmp
+*.bak
+# Runtime LLM audit trail. Append-only and unbounded — it reached 41 MB while
+# tracked, most of the repo's git history. Regenerated on every run.
+logs/audit/*.jsonl
+
+# ---------------------------------------------------------------------------
+# Docker
+# ---------------------------------------------------------------------------
+*.pid
+backups/qdrant_snapshots/
+
+# repo-context (generated, local-first). No trailing slash: a worktree links
+# `.context` to the main checkout's, and `.context/` matches only a directory.
+.context
+.claude/commands/context-update.md
+.claude/commands/update-docs.md
+logs/errors/*.jsonl
+
+# ---------------------------------------------------------------------------
+# Thesis material and client documents
+# ---------------------------------------------------------------------------
+# The exposé and any literature it cites belong to the thesis, not to the
+# codebase, and carry their own licensing.
+data/Updated_Expose_S5_UAGF_TAM_AAA_Updated.txt
+*_Expose_*.txt
+*.bib
+literature/
+thesis/
+
+# ---------------------------------------------------------------------------
+# Local-only run records
+# ---------------------------------------------------------------------------
+# One place for everything that records what a particular run did: the per-call
+# assessment transcripts, the defect-and-fix logs, the evidence kept from a run,
+# and the per-run analysis that generates them. Official documentation lives in
+# `docs/` and is tracked; this is the paper trail, it is large, it regenerates,
+# and some of it describes a real provider's system. See local/README.md.
+/local/
+
+# Mariposa-Edu GmbH is a real provider. Their intake bundle is their own
+# technical documentation, and the per-call transcript of an audit of it (now
+# `local/assessments/run_2026-09-10/`) runs to 5 MB. Neither is ours to publish,
+# and the repository does not need them: every test that reads them is
+# `skipif`-guarded, and `aaa.tools.run_preflight` reports a clear error when the
+# case document it is pointed at is absent. Keep them locally; not distributed.
+mock/06_mariposa_edu_gmbh/
+scripts/fixtures/cgsa/mariposa-*.json
+data/Mariposa/
+
+# Driver output: screenshots the wizard driver takes and files the dashboard's
+# download buttons save. Both are per-run artefacts, not source.
+screenshots/
+downloads/
+
+# The two bundles `python bootstrap.py` unpacks — the Mariposa intake bundle
+# and the regulatory corpus — are handed over separately, never committed.
+/mariposa.zip
+/corpus.zip

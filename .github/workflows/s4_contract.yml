@@ -1,0 +1,87 @@
+# AAA — S4 CGSA contract / schema-drift gate (§10.2)
+# Nightly: pull the live uagf_cgsa_aaa_schema.json from the S4 repo and diff
+# against the vendored copy in schemas/cgsa/v1.0.0/. Open an issue on drift.
+name: s4_contract
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # 02:00 UTC every day
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  # Override via repo variable / dispatch input if the upstream path changes.
+  S4_SCHEMA_URL: >-
+    https://raw.githubusercontent.com/Nitanshu99/UAGF_TAM_S4/main/schemas/cgsa/v1.0.0/uagf_cgsa_aaa_schema.json
+  VENDORED_PATH: schemas/cgsa/v1.0.0/uagf_cgsa_aaa_schema.json
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install jsonschema_diff
+        run: pip install jsonschema-diff jsondiff
+
+      - name: Fetch upstream schema
+        run: |
+          mkdir -p /tmp/s4
+          curl -fsSL "${S4_SCHEMA_URL}" -o /tmp/s4/uagf_cgsa_aaa_schema.json || {
+            echo "::warning::Upstream schema not reachable — skipping diff"
+            echo "skip=true" >> "$GITHUB_ENV"
+          }
+
+      - name: Diff vendored vs upstream
+        if: env.skip != 'true'
+        id: diff
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, sys
+          vendored = json.loads(pathlib.Path("${{ env.VENDORED_PATH }}").read_text())
+          upstream = json.loads(pathlib.Path("/tmp/s4/uagf_cgsa_aaa_schema.json").read_text())
+          if vendored == upstream:
+              print("OK — vendored schema matches upstream.")
+              sys.exit(0)
+          from jsondiff import diff
+          delta = diff(vendored, upstream, syntax="symmetric")
+          out = pathlib.Path("schema_drift.json")
+          out.write_text(json.dumps(delta, indent=2, default=str))
+          print("DRIFT detected:")
+          print(out.read_text())
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write("drift=true\n")
+          sys.exit(1)
+          PY
+
+      - name: Upload drift report
+        if: failure() && steps.diff.outputs.drift == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-drift
+          path: schema_drift.json
+
+      - name: Open drift issue
+        if: failure() && steps.diff.outputs.drift == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = "Nightly `s4_contract` detected drift between vendored "
+              + "`${{ env.VENDORED_PATH }}` and upstream S4 schema.\n\n"
+              + "```json\n" + fs.readFileSync('schema_drift.json', 'utf8') + "\n```\n\n"
+              + "Resolve by either bumping the vendored schema version or asking S4 to revert.";
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              title: `[s4_contract] CGSA schema drift detected on ${new Date().toISOString().slice(0,10)}`,
+              body,
+              labels: ['schema-drift', 'automated'],
+            });

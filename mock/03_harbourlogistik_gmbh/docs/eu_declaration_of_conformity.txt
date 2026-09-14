@@ -1,0 +1,20 @@
+EU DECLARATION OF CONFORMITY -- DRAFT
+Regulation (EU) 2024/1689 (EU AI Act), Article 47
+
+Provider:  HarbourLogistik GmbH
+           Am Sandtorkai 50, 20457 Hamburg, Germany
+           HRB 987654 Hamburg | EU VAT: DE234567890
+
+AI System: HarbourSense v1.4
+Purpose:   Anomaly detection in port crane and container-handling sensor data
+Class:     HIGH-RISK -- Annex III para 2 (critical infrastructure)
+
+STATUS: DRAFT -- conformity assessment not yet complete.
+Known non-conformities: Art. 10 data governance pipeline incomplete.
+Art. 15 adversarial robustness framework not yet implemented.
+
+Expected completion of remediation: Q3 2026.
+
+Hamburg, 2026-03-01
+Signed: Dr. Klaus Mertens, CTO -- HarbourLogistik GmbH
+        (DRAFT -- not yet legally binding)

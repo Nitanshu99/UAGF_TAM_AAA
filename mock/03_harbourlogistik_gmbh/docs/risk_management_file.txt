@@ -1,0 +1,29 @@
+HarbourLogistik GmbH -- HarbourSense v1.4
+RISK MANAGEMENT FILE  |  Ref: RMF-HS-v1.4-2026
+Pursuant to EU AI Act Article 9 and Annex IV
+Risk tier: HIGH -- Annex III para 2 (critical infrastructure)
+Date: 2026-03-01  |  Status: DRAFT (not yet formally approved)
+
+1. SCOPE
+HarbourSense v1.4 detects anomalies in sensor telemetry from Hamburg Harbour
+cranes and container-handling equipment. Deployed by Hamburger Hafen und
+Logistik AG (HHLA). Processing 5000+ sensor readings per hour.
+
+2. IDENTIFIED RISKS
+R-001  False negative anomaly (missed equipment failure)  CRITICAL
+R-002  False positive anomaly (unnecessary shutdown)      HIGH
+R-003  Adversarial sensor spoofing / cyber attack         HIGH
+R-004  Sensor data quality failures                       MEDIUM
+
+3. MITIGATION MEASURES
+R-001: Dual-sensor redundancy; human operator confirmation required.
+R-002: Dynamic threshold tuning; false-positive rate monitored weekly.
+R-003: [OPEN] Adversarial robustness framework not yet implemented.
+R-004: [OPEN] Data validation pipeline under development (ETA Q3 2026).
+
+NOTE: Items marked [OPEN] represent known gaps pending remediation.
+This document is in DRAFT status and has not received final CRMO sign-off.
+
+4. HARMONISED STANDARDS
+ISO/IEC 42001:2023 (planned adoption)
+IEC 62443 series (OT/ICS cybersecurity) -- partially implemented

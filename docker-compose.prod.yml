@@ -1,0 +1,180 @@
+# AAA — Production overlay for docker-compose.yml (§14.4)
+#
+# Usage (apply on top of base compose):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile obs up -d
+#
+# This overlay hardens the base services for production:
+#   - Removes exposed ports (services communicate over the Docker network only;
+#     TLS terminates at the reverse proxy in front of the stack, §14.8)
+#   - OpenBao runs a real server with file storage instead of `-dev`
+#   - Grafana loses anonymous access; Prometheus scrapes the aaa_api container
+#   - Sets resource limits, forces restart=always
+#   - Adds the AAA API container, whose logs/ volume Alloy tails
+
+services:
+
+  postgres:
+    restart: always
+    ports: []          # not exposed externally in production
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+
+  qdrant:
+    restart: always
+    ports: []
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  minio:
+    restart: always
+    ports: []
+    environment:
+      MINIO_BROWSER: "off"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  valkey:
+    restart: always
+    ports: []
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  clickhouse:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+
+  langfuse-worker:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  langfuse:
+    restart: always
+    ports: []
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  openbao:
+    restart: always
+    ports: []
+    # Real server: durable file storage on a named volume, sealed until
+    # `bao operator init` / `bao operator unseal` (infra/runbook.md). The dev
+    # root token has no meaning here and is blanked.
+    command: server -config=/openbao/config/config.hcl
+    environment:
+      BAO_DEV_ROOT_TOKEN_ID: ""
+      BAO_ADDR: http://127.0.0.1:8200
+    volumes:
+      - ./infra/openbao/config.hcl:/openbao/config/config.hcl:ro
+      - openbao_data:/openbao/data
+    healthcheck:
+      # 200 = unsealed+active, 503 = sealed. A sealed vault is "unhealthy"
+      # on purpose: it needs an operator, and the status should say so.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8200/v1/sys/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  # --------------------------------------------------------------------------
+  # Observability profile — production adjustments
+  # --------------------------------------------------------------------------
+  prometheus:
+    restart: always
+    volumes:
+      - ./infra/observability/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  grafana:
+    restart: always
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SECURITY_COOKIE_SECURE: "true"
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3002}
+    ports:
+      - "127.0.0.1:3002:3000"
+
+  alloy:
+    restart: always
+    ports: []
+    volumes:
+      # In production the API is a container; tail its logs volume rather
+      # than the repository checkout.
+      - aaa_logs:/var/log/aaa:ro
+
+  # --------------------------------------------------------------------------
+  # AAA FastAPI service (added in production only)
+  # --------------------------------------------------------------------------
+  aaa_api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET:-aaa-evidence}
+      EVIDENCE_BACKEND: minio
+      QDRANT_URL: http://qdrant:6333
+      REDIS_URL: redis://:${VALKEY_PASSWORD}@valkey:6379/0
+      BAO_ADDR: http://openbao:8200
+      LANGFUSE_HOST: http://langfuse:3000
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      AAA_LOG_DIR: /app/logs
+      AAA_DATA_DIR: /app/data
+      PROMETHEUS_MULTIPROC_DIR: /app/logs/metrics
+      AAA_LAUNCH_DOCKER: "false"
+    volumes:
+      - aaa_logs:/app/logs
+      - aaa_data:/app/data
+    ports:
+      - "127.0.0.1:8000:8000"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+
+volumes:
+  openbao_data:
+  aaa_logs:
+  aaa_data:

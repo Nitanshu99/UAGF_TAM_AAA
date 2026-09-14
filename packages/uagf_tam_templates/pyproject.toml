@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "uagf-tam-templates"
+version = "0.1.0"
+description = "T01a–T18 JSON-Schema templates and Jinja2 partials for the UAGF-TAM AAA pipeline (§4A)."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "UAGF-TAM Working Group" },
+]
+requires-python = ">=3.9"
+keywords = [
+    "eu-ai-act", "audit", "templates", "json-schema", "uagf-tam",
+    "compliance", "annex-iv",
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering",
+    "Intended Audience :: Legal Industry",
+]
+
+dependencies = [
+    "jsonschema>=4.0",
+    "jinja2>=3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/uagf-tam/uagf-tam-templates"
+Repository = "https://github.com/uagf-tam/uagf-tam-templates"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/uagf_tam_templates"]
+
+[tool.hatch.build.targets.wheel.shared-data]
+"src/uagf_tam_templates/schemas" = "uagf_tam_templates/schemas"
+"src/uagf_tam_templates/partials" = "uagf_tam_templates/partials"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=uagf_tam_templates --cov-report=term-missing --cov-fail-under=80"

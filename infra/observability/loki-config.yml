@@ -1,0 +1,91 @@
+# Loki single-binary, filesystem-backed config for local dev (§14.6/14.8).
+# No object storage, no clustering — everything lives under /loki inside the
+# container's named volume.
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    # Original period — boltdb-shipper / v11. Left in place so the data already
+    # written under it stays queryable.
+    - from: 2020-10-24
+      store: boltdb-shipper
+      object_store: filesystem
+      schema: v11
+      index:
+        prefix: index_
+        period: 24h
+    # Current recommended index: TSDB / v13 (structured metadata capable).
+    # A new period must start at a future 00:00 UTC; the switch happens
+    # automatically at that boundary, nothing to migrate.
+    - from: 2026-09-12
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: tsdb_index_
+        period: 24h
+
+storage_config:
+  tsdb_shipper:
+    active_index_directory: /loki/tsdb-index
+    cache_location: /loki/tsdb-cache
+    shared_store: filesystem
+
+# Retention. Loki is the search index over logs/, not the system of record:
+# llm_audit.jsonl and errors/*.jsonl stay on disk (and the full LLM traces in
+# Langfuse). 90 days keeps a quarter of runs searchable; raise
+# retention_period for longer.
+compactor:
+  working_directory: /loki/compactor
+  shared_store: filesystem
+  compaction_interval: 10m
+  retention_enabled: true
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 50
+
+# Grafana fans a dashboard out into many sub-queries at once (each panel, split
+# by interval, on every refresh); the defaults for these two queues were
+# reached by the two log dashboards on their first refresh and every panel
+# answered "too many outstanding requests" instead of lines.
+frontend:
+  max_outstanding_per_tenant: 4096
+query_scheduler:
+  max_outstanding_requests_per_tenant: 4096
+
+limits_config:
+  retention_period: 2160h
+  # Queries may span the whole retention window (default cap is 30d, which
+  # made a "last 90 days" Grafana range a 400 error rather than a result).
+  max_query_length: 2161h
+  # Alloy stamps each entry with the record's own timestamp (stage.timestamp),
+  # so the first tail of an existing log file is a backfill; 7 days (the
+  # default) would have rejected most of it.
+  reject_old_samples: true
+  reject_old_samples_max_age: 8760h
+  allow_structured_metadata: false
+  # Single-tenant local dev: the defaults (4MB/s, 3MB/stream) reject the
+  # first-time backfill of an already-large llm_audit.jsonl (observed: a
+  # 27MB/1183-line file triggered 429s within seconds of Alloy tailing it).
+  ingestion_rate_mb: 32
+  ingestion_burst_size_mb: 64
+  per_stream_rate_limit: 16MB
+  per_stream_rate_limit_burst: 32MB
+  # Alloy projects llm_audit.jsonl rows (avg 35 KB, max 770 KB observed — full
+  # prompts) down to their metadata before pushing, so nothing legitimate
+  # approaches this. A line that still does is truncated, not dropped.
+  max_line_size: 1MB
+  max_line_size_truncate: true

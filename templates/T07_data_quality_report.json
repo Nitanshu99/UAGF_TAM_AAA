@@ -1,0 +1,326 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T07_data_quality_report:1.0.0",
+  "title": "T07 — Data Quality Report",
+  "description": "Automated data-quality assessment covering missingness, class balance, drift, and PII scan results. EU AI Act Art. 10 §2, §4.",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "dataset_summary",
+    "missingness",
+    "class_balance",
+    "pii_scan",
+    "overall_quality_verdict",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this audit engagement."
+    },
+    "dataset_summary": {
+      "type": "object",
+      "description": "High-level dataset statistics from data_profile tool.",
+      "required": ["num_rows", "num_columns", "data_types_summary"],
+      "additionalProperties": false,
+      "properties": {
+        "num_rows": { "type": ["integer", "null"], "minimum": 0 },
+        "num_columns": { "type": ["integer", "null"], "minimum": 0 },
+        "data_types_summary": {
+          "type": "object",
+          "description": "Map of dtype category → count (e.g. {numeric: 5, categorical: 3}).",
+          "additionalProperties": { "type": "integer" }
+        },
+        "duplicate_rows": { "type": ["integer", "null"], "minimum": 0 },
+        "duplicate_rows_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "memory_usage_bytes": { "type": ["integer", "null"] },
+        "profiling_tool": { "type": ["string", "null"] },
+        "profiling_tool_version": { "type": ["string", "null"] }
+      }
+    },
+    "missingness": {
+      "type": "object",
+      "description": "Per-column missingness rates from missingness_scan tool.",
+      "required": ["columns", "overall_missingness_pct", "high_missingness_columns"],
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "type": "array",
+          "description": "One entry per column with name and missingness stats.",
+          "items": {
+            "type": "object",
+            "required": ["column_name", "missing_count", "missing_pct"],
+            "additionalProperties": false,
+            "properties": {
+              "column_name": { "type": "string" },
+              "missing_count": { "type": "integer", "minimum": 0 },
+              "missing_pct": { "type": "number", "minimum": 0, "maximum": 100 }
+            }
+          }
+        },
+        "overall_missingness_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "high_missingness_columns": {
+          "type": "array",
+          "description": "Column names with missing_pct above threshold (default 20%).",
+          "items": { "type": "string" }
+        },
+        "threshold_used": { "type": "number", "default": 20 }
+      }
+    },
+    "class_balance": {
+      "type": "object",
+      "description": "Class distribution and imbalance flag from class_balance tool.",
+      "required": ["target_column", "class_distribution", "imbalance_detected"],
+      "additionalProperties": false,
+      "properties": {
+        "target_column": { "type": ["string", "null"] },
+        "class_distribution": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label", "count", "proportion"],
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string" },
+              "count": { "type": "integer", "minimum": 0 },
+              "proportion": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "imbalance_detected": { "type": ["boolean", "null"] },
+        "imbalance_ratio": { "type": ["number", "null"] },
+        "imbalance_severity": {
+          "type": ["string", "null"],
+          "enum": ["none", "mild", "moderate", "severe", null]
+        },
+        "imbalance_threshold": { "type": "number", "default": 1.5 }
+      }
+    },
+    "drift": {
+      "type": "object",
+      "description": "Optional distribution-drift test results (evidently / scipy KS-test).",
+      "additionalProperties": false,
+      "properties": {
+        "reference_dataset_uri": { "type": ["string", "null"] },
+        "drift_detected": { "type": ["boolean", "null"] },
+        "drifted_columns": { "type": "array", "items": { "type": "string" } },
+        "drift_share": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "test_method": { "type": ["string", "null"] }
+      }
+    },
+    "pii_scan": {
+      "type": "object",
+      "description": "PII entity detection results from pii_scan tool (Presidio).",
+      "required": ["pii_detected", "entities_found", "special_category_data_detected"],
+      "additionalProperties": false,
+      "properties": {
+        "pii_detected": { "type": ["boolean", "null"] },
+        "entities_found": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["entity_type", "column_name", "sample_count", "severity"],
+            "additionalProperties": false,
+            "properties": {
+              "entity_type": { "type": "string" },
+              "column_name": { "type": "string" },
+              "sample_count": { "type": ["integer", "null"], "minimum": 0 },
+              "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] }
+            }
+          }
+        },
+        "special_category_data_detected": { "type": ["boolean", "null"] },
+        "special_categories_found": {
+          "type": "array",
+          "description": "GDPR Art. 9 special categories found (e.g. health, biometric, political opinion).",
+          "items": { "type": "string" }
+        },
+        "unresolved_mentions": {
+          "type": "array",
+          "description": "Entities that may carry a GDPR Art. 9 category but cannot say which (Presidio NRP). Recorded with their most frequent matched terms for a reader to resolve; they add no category to special_categories_found.",
+          "items": {
+            "type": "object",
+            "required": ["entity_type", "column_name", "sample_count", "matched_terms", "reason"],
+            "additionalProperties": false,
+            "properties": {
+              "entity_type": { "type": "string" },
+              "column_name": { "type": "string" },
+              "sample_count": { "type": ["integer", "null"], "minimum": 0 },
+              "matched_terms": { "type": "array", "items": { "type": "string" } },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "analyser_engine": { "type": ["string", "null"] },
+        "language": { "type": ["string", "null"] }
+      }
+    },
+    "overall_quality_verdict": {
+      "type": "string",
+      "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "INSUFFICIENT_EVIDENCE"],
+      "description": "Aggregate data quality verdict for Art. 10 compliance. INSUFFICIENT_EVIDENCE when no dataset could be loaded, so quality was not examined."
+    },
+    "quality_narrative": {
+      "type": ["string", "null"],
+      "description": "Free-text narrative summarising data quality findings and Art. 10 alignment."
+    },
+    "label_bias": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Group-wise examination of the positive-label rate across declared protected attributes (Art. 10 \u00a72(f)). A property of the data and the decisions it records, distinct from model-output fairness in T12.",
+      "required": [
+        "computed",
+        "method",
+        "attributes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "computed": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "method": {
+          "type": "string"
+        },
+        "target_column": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "positive_label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "attributes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "attribute",
+              "tested"
+            ],
+            "properties": {
+              "attribute": {
+                "type": "string"
+              },
+              "tested": {
+                "type": "boolean"
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "groups": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "group",
+                    "n",
+                    "positive_rate"
+                  ],
+                  "properties": {
+                    "group": {
+                      "type": "string"
+                    },
+                    "n": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "positive_rate": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  }
+                }
+              },
+              "lowest_group": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "highest_group": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "ratio": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+                            "ratio_interval": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "Interval for the deciding pair's ratio, Bonferroni-adjusted over every pair of groups; four_fifths_passed is true when every pair's interval lies at or above 0.8, false when this one lies below it, and null when the data cannot decide.",
+                "additionalProperties": false,
+                "properties": {
+                  "low": {
+                    "type": "number"
+                  },
+                  "high": {
+                    "type": "number"
+                  },
+                  "level": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "comparisons": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "method": {
+                    "type": "string"
+                  }
+                }
+              },
+                            "same_grouping_as": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "An earlier attribute that divides the same rows into exactly the same groups, so this attribute's rates and ratio repeat its figures; null when the grouping is its own."
+              },
+              "four_fifths_passed": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this artefact was generated."
+    }
+  }
+}

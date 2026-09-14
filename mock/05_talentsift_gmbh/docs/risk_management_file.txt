@@ -1,0 +1,47 @@
+TalentSift GmbH -- TalentRank v1.2
+RISK MANAGEMENT SYSTEM FILE  |  Ref: RMF-TR-v1.2-2026
+Pursuant to EU AI Act Article 9 and Annex IV para 5
+Approved by: Dr. Miriam Hoffmann, Head of Model Governance  |  Date: 2026-05-10
+
+1. SCOPE
+TalentRank v1.2 is a linear text classifier (scikit-learn TF-IDF +
+logistic regression) provided by TalentSift GmbH (Hamburg) and deployed
+by Nordwind Personal Services AG to pre-screen free-text CVs for
+shortlist recommendations. Risk tier: HIGH -- Annex III para 4(a)
+(recruitment, screening and filtering of applications).
+
+2. IDENTIFIED RISKS  (Art. 9 para 2(a))
+R-001  Discriminatory shortlisting against protected groups        HIGH
+R-002  Proxy discrimination via language/vocabulary correlates     HIGH
+R-003  Vocabulary drift as job markets and CV conventions change  MEDIUM
+R-004  Keyword-stuffing manipulation by applicants                MEDIUM
+R-005  Automation bias -- recruiters rubber-stamping the ranking    HIGH
+R-006  Residual personal data surviving the PII-stripping step    MEDIUM
+
+3. MITIGATION MEASURES  (Art. 9 para 2(c))
+R-001: Quarterly demographic parity and equal-opportunity testing per
+       sex, age group and nationality; recalibrated shortlist threshold.
+R-002: Token-importance review each release; blocklist of location,
+       school-name and language tokens found to proxy protected status.
+R-003: Token-distribution PSI monitoring (alert at PSI > 0.2) over the
+       top-100 TF-IDF mass; scheduled annual re-training.
+R-004: Character-noise and synonym robustness probes at each release;
+       duplicate-phrase density cap flagging keyword-stuffed CVs.
+R-005: Mandatory recruiter confirmation with reason codes; override
+       rate KPI reviewed monthly; no auto-rejection pathway exists.
+R-006: Two-stage PII stripper (rule-based + NER) with quarterly leak
+       audit on a 200-CV sample.
+
+4. RESIDUAL RISK ASSESSMENT  (Art. 9 para 5)
+All residual risks are judged acceptable for the intended purpose under
+human-in-the-loop operation. Wrongful non-shortlisting is bounded by the
+recruiter review step and the recall-oriented threshold policy.
+
+5. TESTING  (Art. 9 para 6-8)
+Release gates: accuracy/F1/AUC on the held-out evaluation set; fairness
+suite per protected attribute; char-noise adversarial probe; PII-leak
+scan. Results are archived per release in the model registry.
+
+6. REVIEW CYCLE
+This file is reviewed semi-annually and at every substantial
+modification (Art. 25 assessment attached to each review).

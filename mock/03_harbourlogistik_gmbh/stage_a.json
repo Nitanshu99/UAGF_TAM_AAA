@@ -1,0 +1,40 @@
+{
+  "provider_name": "HarbourLogistik GmbH",
+  "deployer_name": "Hamburger Hafen und Logistik AG",
+  "system_name": "HarbourSense",
+  "version": "1.4",
+  "intended_purpose": "Real-time anomaly detection in Hamburg Harbour crane and container-handling sensor telemetry to prevent equipment failure, reduce downtime, and protect worker safety. Output: anomaly alert score and binary alert flag per crane per 5-minute window.",
+  "declared_modality": "tabular",
+  "declared_risk_tier": "high",
+  "declared_annex_iii_sections": [
+    "2"
+  ],
+  "deployment_context": "public_sector",
+  "provider_elects_third_party": false,
+  "gdpr_overlap": true,
+  "gpai_general_purpose": false,
+  "special_category_data": false,
+  "art43_preview": null,
+  "cgsa_assessment_id": "harbourlogistik-harboursense-001",
+  "entity_type": [
+    "provider",
+    "deployer"
+  ],
+  "art25_status_change": [
+    "none"
+  ],
+  "annex_i_section_a": [],
+  "annex_i_section_b": [],
+  "third_party_ca_legally_required": false,
+  "art6_derogation_claimed": false,
+  "art6_derogation_rationale": null,
+  "territorial_scope": [
+    "placed_on_eu_market",
+    "established_in_eu"
+  ],
+  "gpai_systemic_risk": false,
+  "art2_exclusion": "none",
+  "art5_prohibited_practices": [],
+  "art50_transparency_triggers": [],
+  "is_public_body_or_public_service": true
+}

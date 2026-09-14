@@ -1,0 +1,7 @@
+{
+  "read_only_api_endpoint": null,
+  "credential_ref": "openbao://aaa/engagements/eng-uci-german-credit-001/stage_c_credential",
+  "access_scope": ["read:predictions", "read:model_metadata"],
+  "access_expiry_utc": "2030-12-31T23:59:59Z",
+  "revocation_webhook": null
+}

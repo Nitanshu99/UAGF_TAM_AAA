@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T15_monitoring_logging_review:1.0.0",
+  "title": "T15 — Monitoring & Logging Review (Phase 5 Ops)",
+  "description": "Review of uploaded monitoring and logging documentation against EU AI Act Art. 12 (record-keeping), Art. 17 (quality management system), Art. 72 (post-market monitoring).",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "monitoring_evidence",
+    "logging_evidence",
+    "post_market_monitoring",
+    "art12_record_keeping",
+    "art17_qms",
+    "art72_post_market_plan",
+    "overall_ops_verdict",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "monitoring_evidence": {
+      "type": "object",
+      "description": "Evidence from the Annex IV dossier on monitoring measures.",
+      "required": ["monitoring_measures_documented", "monitoring_tools"],
+      "additionalProperties": false,
+      "properties": {
+        "monitoring_measures_documented": { "type": "boolean" },
+        "monitoring_summary": { "type": ["string", "null"] },
+        "monitoring_tools": { "type": "array", "items": { "type": "string" } },
+        "drift_detection_documented": { "type": ["boolean", "null"] },
+        "performance_dashboards_documented": { "type": ["boolean", "null"] }
+      }
+    },
+    "logging_evidence": {
+      "type": "object",
+      "description": "Evidence from the Annex IV dossier on logging capabilities (Art. 12).",
+      "required": ["logging_capabilities_documented"],
+      "additionalProperties": false,
+      "properties": {
+        "logging_capabilities_documented": { "type": "boolean" },
+        "logging_summary": { "type": ["string", "null"] },
+        "automatic_logging_enabled": { "type": ["boolean", "null"] },
+        "log_retention_period": { "type": ["string", "null"] },
+        "log_integrity_controls": { "type": ["string", "null"] }
+      }
+    },
+    "post_market_monitoring": {
+      "type": "object",
+      "description": "Post-market monitoring plan evidence (Art. 72).",
+      "required": ["plan_provided"],
+      "additionalProperties": false,
+      "properties": {
+        "plan_provided": { "type": "boolean" },
+        "plan_uri": { "type": ["string", "null"] },
+        "incident_reporting_documented": { "type": ["boolean", "null"] },
+        "serious_incident_threshold_defined": { "type": ["boolean", "null"] }
+      }
+    },
+    "art12_record_keeping": {
+      "type": "object",
+      "required": ["status", "rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_APPLICABLE"]
+        },
+        "rationale": { "type": "string" },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "art17_qms": {
+      "type": "object",
+      "required": ["status", "rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_APPLICABLE"]
+        },
+        "rationale": { "type": "string" },
+        "qms_standard_referenced": { "type": ["string", "null"] },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "art72_post_market_plan": {
+      "type": "object",
+      "required": ["status", "rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_APPLICABLE"]
+        },
+        "rationale": { "type": "string" },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "cgsa_cross_references": {
+      "type": "array",
+      "description": "CGSA control IDs that materially informed each ops verdict (e.g. C30 incident response).",
+      "items": {
+        "type": "object",
+        "required": ["article", "control_id"],
+        "additionalProperties": false,
+        "properties": {
+          "article": { "type": "string" },
+          "control_id": { "type": "string" },
+          "rationale": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "observations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "overall_ops_verdict": {
+      "type": "string",
+      "enum": ["PASS", "PASS_WITH_OBSERVATIONS", "FAIL", "NOT_APPLICABLE"]
+    },
+    "hitl_required": { "type": "boolean", "default": false },
+    "hitl_reason": { "type": ["string", "null"] },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

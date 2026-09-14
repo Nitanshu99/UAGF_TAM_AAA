@@ -1,0 +1,68 @@
+# AAA — Streamlit Cloud demo redeploy (§14.7)
+# Streamlit Cloud auto-deploys on every push to `main`; this workflow only
+# performs a lightweight readiness check + notifies on failure. No secrets are
+# exposed: the Streamlit Cloud app reads ANTHROPIC_API_KEY
+# from its own secret store, not from GitHub Actions.
+name: streamlit_deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "aaa/ui/**"
+      - "templates/**"
+      - "schemas/**"
+      - "scripts/fixtures/**"
+      - "requirements.txt"
+  workflow_dispatch:
+
+env:
+  # CPU-only torch wheels. The default PyPI build drags in the CUDA runtime
+  # (nvidia-* packages, several GB) that no CI job can use.
+  PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      CGSA_FIXTURE_DIR: scripts/fixtures/cgsa
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Free runner disk
+        # ubuntu-latest ships ~14 GB free; this dependency set (torch, shap,
+        # sentence-transformers, jupyter, trulens) plus the pip cache exceeded
+        # it — every job died with "No space left on device" at install time.
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          df -h / | tail -1
+      - name: Install runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Import-check Streamlit app
+        run: |
+          python -c "import importlib.util, sys; \
+            spec = importlib.util.spec_from_file_location('app', 'aaa/ui/app.py'); \
+            mod = importlib.util.module_from_spec(spec); \
+            sys.modules['app'] = mod; \
+            spec.loader.exec_module(mod); \
+            print('aaa/ui/app.py imports OK')"
+
+      - name: Trigger Streamlit Cloud webhook
+        if: ${{ env.STREAMLIT_DEPLOY_HOOK != '' }}
+        env:
+          STREAMLIT_DEPLOY_HOOK: ${{ secrets.STREAMLIT_DEPLOY_HOOK }}
+        run: |
+          curl -fsSL -X POST "${STREAMLIT_DEPLOY_HOOK}" || {
+            echo "::error::Streamlit Cloud webhook failed"
+            exit 1
+          }

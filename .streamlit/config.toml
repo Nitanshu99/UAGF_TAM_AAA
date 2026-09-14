@@ -1,0 +1,21 @@
+# Base theme for the auditor UI.
+#
+# Streamlit paints the widgets it owns before `aaa.ui.styles` gets a chance to
+# restyle them, so these values exist to stop the first paint flashing somebody
+# else's palette. They mirror the two tones in `aaa/ui/styles/css/tokens.py`:
+# `primaryColor` is `--brand`, `textColor` is `--ink`, and the backgrounds are
+# `--canvas` and `--surface-2`. Change them together.
+#
+# `base = "light"` is deliberate: the design commits to a single, printed-report
+# look, and letting Streamlit's chrome flip to dark under a stylesheet that does
+# not would give a half-dark page, not a dark one.
+[theme]
+base = "light"
+primaryColor = "#5B4FE0"
+backgroundColor = "#FAFAFD"
+secondaryBackgroundColor = "#F2F2F8"
+textColor = "#1B2141"
+font = "sans serif"
+
+[server]
+maxUploadSize = 200

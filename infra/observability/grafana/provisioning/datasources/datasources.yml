@@ -1,0 +1,28 @@
+# Auto-provisioned Grafana datasources for the local `obs` profile.
+#
+# The uids are explicit because dashboards/aaa-overview.json references them
+# by uid. Without them Grafana generated a random uid per install and the
+# dashboard only kept working through a by-name fallback in the frontend —
+# backend features (alert rules, public dashboards, reporting) resolve by uid
+# only and would have failed.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: 15s
+
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: true
+    jsonData:
+      maxLines: 1000

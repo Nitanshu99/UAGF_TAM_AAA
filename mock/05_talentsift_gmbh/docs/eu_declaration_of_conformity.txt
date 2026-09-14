@@ -1,0 +1,20 @@
+EU DECLARATION OF CONFORMITY  |  Ref: DOC-TR-v1.2-2026
+Pursuant to EU AI Act Article 47 and Annex V
+
+1. AI system: TalentRank v1.2 (CV screening and shortlist
+   recommendation, high-risk per Annex III para 4(a)).
+2. Provider: TalentSift GmbH, Alsterufer 12, 20354 Hamburg, Germany.
+3. This declaration of conformity is issued under the sole
+   responsibility of the provider.
+4. The AI system named above is in conformity with the requirements of
+   Regulation (EU) 2024/1689, Chapter III Section 2 (Articles 8-15).
+5. Conformity assessment procedure: internal control pursuant to
+   Article 43 para 2 and Annex VI.
+6. Harmonised standards applied: ISO/IEC 42001:2023; ISO/IEC 23894:2023;
+   ISO/IEC TR 24027:2021; ISO/IEC 5259-1:2024.
+7. EU database registration: pending assignment (Art. 49 application
+   submitted 2026-05-20).
+
+Signed for and on behalf of TalentSift GmbH
+Hamburg, 2026-05-20
+Dr. Miriam Hoffmann, Head of Model Governance

@@ -1,0 +1,508 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:uagf:tam:T01b_annex_iv_dossier:1.0.0",
+  "title": "T01b — Annex IV Dossier",
+  "description": "Structured Annex IV §1–§9 technical documentation uploaded in Stage B. EU AI Act Art. 11 + Annex IV §1–§9.",
+  "type": "object",
+  "required": [
+    "general_description",
+    "model_type",
+    "design_process",
+    "training_data_description",
+    "data_governance_measures",
+    "monitoring_measures",
+    "logging_capabilities",
+    "accuracy_metrics",
+    "lifecycle_change_log",
+    "harmonised_standards",
+    "other_standards"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "general_description": {
+      "type": "string",
+      "minLength": 50,
+      "description": "§1 General description of the AI system, its intended purpose, and the persons responsible."
+    },
+    "model_type": {
+      "type": "string",
+      "minLength": 1,
+      "description": "§1 Technical type of model, e.g. 'XGBoost classifier v1.2', 'GPT-4 fine-tune'."
+    },
+    "design_process": {
+      "type": "string",
+      "minLength": 30,
+      "description": "§2 Description of the design and development process, including training methodology."
+    },
+    "training_data_description": {
+      "type": "string",
+      "minLength": 30,
+      "description": "§2 Description of training, validation, and test datasets (Art. 10)."
+    },
+    "training_dataset_uri": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "evaluation_dataset_uri": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "model_artifact_uri": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "model_artifact_kind": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "single_file",
+        "directory",
+        null
+      ],
+      "description": "Whether model_artifact_uri points at one file or at a directory of files. Avoids guessing the layout from the URI string."
+    },
+    "model_entrypoint": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "File or sub-directory inside model_artifact_uri that is the model. Required when model_artifact_kind is 'directory'; the model path is model_artifact_uri / model_entrypoint."
+    },
+    "model_metadata_uri": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "data_governance_measures": {
+      "type": "string",
+      "minLength": 20,
+      "description": "§2 Data governance and management practices applied."
+    },
+    "monitoring_measures": {
+      "type": "string",
+      "minLength": 20,
+      "description": "§3 Description of monitoring, functioning, and control measures."
+    },
+    "logging_capabilities": {
+      "type": "string",
+      "minLength": 10,
+      "description": "§3 Description of logging capabilities for post-deployment monitoring (Art. 12)."
+    },
+    "accuracy_metrics": {
+      "type": "object",
+      "description": "§4 Performance metrics reported by the provider (e.g. accuracy, F1, AUC).",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    "robustness_metrics": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "§4 Robustness metrics if available (e.g. adversarial accuracy).",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "risk_management_file_uri": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "§5 MinIO URI or external URI to the Art. 9 risk management system file."
+    },
+    "lifecycle_change_log": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "§6 Log of significant changes made to the system over its lifecycle."
+    },
+    "harmonised_standards": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "§7 List of harmonised standards applied (e.g. 'ISO/IEC 42001:2023')."
+    },
+    "other_standards": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "§7 Other technical or sector-specific standards applied."
+    },
+    "eu_doc_uri": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "§8 URI to the EU Declaration of Conformity (self-assessment route)."
+    },
+    "post_market_plan_uri": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "§9 URI to the post-market monitoring plan (Art. 72)."
+    },
+    "system_prompt_uri": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "L-branch only: URI to the system prompt (required for llm/agentic/gpai modality)."
+    },
+    "rag_manifest_uri": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "L-branch only: URI to the RAG manifest (vector-store schema + retrieval config)."
+    },
+    "tool_inventory": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "description": "L-branch only: list of tool names + permitted scopes for agentic systems."
+    },
+    "guardrail_config_uri": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "L-branch only: URI to the guardrail / content-filter configuration."
+    },
+    "golden_set_uri": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "L-branch only: URI to the golden Q&A set (≥ 50 pairs) for RAGAs evaluation."
+    },
+    "data_dictionary": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Declared dataset semantics so the auditor need not infer them (Art. 10 / Art. 15 fairness).",
+      "properties": {
+        "target_column": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Name of the prediction target column."
+        },
+        "positive_label": {
+          "description": "Favourable/positive class label for fairness analysis."
+        },
+        "sensitive_feature_columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Protected-attribute columns for non-discrimination testing."
+        },
+        "feature_columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Model input feature columns (training order)."
+        },
+        "ranking": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "For a system that ranks items per query: the column identifying the query (e.g. a search request) and the column holding the system's rank (1 = first). Relevance is target_column / positive_label. Lets declared precision@k / NDCG@k be recomputed from the evaluation set.",
+          "required": [
+            "query_column",
+            "rank_column"
+          ],
+          "properties": {
+            "query_column": {
+              "type": "string"
+            },
+            "rank_column": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "target_column": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Label column of the supervised dataset."
+    },
+    "positive_label": {
+      "type": [
+        "string",
+        "integer",
+        "null"
+      ],
+      "description": "Favourable outcome value for binary / one-vs-rest classification."
+    },
+    "sensitive_feature_columns": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "description": "Protected-attribute columns for fairness analysis. A continuous attribute is binned into quantile bands before any metric sees it, and a grouping whose smallest cohort falls below the minimum is reported untested rather than measured — see sensitive_feature_groups in the hand-off."
+    },
+    "immutable_feature_columns": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "description": "Feature columns a counterfactual must hold fixed because the subject cannot change them, e.g. age, credit_history."
+    },
+    "actionable_feature_columns": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "description": "Feature columns a counterfactual may vary. Must not overlap immutable_feature_columns."
+    },
+    "task_type": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "binary_classification",
+        "multiclass_classification",
+        "regression",
+        "forecasting",
+        "llm_generation",
+        "anomaly_detection",
+        null
+      ],
+      "description": "Model task; required by the evaluation loader (S6 hand-off)."
+    },
+    "model_format": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "pickle",
+        "joblib",
+        "onnx",
+        "pytorch",
+        "huggingface",
+        "safetensors",
+        "huggingface_pretrained",
+        "huggingface_adapter",
+        null
+      ],
+      "description": "Serialisation format of the model artefact (S6 hand-off)."
+    },
+    "model_framework": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "sklearn",
+        "transformers",
+        "onnxruntime",
+        "sklearn_wrapper",
+        "chronos_sklearn_wrapper",
+        "huggingface",
+        "huggingface_transformers",
+        "huggingface_peft",
+        null
+      ],
+      "description": "Library required to run the model (S6 hand-off)."
+    },
+    "trace_sample_uri": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "L-branch (agentic) only: URI to a JSON array of trace objects exported from the client's agentic-system tracing, consumed by trajectory_audit for tool-use compliance."
+    },
+    "model_access_mode": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "artifact_upload",
+        "registry_reference",
+        "base_plus_adapter",
+        "hosted_api",
+        "not_provided",
+        null
+      ],
+      "description": "How the auditor obtains a runnable model (S6 hand-off). 'artifact_upload' = weights uploaded here; 'registry_reference' / 'base_plus_adapter' = weights pulled from a registry at a pinned revision; 'hosted_api' = no weights exist, evaluation calls the vendor endpoint; 'not_provided' = document/trace-only evaluation."
+    },
+    "model_reference": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Vendor-side identity of a model the auditor does not host. Required for registry_reference, base_plus_adapter and hosted_api.",
+      "required": [
+        "provider",
+        "model_id",
+        "revision"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": [
+            "huggingface",
+            "openai",
+            "azure_openai",
+            "anthropic",
+            "google_gemini",
+            "openrouter",
+            "nvidia_nim",
+            "aws_bedrock",
+            "mistral",
+            "cohere",
+            "self_hosted",
+            "other"
+          ],
+          "description": "Vendor or registry serving the model."
+        },
+        "model_id": {
+          "type": "string",
+          "description": "Vendor's canonical identifier, written as the vendor writes it."
+        },
+        "revision": {
+          "type": "string",
+          "description": "Immutable version pin — commit SHA, dated snapshot, image digest or ARN. Branch names and 'latest' do not pin a model."
+        },
+        "endpoint_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Inference endpoint for hosted or self-hosted models."
+        },
+        "auth_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "none | api_key | hf_token | oauth | aws_sigv4."
+        },
+        "gated": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Whether access requires licence acceptance or approval."
+        },
+        "license": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Licence governing the weights or API use."
+        },
+        "base_model_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Base model for base_plus_adapter."
+        },
+        "base_model_revision": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Immutable pin of the base model."
+        },
+        "adapter_uri": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Uploaded adapter artefact, when the adapter is supplied here."
+        },
+        "adapter_reference": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Registry id of the adapter, when it is pulled instead."
+        },
+        "peft_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Adapter method, e.g. LORA."
+        },
+        "runtime_versions": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Library versions needed to reproduce, e.g. transformers/torch/peft."
+        },
+        "quantization": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "none | int8 | int4 | awq | gptq, as served."
+        },
+        "decoding_params": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "Decoding settings as run in production. Part of model identity for audit: the same weights at different temperatures produce materially different faithfulness and robustness numbers."
+        },
+        "upstream_provider": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "For aggregators such as OpenRouter: the upstream provider actually serving the route, which determines the weights and quantization behind a single slug."
+        }
+      }
+    }
+  }
+}

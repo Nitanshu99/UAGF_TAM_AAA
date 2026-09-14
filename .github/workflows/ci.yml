@@ -1,0 +1,200 @@
+# AAA — Continuous Integration
+# Pipeline: lint (ruff + pylint + pyright) → security → unit tests + coverage → smoke
+# Gates mirror the repo's local conventions: ruff over the whole repo,
+# pylint 10/10 and pyright zero-errors over the whole production surface
+# (aaa + scripts), pytest with coverage, and an LLM/infra-free report smoke.
+name: ci
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # CPU-only torch wheels. The default PyPI build drags in the CUDA runtime
+  # (nvidia-* packages, several GB) that no CI job can use.
+  PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
+
+jobs:
+  # ── Job 1: Lint & Format ──────────────────────────────────────────────────
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Free runner disk
+        # ubuntu-latest ships ~14 GB free; this dependency set (torch, shap,
+        # sentence-transformers, jupyter, trulens) plus the pip cache exceeded
+        # it — every job died with "No space left on device" at install time.
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          df -h / | tail -1
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install -e .
+      - name: Ruff lint (entire repo, incl. notebooks)
+        run: ruff check .
+      - name: Pylint (production code, 10/10 required)
+        run: pylint aaa scripts
+      - name: Pyright (hard gate — zero errors, whole production surface)
+        run: pyright --pythonpath "$(which python)" aaa scripts
+
+  # ── Job 2: Security Scan ──────────────────────────────────────────────────
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Free runner disk
+        # ubuntu-latest ships ~14 GB free; this dependency set (torch, shap,
+        # sentence-transformers, jupyter, trulens) plus the pip cache exceeded
+        # it — every job died with "No space left on device" at install time.
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          df -h / | tail -1
+      - name: Install runtime deps + audit tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install bandit pip-audit
+      - name: Bandit SAST scan
+        run: bandit -r aaa scripts -ll --exit-zero
+      - name: Dependency vulnerability audit (installed environment)
+        # pip-audit ≥2.9 removed --exit-zero (the old workflow died on argparse).
+        # Audit the installed env (no requirement-resolution failures), ignore
+        # the known nltk advisory that has no fixed release yet, and stay
+        # informational like the bandit step.
+        run: pip-audit --ignore-vuln PYSEC-2026-597
+        continue-on-error: true
+
+  # ── Job 3: Unit Tests + Coverage ─────────────────────────────────────────
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: [lint]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: aaa
+          POSTGRES_PASSWORD: aaa
+          POSTGRES_DB: aaa
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      qdrant:
+        image: qdrant/qdrant:v1.9.4
+        ports: ["6333:6333"]
+    env:
+      CGSA_FIXTURE_DIR: scripts/fixtures/cgsa
+      DATABASE_URL: postgresql://aaa:aaa@localhost:5432/aaa
+      MINIO_ROOT_USER: aaa
+      MINIO_ROOT_PASSWORD: aaa-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Free runner disk
+        # ubuntu-latest ships ~14 GB free; this dependency set (torch, shap,
+        # sentence-transformers, jupyter, trulens) plus the pip cache exceeded
+        # it — every job died with "No space left on device" at install time.
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          df -h / | tail -1
+      - name: Start MinIO
+        # Not a service container: those cannot pass a command, and the minio
+        # image only prints its CLI usage without `server /data` (the job
+        # died in "Initialize containers" that way). quay.io: Docker Hub
+        # denies anonymous pulls of minio/minio since 2026-09.
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=aaa -e MINIO_ROOT_PASSWORD=aaa-secret \
+            quay.io/minio/minio:RELEASE.2024-11-07T00-52-20Z server /data
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:9000/minio/health/live && exit 0
+            sleep 2
+          done
+          docker logs minio; exit 1
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install -e .
+      - name: Run unit tests with coverage
+        run: |
+          pytest \
+            --cov=aaa \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=70 \
+            -m "not e2e and not golden and not contract" \
+            -q
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false
+
+  # ── Job 4: Smoke Run (no LLM, no infra) ──────────────────────────────────
+  smoke:
+    name: Smoke Run
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Free runner disk
+        # ubuntu-latest ships ~14 GB free; this dependency set (torch, shap,
+        # sentence-transformers, jupyter, trulens) plus the pip cache exceeded
+        # it — every job died with "No space left on device" at install time.
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          df -h / | tail -1
+      - name: Install runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+      - name: Import-check Streamlit app
+        run: |
+          python -c "import importlib.util, sys; \
+            spec = importlib.util.spec_from_file_location('app', 'aaa/ui/app.py'); \
+            mod = importlib.util.module_from_spec(spec); \
+            sys.modules['app'] = mod; \
+            spec.loader.exec_module(mod); \
+            print('aaa/ui/app.py imports OK')"
+      - name: Render customer report from tracked fixtures
+        run: |
+          mkdir -p ci-data/customer/finclear_gmbh
+          cp tests/fixtures/customer_finclear/*.json ci-data/customer/finclear_gmbh/
+          AAA_DATA_DIR=ci-data python -m aaa report --all
+          test -s ci-data/customer/finclear_gmbh/eng-01_finclear_gmbh_audit_report.pdf
+          echo "smoke report PDF rendered"
