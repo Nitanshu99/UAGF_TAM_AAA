@@ -1,0 +1,50 @@
+{
+  "engagement_id": "eng-uci-german-credit-001",
+  "final_verdict": "PASS_WITH_OBSERVATIONS",
+  "intake_completeness_score": 1.0,
+  "completeness_score": 0.88,
+  "regulatory_coverage_pct": 88.9,
+  "art43_decision": {
+    "procedure": "annex_vi_internal_control",
+    "rationale": "High-risk AI system with harmonised standards applied in full; internal control procedure permitted by Art. 43 \u00a72."
+  },
+  "hitl_required": false,
+  "hitl_reason": null,
+  "phase_artefacts": {
+    "T01a_stage_a_triage": "minio://eng-uci-german-credit-001/stage_a/T01a_stage_a_triage_a08f9fbb.json",
+    "T01b_annex_iv_dossier": "minio://eng-uci-german-credit-001/stage_b/T01b_annex_iv_dossier_bbee28e1.json",
+    "T01c_intake_completeness_report": "minio://eng-uci-german-credit-001/stage_b/T01c_intake_completeness_report_8e217dcc.json",
+    "T02_system_card": "minio://eng-uci-german-credit-001/phase_1/T02_system_card_8d032c4e.json",
+    "T03_annex_iii_mapping": "minio://eng-uci-german-credit-001/phase_1/T03_annex_iii_mapping_699dead0.json",
+    "T04_risk_tier_decision": "minio://eng-uci-german-credit-001/phase_1/T04_risk_tier_decision_e72b2592.json",
+    "T05_art43_decision": "minio://eng-uci-german-credit-001/phase_1/T05_art43_decision_30b9de89.json",
+    "T06_datasheet_for_datasets": "minio://eng-uci-german-credit-001/phase_2/T06_datasheet_for_datasets_3345b561.json",
+    "T07_data_quality_report": "minio://eng-uci-german-credit-001/phase_2/T07_data_quality_report_6133202b.json",
+    "T08_special_category_data_log": "minio://eng-uci-german-credit-001/Privacy/T08_special_category_data_log_93dc9c32.json",
+    "T09_model_card": "minio://eng-uci-german-credit-001/phase_3/T09_model_card_40730ccd.json",
+    "T10_explainability_report": "minio://eng-uci-german-credit-001/phase_3/T10_explainability_report_a77b4879.json",
+    "T11_robustness_report": "minio://eng-uci-german-credit-001/phase_3/T11_robustness_report_c6b22bd7.json",
+    "T12_output_fairness_report": "minio://eng-uci-german-credit-001/phase_4/T12_output_fairness_report_2c5fb395.json",
+    "T13_output_sampling_log": "minio://eng-uci-german-credit-001/phase_4/T13_output_sampling_log_84cfc427.json",
+    "T14_governance_findings": "minio://eng-uci-german-credit-001/phase_5/T14_governance_findings_cbea6f7d.json",
+    "T15_monitoring_logging_review": "minio://eng-uci-german-credit-001/phase_5/T15_monitoring_logging_review_8f4727a7.json",
+    "T17_compliance_matrix": "minio://eng-uci-german-credit-001/phase_6/T17_compliance_matrix_fe2cb85c.json",
+    "T18_audit_report": "minio://eng-uci-german-credit-001/phase_6/T18_audit_report_4c48a5f8.json"
+  },
+  "compliance_matrix": {
+    "Art.43": "PASS",
+    "Art.6": "PASS",
+    "Art.17": "PASS",
+    "Art.15\u00a71": "PASS",
+    "Art.14": "PASS",
+    "Annex_III": "PASS",
+    "Art.10\u00a72(f)": "PASS",
+    "Art.10": "PASS",
+    "Art.15": "PASS",
+    "Art.72": "PASS",
+    "Art.13": "PASS",
+    "Art.9": "PASS"
+  },
+  "blocking_findings_count": 0,
+  "positive_findings_count": 0
+}
